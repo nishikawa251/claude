@@ -1,0 +1,1072 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>深夜喫茶 境界</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Yuji+Syuku&family=Zen+Old+Mincho:wght@400;700&display=swap">
+<style>
+:root{
+  color-scheme: dark;
+  --night:#120f1a;
+  --wall:#221b2b;
+  --wall2:#2c2337;
+  --wood:#6a4330;
+  --wood2:#3b2519;
+  --lamp:#f2b15e;
+  --ink:#efe6d6;
+  --dim:#a99db6;
+  --line:#473a55;
+  --panel:#1a1522;
+  --panel2:#231c2d;
+  --gap:#a57de0;
+  --ok:#8fd19e;
+  --ng:#e39a8e;
+  --f-disp:'Yuji Syuku','Hiragino Mincho ProN','Yu Mincho',serif;
+  --f-body:'Zen Old Mincho','Hiragino Mincho ProN','Yu Mincho',serif;
+  --f-ui:'DotGothic16','Hiragino Kaku Gothic ProN','Yu Gothic',monospace;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%}
+body{height:100%;margin:0;background:var(--night);color:var(--ink);font-family:var(--f-body);font-size:16px;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit}
+button:focus-visible,.ing:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
+
+#app{height:100%;display:flex;flex-direction:column;max-width:1040px;margin:0 auto;padding-inline:16px}
+
+/* ---------- HUD ---------- */
+.hud{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:10px;font-family:var(--f-ui);font-size:14px;color:var(--dim)}
+.hud .when{letter-spacing:.08em}
+.hud .when b{color:var(--ink);font-weight:400}
+.hud .tools{display:flex;gap:8px}
+.btn{font-family:var(--f-ui);font-size:14px;background:transparent;border:1px solid var(--line);color:var(--ink);padding:7px 14px;border-radius:3px;cursor:pointer;letter-spacing:.06em}
+.btn:hover{border-color:var(--dim)}
+.btn[disabled]{opacity:.35;cursor:not-allowed}
+.btn.primary{background:var(--lamp);border-color:var(--lamp);color:#20150b}
+.btn.primary:hover{background:#f7c47d}
+.btn.small{padding:5px 10px;font-size:13px}
+
+/* ---------- Stage ---------- */
+.stage{position:relative;flex:1 1 auto;min-height:230px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,var(--wall2),var(--wall) 70%)}
+.stage::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 2px,transparent 2px 46px);pointer-events:none}
+.window{position:absolute;left:50%;top:7%;width:min(60%,540px);height:50%;transform:translateX(-50%);border:9px solid var(--wood2);border-radius:3px;box-shadow:0 0 0 2px #1a110c,inset 0 0 40px rgba(0,0,0,.5);overflow:hidden}
+.window canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.window .mullion{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent calc(50% - 3px),var(--wood2) calc(50% - 3px),var(--wood2) calc(50% + 3px),transparent calc(50% + 3px))}
+.window .glass-sign{position:absolute;left:50%;top:14%;transform:translateX(-50%) scaleX(-1);font-family:var(--f-disp);font-size:clamp(16px,3.2vw,30px);color:rgba(242,177,94,.28);letter-spacing:.3em;white-space:nowrap;pointer-events:none}
+.lamp{position:absolute;top:0;width:2px;height:15%;background:#0e0a08}
+.lamp::after{content:"";position:absolute;left:50%;bottom:-16px;transform:translateX(-50%);width:44px;height:18px;border-radius:22px 22px 4px 4px;background:#3a2a1c;box-shadow:0 12px 40px 18px rgba(242,177,94,.22)}
+.lamp::before{content:"";position:absolute;left:50%;bottom:-24px;transform:translateX(-50%);width:14px;height:10px;border-radius:50%;background:#ffd89a;box-shadow:0 0 18px 6px rgba(255,210,140,.6)}
+.lamp.l{left:14%}.lamp.r{right:14%}
+.shelf{position:absolute;top:58%;height:4px;width:18%;background:var(--wood2)}
+.shelf.l{left:3%}.shelf.r{right:3%}
+.shelf i{position:absolute;bottom:4px;width:14px;border-radius:3px 3px 1px 1px;opacity:.85}
+.fog{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(190,200,230,.10),transparent 70%);opacity:0;transition:opacity 2s;pointer-events:none}
+.fog.on{opacity:1}
+
+.custs{position:absolute;left:0;right:0;bottom:21%;height:74%;pointer-events:none}
+.cust{position:absolute;bottom:0;height:100%;transform:translate(-50%,14px);opacity:0;transition:opacity .45s ease,transform .45s ease,left .6s ease,filter .3s}
+.cust.in{opacity:1;transform:translate(-50%,0)}
+.cust svg{height:100%;width:auto;display:block}
+.cust.dim{filter:brightness(.6) saturate(.75)}
+.myon{animation:float 3.2s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-7px)}}
+.gapfx{position:absolute;bottom:22%;width:26px;height:70%;transform:translateX(-50%) scaleY(0);border-radius:50%;background:radial-gradient(ellipse at center,#0b0612 30%,#5b2f8f 60%,transparent 72%);box-shadow:0 0 30px 8px rgba(165,125,224,.35);animation:gap 1.1s ease forwards;pointer-events:none}
+.gapfx::before,.gapfx::after{content:"";position:absolute;left:50%;width:10px;height:10px;transform:translateX(-50%);border-radius:50%;background:#c83a4a}
+.gapfx::before{top:-4px}.gapfx::after{bottom:-4px}
+@keyframes gap{0%{transform:translateX(-50%) scaleY(0)}35%{transform:translateX(-50%) scaleY(1)}70%{transform:translateX(-50%) scaleY(1);opacity:1}100%{transform:translateX(-50%) scaleY(0);opacity:0}}
+
+.counter{position:absolute;left:0;right:0;bottom:0;height:22%;background:linear-gradient(180deg,#8a5a3f 0,#8a5a3f 6px,var(--wood) 6px,var(--wood2) 100%)}
+.counter::before{content:"";position:absolute;left:0;right:0;top:6px;height:1px;background:rgba(0,0,0,.35)}
+.cup{position:absolute;bottom:calc(22% - 6px);width:46px;transform:translate(-50%,0);transition:opacity .4s,transform .5s ease;opacity:0}
+.cup.in{opacity:1}
+.cup svg{width:100%;height:auto;display:block}
+
+.toast{position:absolute;left:50%;top:14%;transform:translate(-50%,-8px);background:rgba(20,15,26,.92);border:1px solid var(--lamp);padding:10px 18px;border-radius:3px;text-align:center;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;z-index:5;max-width:86%}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast .k{font-family:var(--f-ui);font-size:12px;color:var(--lamp);letter-spacing:.12em}
+.toast .v{font-family:var(--f-disp);font-size:22px;margin-top:2px}
+
+/* ---------- Dialogue ---------- */
+.dlg{position:relative;margin-block:18px 14px;min-height:136px;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:20px 18px 16px;cursor:pointer;user-select:none}
+.plate{position:absolute;top:-15px;left:14px;padding:3px 14px 2px;font-family:var(--f-disp);font-size:17px;border-radius:2px;color:#fff;background:#6b5b4b;letter-spacing:.08em}
+.plate[hidden]{display:none}
+.text{font-size:17px;line-height:1.85;min-height:3.7em;white-space:pre-wrap}
+.text.narr{color:var(--dim);font-style:normal}
+.nextind{position:absolute;right:16px;bottom:10px;font-size:12px;color:var(--lamp);animation:blink 1.1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.choices{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.choices .btn{text-align:left;font-family:var(--f-body);font-size:16px;padding:10px 14px}
+.orderbox{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.orderbox .lbl{font-family:var(--f-ui);font-size:12px;color:var(--lamp);letter-spacing:.14em}
+.orderbox .q{font-size:17px;line-height:1.7}
+
+/* ---------- Overlays ---------- */
+.overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(9,7,13,.84)}
+.overlay[hidden]{display:none!important}
+.sheet{width:min(940px,100%);max-height:100%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:18px}
+
+/* brew */
+.brew{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:18px}
+.brew .order{grid-column:1/-1;display:flex;gap:14px;align-items:flex-start;border-bottom:1px dashed var(--line);padding-bottom:14px}
+.brew .order .who{font-family:var(--f-disp);font-size:18px;white-space:nowrap;padding-top:2px}
+.brew .order .q{font-size:16px;line-height:1.7}
+.brew .order .tag{font-family:var(--f-ui);font-size:11px;color:var(--lamp);letter-spacing:.14em;display:block}
+.slots{display:flex;justify-content:center;gap:12px}
+.slot{width:74px;height:74px;border-radius:50%;border:1.5px dashed var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;color:var(--dim);font-family:var(--f-ui);cursor:pointer;background:var(--panel2);text-align:center;line-height:1.3;padding:4px}
+.slot.full{border-style:solid;color:var(--ink)}
+.slot .dot{width:18px;height:18px;border-radius:50%;margin-bottom:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.slot small{font-size:10px;color:var(--dim)}
+.preview{display:flex;align-items:center;gap:16px;margin-top:16px}
+.preview .bigcup{width:96px;flex:none}
+.preview .dname{font-family:var(--f-disp);font-size:22px;line-height:1.3}
+.preview .dnote{font-size:13px;color:var(--dim);margin-top:4px;line-height:1.6}
+.stats{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;margin-top:16px;font-family:var(--f-ui);font-size:13px;align-items:center}
+.pips{display:flex;gap:4px}
+.pips i{width:100%;max-width:34px;height:10px;border-radius:2px;background:#2f2739}
+.pips i.on{background:var(--lamp)}
+.stats .s-warm .on{background:#e8875a}.stats .s-sweet .on{background:#e9a3c0}.stats .s-bitter .on{background:#9a7a5e}.stats .s-fresh .on{background:#7fd0b4}
+.ings h4{margin:0 0 8px;font-family:var(--f-ui);font-weight:400;font-size:12px;color:var(--dim);letter-spacing:.14em}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.ing{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px;border:1px solid var(--line);border-radius:4px;background:var(--panel2);cursor:pointer;font-size:14px;transition:border-color .15s,transform .1s}
+.ing:hover{border-color:var(--dim)}
+.ing:active{transform:scale(.96)}
+.ing .sw{width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),0 2px 0 rgba(0,0,0,.3)}
+.ing.off{opacity:.35}
+.hint{font-size:13px;color:var(--ng);min-height:1.4em;font-family:var(--f-ui)}
+.actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.shake{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+@media (max-width:560px){
+  .custs{height:62%}
+}
+@media (max-width:720px){
+  .brew{grid-template-columns:1fr}
+  .slot{width:64px;height:64px}
+  .text{font-size:16px}
+}
+
+/* book */
+.book .tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:14px;flex-wrap:wrap}
+.book .tab{font-family:var(--f-ui);background:none;border:none;border-bottom:2px solid transparent;padding:8px 12px;cursor:pointer;color:var(--dim)}
+.book .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--lamp)}
+.book .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px}
+.book .head h3{margin:0;font-family:var(--f-disp);font-weight:400;font-size:22px}
+.rlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.rcard{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--line);border-radius:4px;background:var(--panel2)}
+.rcard .c{width:40px;flex:none}
+.rcard .n{font-family:var(--f-disp);font-size:17px}
+.rcard .i{font-family:var(--f-ui);font-size:12px;color:var(--lamp);margin-top:2px}
+.rcard .d{font-size:13px;color:var(--dim);line-height:1.55;margin-top:4px}
+.rcard.lock .n{color:var(--dim)}
+.plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.pcard{display:flex;gap:12px;padding:10px;border:1px solid var(--line);border-radius:4px;background:var(--panel2)}
+.pcard .face{width:74px;height:88px;flex:none;overflow:hidden;border-radius:3px;background:#2a2233}
+.pcard .face svg{width:100%;height:auto;display:block;transform:scale(1.9) translateY(12%)}
+.pcard .n{font-family:var(--f-disp);font-size:18px}
+.pcard .t{font-family:var(--f-ui);font-size:12px;color:var(--lamp)}
+.pcard .d{font-size:13px;color:var(--dim);line-height:1.6;margin-top:4px}
+.set{display:grid;gap:14px;max-width:520px}
+.set .row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.seg{display:flex;gap:4px}
+.seg .btn[aria-pressed="true"]{border-color:var(--lamp);color:var(--lamp)}
+.muted{font-size:13px;color:var(--dim);line-height:1.7}
+
+/* title & cards */
+.title{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;gap:clamp(24px,6vw,72px);padding:16px;background:radial-gradient(ellipse at 50% 40%,#2a2036,var(--night) 70%);flex-wrap:wrap}
+.title[hidden]{display:none!important}
+.title .logo{writing-mode:vertical-rl;font-family:var(--f-disp);font-size:clamp(44px,9vw,84px);letter-spacing:.18em;line-height:1.15;text-shadow:0 0 30px rgba(242,177,94,.25)}
+.title .logo small{display:block;font-size:.34em;letter-spacing:.3em;color:var(--lamp);margin-left:.4em}
+.title .menu{display:flex;flex-direction:column;gap:10px;min-width:210px}
+.title .menu .btn{font-size:15px;padding:10px 16px}
+.title .credit{font-size:12px;color:var(--dim);line-height:1.8;margin-top:14px;max-width:34ch}
+.card{position:fixed;inset:0;z-index:25;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(9,7,13,.93);cursor:pointer;padding:16px;text-align:center}
+.card[hidden]{display:none!important}
+.card .big{font-family:var(--f-disp);font-size:clamp(40px,8vw,72px);letter-spacing:.2em}
+.card .sub{font-family:var(--f-ui);color:var(--lamp);letter-spacing:.3em}
+.card .note{color:var(--dim);font-size:14px;line-height:1.8}
+.card .res{display:grid;grid-template-columns:auto auto;gap:6px 18px;font-family:var(--f-ui);font-size:14px;text-align:left;margin-top:6px}
+.card .res b{font-weight:400;color:var(--lamp);font-variant-numeric:tabular-nums}
+
+@media (prefers-reduced-motion: reduce){
+  .cust,.cup,.toast{transition:none}
+  .myon,.nextind{animation:none}
+}
+</style>
+
+<div id="app">
+  <div class="hud">
+    <div class="when" id="when">深夜喫茶 境界</div>
+    <div class="tools">
+      <button class="btn small" id="bookBtn">手帳</button>
+      <button class="btn small" id="soundBtn" aria-pressed="false">雨音 OFF</button>
+    </div>
+  </div>
+  <div class="stage" id="stage">
+    <div class="window" id="win"><canvas id="rain"></canvas><div class="mullion"></div><div class="glass-sign">喫茶 境界</div></div>
+    <div class="fog" id="fog"></div>
+    <div class="lamp l"></div><div class="lamp r"></div>
+    <div class="shelf l"><i style="left:8%;height:22px;background:#7a4a2e"></i><i style="left:30%;height:16px;background:#d9c7a0"></i><i style="left:52%;height:26px;background:#5a7a4a"></i><i style="left:76%;height:18px;background:#b5542c"></i></div>
+    <div class="shelf r"><i style="left:8%;height:18px;background:#f4a9c0"></i><i style="left:30%;height:24px;background:#e9b33a"></i><i style="left:54%;height:14px;background:#dfe8ef"></i><i style="left:76%;height:22px;background:#6b3b2a"></i></div>
+    <div class="custs" id="custs"></div>
+    <div class="counter"></div>
+    <div id="cups"></div>
+    <div class="toast" id="toast"><div class="k" id="toastK"></div><div class="v" id="toastV"></div></div>
+  </div>
+  <div class="dlg" id="dlg" tabindex="0" aria-live="polite">
+    <div class="plate" id="plate" hidden></div>
+    <div class="text" id="text"></div>
+    <div class="choices" id="choices" hidden></div>
+    <div class="nextind" id="nextind" hidden>▼</div>
+  </div>
+</div>
+
+<!-- Brew -->
+<div class="overlay" id="brewOv" hidden>
+  <div class="sheet brew" id="brew">
+    <div class="order">
+      <div class="who" id="bWho"></div>
+      <div class="q"><span class="tag">ご注文</span><span id="bQ"></span></div>
+    </div>
+    <div>
+      <div class="slots" id="slots"></div>
+      <div class="preview">
+        <div class="bigcup" id="bigcup"></div>
+        <div><div class="dname" id="dname">—</div><div class="dnote" id="dnote">最初にベースを選んでください。</div></div>
+      </div>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="ings">
+      <h4>ベース（一番目）</h4>
+      <div class="grid" id="gBase"></div>
+      <h4>材料</h4>
+      <div class="grid" id="gAdd"></div>
+      <div class="hint" id="bHint"></div>
+      <div class="actions">
+        <button class="btn" id="bBook">手帳を見る</button>
+        <button class="btn" id="bReset">やり直す</button>
+        <button class="btn primary" id="bServe" disabled>提供する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Book -->
+<div class="overlay" id="bookOv" hidden style="z-index:40">
+  <div class="sheet book">
+    <div class="head"><h3>店主の手帳</h3><button class="btn small" id="bookClose">閉じる</button></div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="recipe" aria-selected="true">レシピ</button>
+      <button class="tab" role="tab" data-tab="people" aria-selected="false">常連</button>
+      <button class="tab" role="tab" data-tab="guide" aria-selected="false">淹れ方</button>
+      <button class="tab" role="tab" data-tab="settings" aria-selected="false">設定</button>
+    </div>
+    <div id="bookBody"></div>
+  </div>
+</div>
+
+<!-- Title -->
+<div class="title" id="title">
+  <div class="logo">深夜喫茶<br>境界<small>しんやきっさ きょうかい</small></div>
+  <div>
+    <div class="menu">
+      <button class="btn primary" id="tNew">はじめから</button>
+      <button class="btn" id="tCont" disabled>つづきから</button>
+      <button class="btn" id="tBook">手帳</button>
+    </div>
+    <p class="credit">雨の夜にだけ開く喫茶店で、幻想郷の客に一杯を淹れる。<br>東方Project二次創作 ／ 原作：上海アリス幻樂団<br>Coffee Talk に着想を得た非公式ファンゲームです。</p>
+  </div>
+</div>
+
+<!-- Card -->
+<div class="card" id="card" hidden></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= Data ================= */
+const ING = {
+  coffee:  {name:'コーヒー', base:true, c:'#5a3422', s:{warm:2,sweet:0,bitter:3,fresh:0}},
+  tea:     {name:'紅茶',     base:true, c:'#b5542c', s:{warm:2,sweet:0,bitter:1,fresh:1}},
+  greentea:{name:'緑茶',     base:true, c:'#7da04a', s:{warm:1,sweet:0,bitter:1,fresh:2}},
+  cocoa:   {name:'ココア',   base:true, c:'#6b3b2a', s:{warm:2,sweet:2,bitter:1,fresh:0}},
+  milk:    {name:'ミルク',   c:'#f3eee4', s:{warm:1,sweet:1,bitter:-1,fresh:0}},
+  honey:   {name:'はちみつ', c:'#e9b33a', s:{warm:0,sweet:2,bitter:0,fresh:0}},
+  ginger:  {name:'生姜',     c:'#e2c07a', s:{warm:2,sweet:0,bitter:0,fresh:1}, tag:'spice'},
+  mint:    {name:'ミント',   c:'#6fd3a8', s:{warm:-2,sweet:0,bitter:0,fresh:3}},
+  lemon:   {name:'レモン',   c:'#f2e25c', s:{warm:0,sweet:-1,bitter:0,fresh:2}},
+  cinnamon:{name:'シナモン', c:'#a0522d', s:{warm:1,sweet:1,bitter:0,fresh:0}, tag:'spice'},
+  sakura:  {name:'桜',       c:'#f4a9c0', s:{warm:0,sweet:1,bitter:0,fresh:1}},
+  sake:    {name:'お酒',     c:'#dfe8ef', s:{warm:1,sweet:0,bitter:1,fresh:0}},
+};
+const BASES = ['coffee','tea','greentea','cocoa'];
+const ADDS  = ['milk','honey','ginger','mint','lemon','cinnamon','sakura','sake'];
+const STAT_KEYS = [['warm','温','あたたかさ'],['sweet','甘','あまさ'],['bitter','苦','にがさ'],['fresh','爽','さわやかさ']];
+
+const RECIPES = [
+  {id:'espresso',   name:'エスプレッソ',       base:'coffee',  add:['coffee','coffee'],  d:'コーヒーだけを三倍に。眠気も迷いも吹き飛ぶ。'},
+  {id:'latte',      name:'カフェラテ',         base:'coffee',  add:['milk','milk'],      d:'ミルクたっぷりの定番。迷ったらこれ。'},
+  {id:'honeylatte', name:'ハニーラテ',         base:'coffee',  add:['milk','honey'],     d:'はちみつのやさしい甘さ。夜更かしのおともに。'},
+  {id:'mocha',      name:'カフェモカ',         base:'coffee',  add:['cocoa','milk'],     d:'コーヒーとココアの二重奏。'},
+  {id:'yuanyang',   name:'鴛鴦茶',             base:'coffee',  add:['tea','milk'],       d:'コーヒーと紅茶を半分ずつ。境目にある一杯。'},
+  {id:'irish',      name:'アイリッシュコーヒー', base:'coffee', add:['sake','milk'],      d:'コーヒーにお酒をひとたらし。大人の夜の味。'},
+  {id:'royal',      name:'ロイヤルミルクティー', base:'tea',    add:['milk','milk'],      d:'ミルクで煮出す、紅魔館風。'},
+  {id:'honeylemon', name:'ハニーレモンティー', base:'tea',     add:['lemon','honey'],    d:'はちみつとレモン。喉にやさしい。'},
+  {id:'chai',       name:'チャイ',             base:'tea',     add:['milk','cinnamon'],  d:'シナモン香るミルクティー。'},
+  {id:'gingertea',  name:'ジンジャーティー',   base:'tea',     add:['ginger','honey'],   d:'生姜で体の芯から温まる。'},
+  {id:'ichiban',    name:'博麗の一番茶',       base:'greentea',add:['greentea','greentea'], d:'出涸らしではない、ちゃんとした緑茶。'},
+  {id:'matcha',     name:'抹茶ラテ',           base:'greentea',add:['milk','milk'],      d:'ほろ苦い抹茶に、まろやかなミルク。'},
+  {id:'sakuralatte',name:'桜ラテ',             base:'greentea',add:['sakura','milk'],    d:'緑茶に桜の香り。白玉楼の春。'},
+  {id:'meikai',     name:'冥界の涼風',         base:'greentea',add:['mint','lemon'],     d:'ミントとレモンの冷たい風。頭が冴えわたる。'},
+  {id:'hanami',     name:'花見酒',             base:'greentea',add:['sake','sakura'],    d:'緑茶に桜と、お酒を少々。宴会前の一杯。'},
+  {id:'hotchoco',   name:'ホットチョコレート', base:'cocoa',   add:['milk','milk'],      d:'甘くて、あったかくて、落ち着く。'},
+  {id:'spark',      name:'スパイスココア',     base:'cocoa',   add:['ginger','cinnamon'],d:'ココアに生姜とシナモン。火を噴くほど熱い。', alt:'恋色マスタースパーク', altD:'魔理沙命名。弾幕はパワーだぜ。'},
+  {id:'mintchoco',  name:'ミントショコラ',     base:'cocoa',   add:['mint','milk'],      d:'好みの分かれる、爽やかなチョコ。'},
+];
+
+const CH = {
+  me:    {name:'マスター', color:'#6e5e4c'},
+  reimu: {name:'博麗霊夢', color:'#b52a35', title:'博麗神社の巫女', bio:'異変解決の専門家。賽銭箱がいつも空なのが悩み。お茶とお酒をこよなく愛する。'},
+  marisa:{name:'霧雨魔理沙', color:'#8a6f1e', title:'普通の魔法使い', bio:'魔法の森に住む人間。努力家だが、それを人に見せたがらない。本は死ぬまで借りる主義。'},
+  youmu: {name:'魂魄妖夢', color:'#3f6b45', title:'白玉楼の庭師', bio:'半人半霊の剣士。まじめで一生懸命、そしてよく迷う。そばに浮いているのは半霊。'},
+  sakuya:{name:'十六夜咲夜', color:'#3b56a0', title:'紅魔館のメイド長', bio:'時間を操る、完全で瀟洒なメイド。休日の過ごし方を知らない。'},
+  yukari:{name:'八雲紫', color:'#6a4aa6', title:'境界の妖怪', bio:'あらゆる境界を操る大妖怪。この店のことを、なぜかよく知っている。'},
+};
+const PEOPLE = ['reimu','marisa','youmu','sakuya','yukari'];
+
+/* ================= Script =================
+   ['who','text','expr']  line   (who '' = narration, 'me' = master)
+   {enter,at,fx} {leave,fx} {move,at} {set} {if,then,else} {order} {choice} {end}
+*/
+const NIGHTS = [
+{ label:'一夜目', weather:'小雨', rain:.55, fog:false, keys:['reimu1','marisa1','youmu1'], steps:[
+  ['','雨の夜にだけ、人里の外れに灯りがともる。'],
+  ['','看板には『深夜喫茶 境界』。'],
+  ['','店主は、あなた。いつからここにいるのか、どこから来たのか。よく思い出せない。'],
+  ['','ただ、飲み物の淹れ方だけは、手が覚えている。'],
+  ['','カラン、とドアベルが鳴った。'],
+  {enter:'reimu', at:'c'},
+  ['reimu','……やっぱり。こんな所にお店なんて、なかったはずよ。'],
+  ['reimu','雨の夜にだけ現れる喫茶店。里じゃちょっとした噂になってるの。……異変の匂いがするわね。','t'],
+  ['me','いらっしゃいませ。雨宿りでしたら、どうぞ。'],
+  ['reimu','雨宿り“も”よ。調査を兼ねて。博麗の巫女を甘く見ないことね。'],
+  ['reimu','……で、何か温かいものある？ 外、寒いのよ。'],
+  ['reimu','お茶がいいわ。あ、お酒がちょっと入ってたら、なお良し。','s'],
+  {order:{who:'reimu', key:'reimu1', q:'お茶がいい。お酒がちょっと入ってたら、なお良し。', need:{base:'greentea', has:['sake']}},
+   ok:[['reimu','……！ 分かってるじゃない、あんた。','s'],['reimu','神社で飲む出涸らしとは大違いね。この店を退治するのは、保留にしてあげる。'],['me','光栄です。']],
+   ng:[['reimu','……うーん。悪くはないけど、私が言ったのとはちょっと違うわね。','t'],['reimu','まあいいわ。ただで飲めるなら文句は言わない。'],['me','お代は頂きます。'],['reimu','……ちっ。','t']]},
+  ['reimu','それにしても、あんた。妖怪って感じでもないし、里の人間にしては見ない顔ね。'],
+  ['me','自分でも、よく分からないんです。'],
+  ['reimu','ふうん……。ま、悪さしないなら何でもいいけど。'],
+  ['','再びドアベル。びしょ濡れの黒い帽子が飛び込んできた。'],
+  {move:'reimu', at:'l'},
+  {enter:'marisa', at:'r'},
+  ['marisa','うひゃー、ひどい雨だぜ！ ……お、霊夢じゃないか。なんでこんな所に？'],
+  ['reimu','調査よ、調査。あんたこそ。'],
+  ['marisa','噂の店があるって聞いたら、来ないわけにはいかないだろ？ 珍しいものは全部見る主義なんだ。','s'],
+  ['marisa','マスター、注文いいか？ 新しいスペルの研究で、三日ほど寝てないんだ。'],
+  ['marisa','とびきり熱くて、ガツンとくるやつを頼むぜ！ 眠気が吹っ飛ぶくらい刺激的なのをな。','s'],
+  {order:{who:'marisa', key:'marisa1', q:'とびきり熱くて、ガツンとくる刺激的なやつ。', need:{min:{warm:4}, tag:'spice'}},
+   ok:[['marisa','くぅ〜〜っ！ これだよ、これ！ 腹の底から火がつくぜ！','s'],['reimu','見てるだけで汗かきそう。']],
+   ng:[['marisa','……ん。優しい味だな。悪くないけど、今の私にはちょっとおとなしすぎるぜ。','t'],['reimu','寝てないなら寝なさいよ。']]},
+  ['marisa','聞いてくれよマスター。パチュリーの図書館から借りた本で、理論は分かったんだ。'],
+  ['reimu','借りた、ねぇ。'],
+  ['marisa','死ぬまで借りてるだけだぜ。……で、理論は分かったのに、撃つと全部いつものマスタースパークになっちまう。','s'],
+  ['marisa','私の魔法は、いつも力任せなんだよな。アリスみたいに器用でもないし。','t'],
+  ['reimu','いいじゃない、それがあんたなんだから。'],
+  ['marisa','霊夢はいいよな。何にも努力しないで、何でもできちまうんだから。','t'],
+  ['reimu','……。','t'],
+  ['','雨音だけが、しばらく店に響いた。'],
+  ['marisa','……っと、悪い。愚痴っちまったぜ。ごちそうさま！ ツケといてくれ！'],
+  {leave:'marisa'},
+  ['reimu','……まったく。じゃ、私も帰るわ。お茶、ごちそうさま。'],
+  ['reimu','異変じゃないなら、また来てあげてもいいわよ。'],
+  {leave:'reimu'},
+  ['','カップを洗っていると、三度目のドアベルが鳴った。'],
+  {enter:'youmu', at:'c'},
+  ['youmu','し、失礼します！ ……あの、ここはどこでしょうか？','t'],
+  ['me','喫茶店です。人里の外れの。'],
+  ['youmu','人里……！？ 冥界から出て、まっすぐ飛んできたはずなのに……。','t'],
+  ['youmu','申し遅れました。白玉楼の庭師、魂魄妖夢と申します。'],
+  ['youmu','幽々子様に『雨の夜にだけ開くお店の、いちばん美味しいものを買ってきて』と頼まれまして……。','t'],
+  ['youmu','雨の夜にだけ開くお店……あっ。ここ、ですか？'],
+  ['me','おそらく。'],
+  ['youmu','よかった……！ 斬って道を拓く覚悟でしたが、斬らずに済みました。','s'],
+  ['youmu','……でも、もうへとへとです。何か、頭がすっきりする飲み物をいただけますか？ 考えがまとまらなくて。','t'],
+  {order:{who:'youmu', key:'youmu1', q:'頭がすっきりする飲み物を。考えがまとまらなくて。', need:{min:{fresh:4}}},
+   ok:[['youmu','……ふわぁ。視界が晴れました！ 楼観剣の切れ味みたいです。','s']],
+   ng:[['youmu','あたたかくて……おいしいです。でも、なんだか眠く……はっ、いけない、寝てはだめです！','t']]},
+  ['youmu','私、いつも迷ってばかりなんです。お師匠様……祖父は『真実は斬って知るもの』と言っていましたが。','t'],
+  ['youmu','斬る前に、何を斬ればいいのか迷ってしまう。半人前、ですね。','t'],
+  ['me','迷えるうちは、まだ伸びしろがあるということでは。'],
+  ['youmu','……伸びしろ。'],
+  ['youmu','そう、ですね。そう思うことにします！','s'],
+  ['youmu','ごちそうさまでした。幽々子様へのお土産は……また今度、ちゃんと考えてきます！'],
+  {leave:'youmu'},
+  ['','雨脚が弱まっていく。今夜はもう、客は来ないようだ。'],
+  ['','あなたは看板の灯りを落とした。'],
+]},
+{ label:'二夜目', weather:'本降り', rain:1, fog:false, keys:['sakuya1','marisa2','yukari1'], steps:[
+  ['','雨の夜。灯りをともすと、待っていたかのようにドアベルが鳴った。'],
+  {enter:'sakuya', at:'c'},
+  ['sakuya','こんばんは。……こちら、喫茶店でよろしいのですね。'],
+  ['me','いらっしゃいませ。'],
+  ['sakuya','紅魔館でメイド長をしております、十六夜咲夜と申します。'],
+  ['sakuya','実は、お嬢様から『今夜は休みなさい。これは命令よ』と申し付けられまして。','t'],
+  ['sakuya','時間を止めるのは得意なのですが……休み方というのは、どうにも分からなくて。','t'],
+  ['sakuya','気がついたら、ここに立っていました。'],
+  ['sakuya','紅茶をいただけますか。……ただし、私が普段お淹れしているものとは違う一杯を。'],
+  ['sakuya','甘くて、あたたかいものがいいですわ。','s'],
+  {order:{who:'sakuya', key:'sakuya1', q:'紅茶を。普段とは違う、甘くてあたたかい一杯を。', need:{base:'tea', min:{warm:3, sweet:2}}},
+   ok:[['sakuya','……おいしい。','s'],['sakuya','人に淹れていただくお茶は、こんなにあたたかいものでしたのね。'],['sakuya','蒸らし時間は、少し長め。……ふふ、職業病ですわ。','s']],
+   ng:[['sakuya','お上手ですね。……ただ、少し仕事のことを思い出してしまいました。'],['sakuya','次のお茶会の段取りとか、銀食器の数とか。','t']]},
+  ['sakuya','お嬢様は、わがままで、気まぐれで、夜更かしで。'],
+  ['sakuya','……それでも、私の時間は全部お嬢様のものです。','s'],
+  ['sakuya','だから『休め』と言われると、お払い箱になったような気がしてしまうんです。','t'],
+  ['me','休めと言うのは、いなくても困らないからではなく……無理をしてほしくないから、かと。'],
+  ['sakuya','……。'],
+  ['sakuya','そういうことに、しておきますわ。','s'],
+  ['sakuya','ごちそうさまでした。お代はこちらに。……少し多めに入れておきます。'],
+  {leave:'sakuya', fx:'blink'},
+  ['','瞬きをした一瞬で、彼女の姿は消えていた。カウンターには、きっちり揃えられた硬貨。'],
+  ['','入れ替わるように、ドアが勢いよく開いた。'],
+  {enter:'marisa', at:'c'},
+  {if:'marisa1',
+   then:[['marisa','よう、マスター！ この前の一杯、効いたぜ。おかげで一晩で研究が進んだ！','s']],
+   else:[['marisa','よう、マスター！ この前のはちょっとおとなしかったけど、今日は期待してるぜ。']]},
+  ['marisa','……って言いたいところなんだけどさ。やっぱり、新しいスペルがうまくいかない。','t'],
+  ['marisa','今日は逆だ。落ち着いて考えたいんだ。甘くて、あったかいのを頼む。'],
+  {order:{who:'marisa', key:'marisa2', q:'落ち着いて考えたい。甘くて、あったかいのを。', need:{min:{sweet:3, warm:3}}},
+   ok:[['marisa','……はぁ〜。染みるぜ。頭の中の爆発が、ちょっと静かになった。','s']],
+   ng:[['marisa','うーん……今日の気分とは、ちょっと違うな。','t'],['marisa','ま、飲むけどな！']]},
+  ['marisa','なあマスター。どう思う？'],
+  ['marisa','パチュリーみたいに、理論をきっちり固めてから撃つべきなのか。'],
+  ['marisa','それとも、今まで通り、力任せでぶっ放すべきなのか。'],
+  {choice:[
+    {label:'「力任せでいい。それがあなたの魔法です」', set:{advice:'power'}, then:[
+      ['marisa','……へへ。霊夢と同じこと言うんだな。','s'],
+      ['marisa','弾幕はパワーだぜ。そうだよな。']]},
+    {label:'「理論を身につければ、力はもっと活きます」', set:{advice:'theory'}, then:[
+      ['marisa','……パワーを活かすための理論、か。'],
+      ['marisa','なるほどな。借りた本、もう一回読み直してみるぜ。','s']]},
+  ]},
+  ['marisa','ありがとな、マスター。今度来るときは、完成したスペルを見せてやるぜ！'],
+  {leave:'marisa'},
+  ['','雨音が、ふと途切れた気がした。'],
+  ['','振り返ると、カウンターの端の空間が、細く裂けている。'],
+  {enter:'yukari', at:'c', fx:'gap'},
+  ['yukari','こんばんは。いい夜ね。'],
+  ['me','……いらっしゃいませ。次からは、ドアからお入りください。'],
+  ['yukari','ふふ。ドアなんて、境界のひとつにすぎないわ。','s'],
+  ['yukari','八雲紫。この辺りでは、少し名の知れた妖怪ですわ。'],
+  ['yukari','お店、繁盛しているようで何より。霊夢も魔理沙も、すっかり常連ね。'],
+  ['yukari','私にも一杯いただけるかしら。'],
+  ['yukari','コーヒーでも紅茶でもない。……その境目にある一杯を。','s'],
+  {order:{who:'yukari', key:'yukari1', q:'コーヒーでも紅茶でもない。その境目にある一杯を。', need:{has:['coffee','tea']}},
+   ok:[['yukari','……あら。','s'],['yukari','合格よ。境目を引くには、両側を知っていないといけないもの。'],['yukari','あなたは、それができる人ね。']],
+   ng:[['yukari','あら、残念。'],['yukari','境目というのは、両側を知らないと引けないものよ。'],['yukari','宿題にしておきましょう。','s']]},
+  ['yukari','ねえ店主さん。あなた、自分がどこから来たか覚えている？'],
+  ['me','……いいえ。'],
+  ['yukari','そう。なら、今はそれでいいわ。','s'],
+  ['yukari','次の雨の夜に、また来るわね。'],
+  {leave:'yukari', fx:'gap'},
+  ['','空間の裂け目が閉じると、雨音が戻ってきた。'],
+]},
+{ label:'三夜目', weather:'霧雨', rain:.3, fog:true, keys:['youmu2','reimu2','marisa3'], steps:[
+  ['','三度目の雨の夜。細かい霧雨が、窓ガラスを曇らせている。'],
+  ['','ドアベルが、控えめに鳴った。'],
+  {enter:'youmu', at:'c'},
+  {if:'youmu1',
+   then:[['youmu','こんばんは！ この前の一杯のおかげで、帰り道はすぐに分かりました！','s']],
+   else:[['youmu','こんばんは。この前は、帰り道でまた三回ほど迷いました……。','t']]},
+  ['youmu','幽々子様にお店のことをお話ししたら、とても喜ばれて。'],
+  ['youmu','『迷うのも修行のうちよ、妖夢』と笑われてしまいました。','t'],
+  ['youmu','なので今日は、迷わずまっすぐ来ました！ ……二回しか迷いませんでした。','s'],
+  ['youmu','今日はお持ち帰りでお願いします。幽々子様へのお土産です。'],
+  ['youmu','幽々子様は、春の味がお好きなんです。桜が咲くと、一日中お庭を眺めていらっしゃって。'],
+  {order:{who:'youmu', key:'youmu2', q:'幽々子様へのお土産に。春の味がするものを。', need:{has:['sakura']}},
+   ok:[['youmu','わあ……桜の香り！ 白玉楼の庭みたいです。','s'],['youmu','幽々子様、きっと一口で飲み干してしまいます。','s']],
+   ng:[['youmu','……おいしそうです。でも、春の味、とは少し違うような……。','t'],['youmu','いえ！ 幽々子様は何でも召し上がりますから、大丈夫です！']]},
+  ['youmu','私、まだ半人前です。でも、残りの半分は伸びしろ。……マスターの言葉、お借りしました。','s'],
+  ['youmu','では、失礼します！ 今日は迷わずに帰ってみせます！'],
+  {leave:'youmu'},
+  ['','入れ違いに、にぎやかな声が近づいてくる。'],
+  {enter:'reimu', at:'l'},
+  {enter:'marisa', at:'r'},
+  ['marisa','マスター！ できたぜ、新しいスペル！','s'],
+  ['reimu','神社の裏の木を三本なぎ倒してね。','t'],
+  {if:f=>f.advice==='power',
+   then:[['marisa','小細工は全部やめた。パワーだけを、もっと細く、もっと鋭く束ねたんだ。','s'],['marisa','力任せでいいって言われて、吹っ切れたぜ。']],
+   else:[['marisa','理論の本を読み直してさ、パワーの流し方を変えたんだ。そしたら威力が倍になった！','s'],['marisa','理論はパワーのためにある。いい言葉だろ？ マスターの受け売りだけどな。']]},
+  ['reimu','で、今日はそのお祝いなんだって。'],
+  ['marisa','そうだ！ 霊夢の分も私のおごりだ！ ……ツケでな！','s'],
+  ['reimu','結局払わないんじゃない。','t'],
+  ['reimu','私はいつもの。……分かるわよね？'],
+  {order:{who:'reimu', key:'reimu2', q:'いつもの。……分かるわよね？', need:{base:'greentea', has:['sake']}},
+   ok:[['reimu','そうそう、これこれ。分かってるじゃない。','s'],{if:f=>!f.reimu1, then:[['reimu','前はちょっと違ったけど、ちゃんと覚えてくれたのね。']]}],
+   ng:[['reimu','……いつものって言ったでしょ。お茶と、お酒よ。','t'],['reimu','まあ、たまには違うのもいいけど。']]},
+  ['marisa','私はな……ココアに、生姜とシナモンを入れたやつ！ 熱々で頼むぜ！'],
+  {order:{who:'marisa', key:'marisa3', q:'ココアに、生姜とシナモン。熱々で！', need:{recipe:'spark'}},
+   ok:[['marisa','きたきた！ ……よし、決めた。この一杯の名前は『恋色マスタースパーク』だ！','s'],{set:{sparkNamed:true}},['reimu','勝手に名前つけてるし。'],['marisa','メニューに載せといてくれよな！','s']],
+   ng:[['marisa','……あれ？ なんか違うぞ？ ココアと、生姜と、シナモンだって。','t'],['marisa','ま、いいか！ 乾杯だ！']]},
+  ['reimu','ねえ、マスター。'],
+  ['reimu','あんたのこと、ちょっと調べたの。里の人間の記録にも、妖怪の噂にも、あんたは出てこなかった。'],
+  ['reimu','たぶん、外の世界から来た人間よ。'],
+  ['marisa','外来人か！ どうりで珍しい飲み物を知ってるわけだぜ。'],
+  ['reimu','外の人間を、こんなふうに幻想郷の端っこに置いておけるのなんて……。'],
+  ['reimu','……まあ、いいわ。本人に聞いて。私が口を出すことじゃない。','t'],
+  ['marisa','じゃあなマスター！ また来るぜ！','s'],
+  ['reimu','お茶、ごちそうさま。……また来るから。'],
+  {leave:'marisa'},
+  {leave:'reimu'},
+  ['','霧雨が止んだ。店の中が、しんと静まり返る。'],
+  {enter:'yukari', at:'c', fx:'gap'},
+  ['yukari','こんばんは。今夜で、雨はおしまい。'],
+  ['yukari','霊夢から聞いたでしょう？ あなたは外の世界の人間よ。'],
+  ['yukari','迷い込んできたあなたを見つけて、この店を境界の上に置いたのは私。'],
+  ['yukari','幻想郷と外の世界、そのどちらでもない場所。……あなたが自分で、どちらに行くか決められるように。'],
+  ['yukari','その前に、最後の一杯をお願いできるかしら。','s'],
+  ['yukari','注文はひとつだけ。……あなたがいちばん好きな一杯を。'],
+  {order:{who:'yukari', key:'yukari2', q:'あなたがいちばん好きな一杯を。', need:{free:true}},
+   ok:[{if:f=>f._lastRecipe==='yuanyang',
+        then:[['yukari','……鴛鴦茶。ふふ、覚えていてくれたのね。','s']],
+        else:[['yukari','……ええ。あなたらしい味ね。','s']]}],
+   ng:[]},
+  ['yukari','さて。雨が上がれば、この店の扉は外の世界にも繋がるわ。'],
+  ['yukari','帰るなら、今夜が最後。残るなら、この店は幻想郷のものになる。'],
+  ['yukari','どちらを選んでも、責めたりしないわ。'],
+  {choice:[
+    {label:'外の世界へ帰る', set:{ending:'return'}, then:[
+      ['yukari','そう。……それもいいわ。'],
+      ['yukari','きっと忘れてしまうでしょうけど、手が覚えていてくれるわ。一杯の淹れ方を。','s'],
+      {leave:'yukari', fx:'gap'},
+      ['','扉を開けると、懐かしいアスファルトの匂いがした。'],
+      ['','振り返っても、もう店はない。'],
+      ['','ただ、雨の夜になると、なぜか誰かに温かい飲み物を淹れたくなる。']]},
+    {label:'ここで店を続ける', set:{ending:'stay'}, then:[
+      ['yukari','ふふ。そう言うと思ったわ。','s'],
+      ['yukari','では改めて。ようこそ、幻想郷へ。'],
+      ['yukari','次の雨の夜も、灯りをともしておいてね。私、ここの鴛鴦茶が気に入ったの。'],
+      {leave:'yukari', fx:'gap'},
+      ['','看板の灯りが、ほんの少し明るくなった気がした。'],
+      ['','次の雨の夜も、きっとドアベルは鳴る。']]},
+  ]},
+  {end:true},
+]},
+];
+
+/* ================= Portraits ================= */
+const SKIN='#f7e3d3', SKIN2='#e8c6b0', WHITE='#fbf7f2', LINE='#2a1a22';
+const LOOK = {
+  reimu: {hair:'#4a2a1c', eye:'#a8323a', outfit:'#c8303a', back:'medium'},
+  marisa:{hair:'#f0cf72', eye:'#b98a22', outfit:'#1f1b26', back:'wavy'},
+  youmu: {hair:'#dfe3ea', eye:'#4e7dc4', outfit:'#4a7a4c', back:'short'},
+  sakuya:{hair:'#d5dae3', eye:'#4e6bb8', outfit:'#3b56a0', back:'short'},
+  yukari:{hair:'#f1d58c', eye:'#8a5ac2', outfit:'#6a4aa6', back:'long'},
+};
+function face(eye, e){
+  let eyes='', brows='', mouth='';
+  const lash = (x)=>`<path d="M${x-9} 119 Q${x} 113 ${x+9} 119" stroke="${LINE}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  const open = (x)=>`<ellipse cx="${x}" cy="127" rx="7.5" ry="10" fill="${eye}"/><ellipse cx="${x}" cy="129" rx="4" ry="6" fill="#1d1420" opacity=".55"/><circle cx="${x+2.5}" cy="123" r="2.6" fill="#fff"/>${lash(x)}`;
+  if(e==='s'){
+    eyes = [92,128].map(x=>`<path d="M${x-8} 128 Q${x} 119 ${x+8} 128" stroke="${LINE}" stroke-width="3" fill="none" stroke-linecap="round"/>`).join('');
+    brows = `<path d="M84 107 Q92 103 100 106" stroke="${LINE}" stroke-width="2" fill="none" opacity=".6"/><path d="M120 106 Q128 103 136 107" stroke="${LINE}" stroke-width="2" fill="none" opacity=".6"/>`;
+    mouth = `<path d="M103 147 Q110 157 117 147 Z" fill="#b8545a"/>`;
+  } else if(e==='t'){
+    eyes = open(92)+open(128);
+    brows = `<path d="M84 111 L100 105" stroke="${LINE}" stroke-width="2" fill="none" opacity=".6"/><path d="M120 105 L136 111" stroke="${LINE}" stroke-width="2" fill="none" opacity=".6"/>`;
+    mouth = `<path d="M105 152 Q110 148 115 152" stroke="#8a4a4a" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  } else {
+    eyes = open(92)+open(128);
+    brows = `<path d="M84 108 Q92 104 100 107" stroke="${LINE}" stroke-width="2" fill="none" opacity=".6"/><path d="M120 107 Q128 104 136 108" stroke="${LINE}" stroke-width="2" fill="none" opacity=".6"/>`;
+    mouth = `<path d="M105 150 Q110 153 115 150" stroke="#8a4a4a" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  }
+  const blush = `<ellipse cx="83" cy="142" rx="7" ry="3.5" fill="#f09aa0" opacity=".35"/><ellipse cx="137" cy="142" rx="7" ry="3.5" fill="#f09aa0" opacity=".35"/>`;
+  return brows+eyes+blush+mouth;
+}
+function backHair(kind, c){
+  switch(kind){
+    case 'long':  return `<path d="M62 96 C38 140 32 210 26 262 L194 262 C188 210 182 140 158 96 Z" fill="${c}"/>`;
+    case 'medium':return `<path d="M62 96 C46 140 46 190 54 216 L166 216 C174 190 174 140 158 96 Z" fill="${c}"/>`;
+    case 'wavy':  return `<path d="M62 96 C44 140 50 170 42 200 C50 212 60 214 66 222 L154 222 C160 214 170 212 178 200 C170 170 176 140 158 96 Z" fill="${c}"/>`;
+    default:      return `<path d="M60 110 C58 150 66 172 80 178 L140 178 C154 172 162 150 160 110 C160 70 60 70 60 110 Z" fill="${c}"/>`;
+  }
+}
+const BANGS = 'M64 118 C58 72 88 58 110 60 C134 58 164 72 156 118 L148 100 L140 116 L130 94 L120 112 L110 92 L100 112 L90 94 L80 116 L72 100 Z';
+const SIDES = 'M64 100 C56 130 58 160 66 180 L74 150 Z M156 100 C164 130 162 160 154 180 L146 150 Z';
+function avatar(id, e='n'){
+  const L = LOOK[id];
+  let behind='', body='', front='', extra='';
+  const bodyPath = `<path d="M22 262 C26 214 62 196 110 196 C158 196 194 214 198 262 Z" fill="${L.outfit}"/>`;
+  switch(id){
+    case 'reimu':
+      behind = `<path d="M110 64 C82 18 36 26 46 70 C56 94 92 84 110 68 Z" fill="#c8303a" stroke="${WHITE}" stroke-width="3"/><path d="M110 64 C138 18 184 26 174 70 C164 94 128 84 110 68 Z" fill="#c8303a" stroke="${WHITE}" stroke-width="3"/>`;
+      body = bodyPath + `<path d="M22 262 C24 236 34 220 48 212 L60 262 Z" fill="${WHITE}"/><path d="M198 262 C196 236 186 220 172 212 L160 262 Z" fill="${WHITE}"/><path d="M86 198 L110 234 L134 198 Z" fill="${WHITE}"/><path d="M100 206 L110 220 L120 206 L116 236 L104 236 Z" fill="#f1c84a"/>`;
+      extra = `<ellipse cx="110" cy="66" rx="10" ry="8" fill="#a82530"/>`
+        + `<path d="M64 124 C58 160 60 190 62 222" stroke="${L.hair}" stroke-width="12" fill="none" stroke-linecap="round"/><path d="M156 124 C162 160 160 190 158 222" stroke="${L.hair}" stroke-width="12" fill="none" stroke-linecap="round"/>`
+        + `<rect x="54" y="176" width="16" height="18" rx="3" fill="${WHITE}" stroke="#c8303a" stroke-width="2"/><rect x="150" y="176" width="16" height="18" rx="3" fill="${WHITE}" stroke="#c8303a" stroke-width="2"/>`;
+      break;
+    case 'marisa':
+      body = bodyPath + `<path d="M84 198 C96 214 124 214 136 198 L130 262 L90 262 Z" fill="${WHITE}"/><path d="M102 208 L110 214 L118 208 L118 220 L110 214 L102 220 Z" fill="#f0cf72"/>`;
+      extra = [150,166,182,198].map(y=>`<ellipse cx="60" cy="${y}" rx="8" ry="9" fill="${L.hair}" stroke="#c9a54c" stroke-width="1"/>`).join('')
+        + `<path d="M54 208 L60 204 L66 208 L66 214 L60 210 L54 214 Z" fill="${WHITE}"/>`
+        + `<ellipse cx="110" cy="78" rx="86" ry="17" fill="#1f1b26"/><path d="M64 76 C78 42 96 6 158 -18 C136 10 146 42 156 76 Z" fill="#1f1b26"/>`
+        + `<path d="M66 72 C95 63 128 63 156 72 L154 60 C128 52 96 52 70 60 Z" fill="${WHITE}"/><path d="M140 62 L154 52 L156 68 Z M140 62 L126 52 L128 68 Z" fill="${WHITE}"/>`;
+      break;
+    case 'youmu':
+      body = bodyPath + `<path d="M88 198 L110 224 L132 198 Z" fill="${WHITE}"/><path d="M102 206 L110 212 L118 206 L118 216 L110 212 L102 216 Z" fill="#1b1b1b"/>`;
+      extra = `<path d="M62 98 C78 70 142 70 158 98" stroke="#1b1b1b" stroke-width="6" fill="none"/><path d="M154 92 L172 80 L170 100 Z M154 92 L168 108 L150 106 Z" fill="#1b1b1b"/>`
+        + `<g class="myon"><path d="M200 60 C214 60 218 82 204 88 C192 92 182 104 174 122 C178 100 180 84 188 72 C191 66 195 60 200 60 Z" fill="#f4f6fb" opacity=".92"/><circle cx="202" cy="74" r="14" fill="#f4f6fb"/></g>`;
+      break;
+    case 'sakuya':
+      body = bodyPath + `<path d="M80 200 C96 222 124 222 140 200 L134 262 L86 262 Z" fill="${WHITE}"/><path d="M100 208 L110 214 L120 208 L120 220 L110 214 L100 220 Z" fill="#3e8a5c"/>`;
+      extra = [150,164,178].map(y=>`<ellipse cx="68" cy="${y}" rx="6" ry="7.5" fill="${L.hair}" stroke="#aab1bd" stroke-width="1"/><ellipse cx="152" cy="${y}" rx="6" ry="7.5" fill="${L.hair}" stroke="#aab1bd" stroke-width="1"/>`).join('')
+        + `<path d="M62 188 L68 184 L74 188 L74 194 L68 190 L62 194 Z M146 188 L152 184 L158 188 L158 194 L152 190 L146 194 Z" fill="#3e8a5c"/>`
+        + `<path d="M70 80 C90 60 130 60 150 80 L146 88 C128 72 92 72 74 88 Z" fill="${WHITE}"/>`
+        + [76,90,104,118,132,146].map((x,i)=>`<circle cx="${x}" cy="${[80,70,66,66,70,80][i]}" r="5" fill="${WHITE}"/>`).join('');
+      break;
+    case 'yukari':
+      body = bodyPath + `<path d="M68 204 C90 232 130 232 152 204 L142 196 C124 214 96 214 78 196 Z" fill="${WHITE}"/>`;
+      extra = `<path d="M54 98 C36 36 184 36 166 98 C150 86 70 86 54 98 Z" fill="${WHITE}"/>`
+        + [58,72,86,100,114,128,142,156].map(x=>`<circle cx="${x+3}" cy="${96-Math.abs(x-110)*0.02}" r="6" fill="${WHITE}"/>`).join('')
+        + `<path d="M58 88 C90 78 130 78 162 88" stroke="#c83a4a" stroke-width="5" fill="none"/><path d="M66 86 L50 74 L52 94 Z M66 86 L54 102 L72 98 Z" fill="#c83a4a"/>`
+        + `<path d="M36 236 L44 230 L52 236 L52 244 L44 238 L36 244 Z M168 236 L176 230 L184 236 L184 244 L176 238 L168 244 Z" fill="#c83a4a"/>`;
+      break;
+  }
+  return `<svg viewBox="0 -30 220 292" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${CH[id].name}">`
+    + behind + backHair(L.back, L.hair) + body
+    + `<path d="M98 160 h24 v42 h-24z" fill="${SKIN2}"/>`
+    + `<ellipse cx="110" cy="118" rx="46" ry="50" fill="${SKIN}"/>`
+    + face(L.eye, e)
+    + `<path d="${BANGS}" fill="${L.hair}"/><path d="${SIDES}" fill="${L.hair}"/>`
+    + extra + `</svg>`;
+}
+
+/* ================= Drinks ================= */
+function hex2rgb(h){h=h.replace('#','');return [0,2,4].map(i=>parseInt(h.substr(i,2),16));}
+function drinkColor(ids){
+  if(!ids.length) return '#3a3044';
+  let r=0,g=0,b=0,w=0;
+  ids.forEach((id,i)=>{const k=i===0?1.6:1;const c=hex2rgb(ING[id].c);r+=c[0]*k;g+=c[1]*k;b+=c[2]*k;w+=k;});
+  return `rgb(${Math.round(r/w)},${Math.round(g/w)},${Math.round(b/w)})`;
+}
+function cupSVG(color, steam=true){
+  return `<svg viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">`
+   + (steam?`<path d="M38 22 C32 14 44 10 38 2 M52 22 C46 14 58 10 52 2 M66 22 C60 14 72 10 66 2" stroke="#efe6d6" stroke-width="2.5" fill="none" opacity=".45" stroke-linecap="round"/>`:'')
+   + `<ellipse cx="50" cy="84" rx="40" ry="5" fill="#000" opacity=".25"/>`
+   + `<ellipse cx="50" cy="80" rx="38" ry="7" fill="#e9e2d6"/>`
+   + `<path d="M76 38 C92 38 92 62 74 62" stroke="#e9e2d6" stroke-width="6" fill="none"/>`
+   + `<path d="M22 30 L78 30 L72 74 C70 80 30 80 28 74 Z" fill="#f4efe6"/>`
+   + `<ellipse cx="50" cy="30" rx="28" ry="7" fill="#d8d0c2"/>`
+   + `<ellipse cx="50" cy="31" rx="24" ry="5" fill="${color}"/>`
+   + `</svg>`;
+}
+function calcStats(ids){
+  const s={warm:0,sweet:0,bitter:0,fresh:0};
+  ids.forEach(id=>{for(const k in s) s[k]+=ING[id].s[k];});
+  for(const k in s) s[k]=Math.max(0,Math.min(5,s[k]));
+  return s;
+}
+function findRecipe(ids){
+  if(ids.length!==3) return null;
+  const [b,x,y]=ids;
+  return RECIPES.find(r=>r.base===b && ((r.add[0]===x&&r.add[1]===y)||(r.add[0]===y&&r.add[1]===x))) || null;
+}
+function rName(r){ return (r.alt && S.flags.sparkNamed) || (r.alt && book.sparkNamed) ? r.alt : r.name; }
+function rDesc(r){ return (r.alt && (S.flags.sparkNamed||book.sparkNamed)) ? r.altD : r.d; }
+function checkOrder(need, ids){
+  if(need.free) return true;
+  const st=calcStats(ids), r=findRecipe(ids);
+  if(need.recipe && (!r || r.id!==need.recipe)) return false;
+  if(need.base && ids[0]!==need.base) return false;
+  if(need.has && !need.has.every(h=>ids.includes(h))) return false;
+  if(need.tag && !ids.some(id=>ING[id].tag===need.tag)) return false;
+  if(need.min) for(const k in need.min) if(st[k]<need.min[k]) return false;
+  return true;
+}
+
+/* ================= State & storage ================= */
+const SAVE_KEY='kyokai-save-v1', BOOK_KEY='kyokai-book-v1';
+let S = {night:0, flags:{}};
+let book = {found:[], met:[], sparkNamed:false};
+let prefs = {speed:'mid', sound:false};
+function load(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
+function store(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function drop(k){try{localStorage.removeItem(k);}catch(e){}}
+book = Object.assign(book, load(BOOK_KEY)||{});
+prefs = Object.assign(prefs, load('kyokai-prefs-v1')||{});
+prefs.sound=false; // audio always starts from a click
+const saveBook=()=>store(BOOK_KEY,book);
+
+/* ================= DOM ================= */
+const $=id=>document.getElementById(id);
+const custsEl=$('custs'), cupsEl=$('cups'), textEl=$('text'), plateEl=$('plate'), choicesEl=$('choices'), nextEl=$('nextind'), dlg=$('dlg');
+const onStage={}; // id -> {el, at, e}
+const POS={l:28,c:50,r:72};
+
+function renderCust(id){
+  const o=onStage[id]; if(!o) return;
+  o.el.innerHTML=avatar(id,o.e);
+}
+function enter(id, at, fx){
+  if(!book.met.includes(id)){book.met.push(id);saveBook();}
+  const el=document.createElement('div');
+  el.className='cust'; el.style.left=POS[at]+'%';
+  custsEl.appendChild(el);
+  onStage[id]={el,at,e:'n'}; renderCust(id);
+  if(fx==='gap'){
+    const g=document.createElement('div'); g.className='gapfx'; g.style.left=POS[at]+'%';
+    $('stage').appendChild(g); setTimeout(()=>g.remove(),1200);
+    setTimeout(()=>el.classList.add('in'),450);
+    return 1100;
+  }
+  bell();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('in')));
+  return 550;
+}
+function leave(id, fx){
+  const o=onStage[id]; if(!o) return 0;
+  if(fx==='gap'){
+    const g=document.createElement('div'); g.className='gapfx'; g.style.left=POS[o.at]+'%';
+    $('stage').appendChild(g); setTimeout(()=>g.remove(),1200);
+  }
+  if(fx==='blink'){ o.el.style.transition='none'; }
+  o.el.classList.remove('in');
+  const cup=cupsEl.querySelector(`[data-who="${id}"]`);
+  if(cup){ if(fx==='blink') cup.remove(); else {cup.classList.remove('in'); setTimeout(()=>cup.remove(),450);} }
+  setTimeout(()=>o.el.remove(), fx==='blink'?0:460);
+  delete onStage[id];
+  return fx==='gap'?900:(fx==='blink'?250:500);
+}
+function move(id, at){
+  const o=onStage[id]; if(!o) return 0;
+  o.at=at; o.el.style.left=POS[at]+'%';
+  const cup=cupsEl.querySelector(`[data-who="${id}"]`); if(cup) cup.style.left=POS[at]+'%';
+  return 450;
+}
+function clearStage(){
+  Object.keys(onStage).forEach(id=>{onStage[id].el.remove();delete onStage[id];});
+  cupsEl.innerHTML='';
+}
+function placeCup(who, ids){
+  const old=cupsEl.querySelector(`[data-who="${who}"]`); if(old) old.remove();
+  const c=document.createElement('div'); c.className='cup'; c.dataset.who=who;
+  c.style.left=(onStage[who]?POS[onStage[who].at]:50)+'%';
+  c.innerHTML=cupSVG(drinkColor(ids));
+  cupsEl.appendChild(c);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>c.classList.add('in')));
+}
+let toastT;
+function toast(k,v,ms=1800){
+  $('toastK').textContent=k; $('toastV').textContent=v;
+  const t=$('toast'); t.classList.add('show'); clearTimeout(toastT);
+  toastT=setTimeout(()=>t.classList.remove('show'),ms);
+}
+
+/* ================= Dialogue runner ================= */
+let Q=[], qi=0, mode='idle', typing=null, fullText='';
+const SPEED={fast:12,mid:28,slow:46};
+function runSteps(steps){Q=steps.slice();qi=0;next();}
+function insert(steps){Q.splice(qi,0,...steps);}
+function later(ms){mode='busy';setTimeout(next,ms);}
+function next(){
+  if(qi>=Q.length){ endNight(); return; }
+  const st=Q[qi++];
+  if(Array.isArray(st)) return showLine(st);
+  if(st.enter) return later(enter(st.enter, st.at||'c', st.fx));
+  if(st.leave) return later(leave(st.leave, st.fx));
+  if(st.move)  return later(move(st.move, st.at));
+  if(st.set){ Object.assign(S.flags, st.set); if(st.set.sparkNamed){book.sparkNamed=true;saveBook();} return next(); }
+  if('if' in st){
+    const c = typeof st.if==='function' ? st.if(S.flags) : !!S.flags[st.if];
+    insert(c ? (st.then||[]) : (st.else||[])); return next();
+  }
+  if(st.order) return showOrder(st);
+  if(st.choice) return showChoice(st.choice);
+  if(st.end) return showEnding();
+  next();
+}
+function showLine([who,txt,e]){
+  mode='line';
+  choicesEl.hidden=true; choicesEl.innerHTML='';
+  if(who && who!=='me' && onStage[who]){ onStage[who].e=e||'n'; renderCust(who); }
+  Object.keys(onStage).forEach(id=>onStage[id].el.classList.toggle('dim', !!who && who!=='me' && id!==who));
+  if(!who){ plateEl.hidden=true; textEl.classList.add('narr'); }
+  else { plateEl.hidden=false; plateEl.textContent=CH[who].name; plateEl.style.background=CH[who].color; textEl.classList.remove('narr'); }
+  typeText(txt);
+}
+function typeText(txt){
+  fullText=txt; textEl.textContent=''; nextEl.hidden=true;
+  clearInterval(typing);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){ textEl.textContent=txt; typing=null; nextEl.hidden=false; return; }
+  let i=0;
+  typing=setInterval(()=>{
+    i++; textEl.textContent=txt.slice(0,i);
+    if(i>=txt.length){clearInterval(typing);typing=null;nextEl.hidden=false;}
+  }, SPEED[prefs.speed]||28);
+}
+function advance(){
+  if(mode!=='line') return;
+  if(typing){clearInterval(typing);typing=null;textEl.textContent=fullText;nextEl.hidden=false;return;}
+  next();
+}
+dlg.addEventListener('click', e=>{ if(e.target.closest('button')) return; advance(); });
+document.addEventListener('keydown', e=>{
+  if(e.target.closest && e.target.closest('button')) return;
+  if(!$('brewOv').hidden || !$('bookOv').hidden || !$('title').hidden) { if(e.key==='Escape' && !$('bookOv').hidden) closeBook(); return; }
+  if(!$('card').hidden){ if(e.key==='Enter'||e.key===' '){e.preventDefault();$('card').click();} return; }
+  if(e.key==='Enter'||e.key===' '){ e.preventDefault(); advance(); }
+});
+
+function showChoice(opts){
+  mode='choice'; nextEl.hidden=true;
+  plateEl.hidden=true; textEl.classList.add('narr'); textEl.textContent='……';
+  choicesEl.innerHTML=''; choicesEl.hidden=false;
+  opts.forEach(o=>{
+    const b=document.createElement('button'); b.className='btn'; b.textContent=o.label;
+    b.onclick=()=>{ Object.assign(S.flags,o.set||{}); choicesEl.hidden=true; insert(o.then||[]); next(); };
+    choicesEl.appendChild(b);
+  });
+  choicesEl.querySelector('button').focus();
+}
+
+/* ================= Orders & brewing ================= */
+let curOrder=null, brew=[];
+function showOrder(st){
+  mode='order'; curOrder=st; nextEl.hidden=true;
+  Object.keys(onStage).forEach(id=>onStage[id].el.classList.toggle('dim', id!==st.order.who));
+  plateEl.hidden=false; plateEl.textContent=CH[st.order.who].name; plateEl.style.background=CH[st.order.who].color;
+  textEl.classList.remove('narr');
+  textEl.innerHTML='';
+  const box=document.createElement('div'); box.className='orderbox';
+  box.innerHTML=`<div><div class="lbl">ご注文</div><div class="q"></div></div>`;
+  box.querySelector('.q').textContent='「'+st.order.q+'」';
+  const b=document.createElement('button'); b.className='btn primary'; b.textContent='淹れる';
+  b.onclick=openBrew; box.appendChild(b);
+  textEl.appendChild(box); b.focus();
+}
+function openBrew(){
+  brew=[]; $('bWho').textContent=CH[curOrder.order.who].name; $('bQ').textContent='「'+curOrder.order.q+'」';
+  $('bHint').textContent=''; renderBrew(); $('brewOv').hidden=false;
+  $('gBase').querySelector('button').focus();
+}
+function buildIngs(){
+  const mk=(id,wrap)=>{
+    const b=document.createElement('button'); b.className='ing'; b.dataset.id=id;
+    b.innerHTML=`<span class="sw" style="background:${ING[id].c}"></span><span>${ING[id].name}</span>`;
+    b.onclick=()=>pick(id,b); wrap.appendChild(b);
+  };
+  BASES.forEach(id=>mk(id,$('gBase'))); ADDS.forEach(id=>mk(id,$('gAdd')));
+}
+function pick(id, btn){
+  if(brew.length>=3){ hint('カップはいっぱいです。やり直すか、提供してください。',btn); return; }
+  if(brew.length===0 && !ING[id].base){ hint('最初はベース（コーヒー・紅茶・緑茶・ココア）を選んでください。',btn); return; }
+  brew.push(id); $('bHint').textContent=''; renderBrew();
+}
+function hint(msg, el){ $('bHint').textContent=msg; if(el){el.classList.remove('shake');void el.offsetWidth;el.classList.add('shake');} }
+function renderBrew(){
+  const slots=$('slots'); slots.innerHTML='';
+  ['ベース','二つ目','三つ目'].forEach((lab,i)=>{
+    const d=document.createElement('div'); const id=brew[i];
+    d.className='slot'+(id?' full':'');
+    d.innerHTML = id ? `<span class="dot" style="background:${ING[id].c}"></span>${ING[id].name}` : `<small>${lab}</small>`;
+    if(id && i===brew.length-1){ d.title='クリックで取り消し'; d.onclick=()=>{brew.pop();renderBrew();}; }
+    slots.appendChild(d);
+  });
+  $('bigcup').innerHTML=cupSVG(drinkColor(brew), brew.length>0);
+  const r=findRecipe(brew);
+  if(brew.length<3){ $('dname').textContent= brew.length? '調合中…':'—'; $('dnote').textContent = brew.length? `あと${3-brew.length}つ選んでください。` : '最初にベースを選んでください。'; }
+  else if(r && book.found.includes(r.id)){ $('dname').textContent=rName(r); $('dnote').textContent=rDesc(r); }
+  else if(r){ $('dname').textContent='？？？'; $('dnote').textContent='手帳にない組み合わせ。何ができるだろう。'; }
+  else { $('dname').textContent='名もなき一杯'; $('dnote').textContent='どのレシピにもない組み合わせ。'; }
+  const st=calcStats(brew);
+  $('stats').innerHTML=STAT_KEYS.map(([k,s,l])=>`<span title="${l}">${s} ${l}</span><div class="pips s-${k}">${[1,2,3,4,5].map(n=>`<i class="${st[k]>=n?'on':''}"></i>`).join('')}</div>`).join('');
+  $('bServe').disabled = brew.length!==3;
+  document.querySelectorAll('#gAdd .ing').forEach(b=>b.classList.toggle('off', brew.length===0));
+}
+$('bReset').onclick=()=>{brew=[];$('bHint').textContent='';renderBrew();};
+$('bBook').onclick=()=>openBook('recipe');
+$('bServe').onclick=serve;
+function serve(){
+  if(brew.length!==3) return;
+  const ids=brew.slice(), o=curOrder.order, r=findRecipe(ids);
+  const ok=checkOrder(o.need, ids);
+  S.flags[o.key]=ok; S.flags._lastRecipe = r?r.id:null;
+  $('brewOv').hidden=true;
+  textEl.textContent='';
+  placeCup(o.who, ids);
+  let isNew=false;
+  if(r && !book.found.includes(r.id)){ book.found.push(r.id); saveBook(); isNew=true; }
+  toast(isNew?'新しいレシピ':'提供', r?rName(r):'名もなき一杯');
+  insert(ok?(curOrder.ok||[]):(curOrder.ng||[]));
+  curOrder=null;
+  later(1100);
+}
+
+/* ================= Nights ================= */
+function setWhen(){
+  const n=NIGHTS[S.night];
+  $('when').innerHTML=`<b>${n.label}</b> ・ ${n.weather}`;
+}
+function startNight(){
+  const n=NIGHTS[S.night];
+  store(SAVE_KEY,{night:S.night, flags:S.flags});
+  clearStage(); setWhen(); rain.set(n.rain); $('fog').classList.toggle('on', n.fog);
+  textEl.textContent=''; plateEl.hidden=true; nextEl.hidden=true; choicesEl.hidden=true;
+  showCard(`<div class="sub">${n.weather}</div><div class="big">${n.label}</div><div class="note">クリックではじめる</div>`, ()=>runSteps(n.steps));
+}
+function endNight(){
+  const n=NIGHTS[S.night];
+  const ok=n.keys.filter(k=>S.flags[k]).length;
+  S.night++;
+  showCard(`<div class="sub">${n.label}</div><div class="big">閉店</div><div class="res"><span>注文に応えた数</span><b>${ok} / ${n.keys.length}</b><span>見つけたレシピ</span><b>${book.found.length} / ${RECIPES.length}</b></div><div class="note">クリックで次の夜へ</div>`, startNight);
+}
+function showEnding(){
+  const keys=NIGHTS.flatMap(n=>n.keys);
+  const ok=keys.filter(k=>S.flags[k]).length;
+  const stay=S.flags.ending==='stay';
+  drop(SAVE_KEY);
+  rain.set(0.15); $('fog').classList.remove('on');
+  showCard(`<div class="sub">${stay?'幻想の店主':'雨上がりの帰り道'}</div><div class="big">終</div>`
+    +`<div class="res"><span>注文に応えた数</span><b>${ok} / ${keys.length}</b><span>見つけたレシピ</span><b>${book.found.length} / ${RECIPES.length}</b><span>知り合った常連</span><b>${book.met.length} / ${PEOPLE.length}</b></div>`
+    +`<div class="note">遊んでくれてありがとう。レシピ帳は次のプレイに引き継がれます。<br>クリックでタイトルへ</div>`, showTitle);
+}
+function showCard(html, then){
+  const c=$('card'); c.innerHTML=html; c.hidden=false; mode='card';
+  c.onclick=()=>{ c.hidden=true; c.onclick=null; then&&then(); };
+}
+
+/* ================= Title ================= */
+function showTitle(){
+  clearStage(); $('title').hidden=false;
+  $('tCont').disabled=!load(SAVE_KEY);
+  $('when').textContent='深夜喫茶 境界';
+  rain.set(.55);
+  $('tNew').focus();
+}
+$('tNew').onclick=()=>{ $('title').hidden=true; S={night:0,flags:{}}; startNight(); };
+$('tCont').onclick=()=>{ const s=load(SAVE_KEY); if(!s) return; $('title').hidden=true; S={night:s.night||0, flags:s.flags||{}}; startNight(); };
+$('tBook').onclick=()=>openBook('recipe');
+
+/* ================= Book ================= */
+let bookTab='recipe';
+function openBook(tab){ bookTab=tab||bookTab; renderBook(); $('bookOv').hidden=false; $('bookClose').focus(); }
+function closeBook(){ $('bookOv').hidden=true; }
+$('bookClose').onclick=closeBook;
+$('bookOv').addEventListener('click',e=>{ if(e.target.id==='bookOv') closeBook(); });
+$('bookBtn').onclick=()=>openBook();
+document.querySelectorAll('.book .tab').forEach(t=>t.onclick=()=>{bookTab=t.dataset.tab;renderBook();});
+function renderBook(){
+  document.querySelectorAll('.book .tab').forEach(t=>t.setAttribute('aria-selected', t.dataset.tab===bookTab));
+  const body=$('bookBody');
+  if(bookTab==='recipe'){
+    body.innerHTML=`<p class="muted">見つけたレシピ ${book.found.length} / ${RECIPES.length}。材料の順番は、ベースだけが決まっていれば二つ目と三つ目は入れ替えても同じです。</p><div class="rlist">`+
+      RECIPES.map(r=>{
+        const f=book.found.includes(r.id);
+        const ids=[r.base,...r.add];
+        return f ? `<div class="rcard"><div class="c">${cupSVG(drinkColor(ids),false)}</div><div><div class="n">${rName(r)}</div><div class="i">${ids.map(i=>ING[i].name).join(' ＋ ')}</div><div class="d">${rDesc(r)}</div></div></div>`
+                 : `<div class="rcard lock"><div class="c">${cupSVG('#2f2739',false)}</div><div><div class="n">？？？</div><div class="i">${ING[r.base].name} ＋ ？ ＋ ？</div></div></div>`;
+      }).join('')+`</div>`;
+  } else if(bookTab==='people'){
+    body.innerHTML=`<div class="plist">`+PEOPLE.map(id=>{
+      const m=book.met.includes(id);
+      return m ? `<div class="pcard"><div class="face">${avatar(id,'n')}</div><div><div class="n">${CH[id].name}</div><div class="t">${CH[id].title}</div><div class="d">${CH[id].bio}</div></div></div>`
+               : `<div class="pcard"><div class="face"></div><div><div class="n">？？？</div><div class="d">まだ来店していない。</div></div></div>`;
+    }).join('')+`</div>`;
+  } else if(bookTab==='guide'){
+    body.innerHTML=`<div class="set"><p class="muted">材料を三つ選んで、一杯を淹れます。一つ目は必ずベース（コーヒー・紅茶・緑茶・ココア）。二つ目と三つ目は何でも構いません。同じ材料を重ねることもできます。</p>
+    <p class="muted">客の注文は、飲み物の名前ではなく気分で届くことがあります。調合中に表示される「温・甘・苦・爽」の目盛りを手がかりにしてください。</p>
+    <div class="rlist">${[...BASES,...ADDS].map(id=>{const s=ING[id].s;return `<div class="rcard"><div class="c" style="width:22px"><span class="sw" style="display:block;width:22px;height:22px;border-radius:50%;background:${ING[id].c}"></span></div><div><div class="n" style="font-size:15px">${ING[id].name}${ING[id].base?' <span class="i">ベース</span>':''}</div><div class="i">温${fmt(s.warm)} 甘${fmt(s.sweet)} 苦${fmt(s.bitter)} 爽${fmt(s.fresh)}${ING[id].tag==='spice'?' ・スパイス':''}</div></div></div>`;}).join('')}</div></div>`;
+  } else {
+    body.innerHTML=`<div class="set">
+      <div class="row"><span>文字の速さ</span><div class="seg">${[['slow','ゆっくり'],['mid','ふつう'],['fast','はやい']].map(([k,l])=>`<button class="btn small" data-speed="${k}" aria-pressed="${prefs.speed===k}">${l}</button>`).join('')}</div></div>
+      <div class="row"><span>記録を消す</span><div id="wipeWrap"><button class="btn small" id="wipe">レシピ帳と進行を消す</button></div></div>
+      <p class="muted">進行は夜のはじめに自動で記録されます。記録はこのブラウザの中にだけ保存されます。</p></div>`;
+    body.querySelectorAll('[data-speed]').forEach(b=>b.onclick=()=>{prefs.speed=b.dataset.speed;store('kyokai-prefs-v1',{speed:prefs.speed});renderBook();});
+    $('wipe').onclick=()=>{
+      $('wipeWrap').innerHTML=`<span class="muted" style="margin-right:8px">本当に消しますか？</span><button class="btn small" id="wipeYes">消す</button> <button class="btn small" id="wipeNo">やめる</button>`;
+      $('wipeYes').onclick=()=>{ drop(SAVE_KEY); drop(BOOK_KEY); book={found:[],met:[],sparkNamed:false}; $('tCont').disabled=true; renderBook(); };
+      $('wipeNo').onclick=renderBook;
+    };
+  }
+}
+const fmt=n=>n>0?'+'+n:(n<0?'−'+(-n):'0');
+
+/* ================= Rain & sound ================= */
+const rain=(()=>{
+  const cv=$('rain'), ctx=cv.getContext('2d'); let W=0,H=0,drops=[],level=.5,bg=null,raf=0;
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function resize(){
+    const r=cv.getBoundingClientRect(), d=Math.min(2,devicePixelRatio||1);
+    W=Math.max(1,r.width); H=Math.max(1,r.height);
+    cv.width=W*d; cv.height=H*d; ctx.setTransform(d,0,0,d,0,0);
+    bg=document.createElement('canvas'); bg.width=cv.width; bg.height=cv.height;
+    const b=bg.getContext('2d'); b.setTransform(d,0,0,d,0,0);
+    const g=b.createLinearGradient(0,0,0,H); g.addColorStop(0,'#141b30'); g.addColorStop(1,'#26334f');
+    b.fillStyle=g; b.fillRect(0,0,W,H);
+    b.fillStyle='#1b2438'; b.beginPath(); b.moveTo(0,H*.72);
+    for(let x=0;x<=W;x+=W/8) b.lineTo(x,H*(.58+.12*Math.sin(x/W*6.1)+.05*Math.cos(x/W*13)));
+    b.lineTo(W,H); b.lineTo(0,H); b.fill();
+    b.fillStyle='#10172a'; b.fillRect(0,H*.84,W,H*.16);
+    for(let i=0;i<9;i++){ const x=W*(.12+i*.09+.02*Math.sin(i*7)), y=H*(.78+.03*Math.cos(i*3));
+      b.fillStyle='rgba(242,177,94,.75)'; b.fillRect(x,y,3,3);
+      b.fillStyle='rgba(242,177,94,.12)'; b.beginPath(); b.arc(x+1.5,y+1.5,7,0,7); b.fill(); }
+    // bamboo silhouettes
+    b.strokeStyle='#0d1322'; b.lineWidth=3;
+    [.04,.08,.9,.95].forEach(p=>{b.beginPath();b.moveTo(W*p,H);b.lineTo(W*p+6,0);b.stroke();});
+  }
+  function spawn(){ return {x:Math.random()*(W+60)-30,y:Math.random()*-H,v:6+Math.random()*6,l:8+Math.random()*12}; }
+  function frame(){
+    ctx.drawImage(bg,0,0,W,H);
+    const want=Math.round(140*level);
+    while(drops.length<want) drops.push(spawn());
+    if(drops.length>want) drops.length=want;
+    ctx.strokeStyle='rgba(190,205,235,.38)'; ctx.lineWidth=1; ctx.beginPath();
+    for(const d of drops){ ctx.moveTo(d.x,d.y); ctx.lineTo(d.x-d.l*.18,d.y+d.l); if(!reduce){d.y+=d.v*(.6+level*.6); d.x-=d.v*.12;} if(d.y>H){Object.assign(d,spawn());d.y=-10;} }
+    ctx.stroke();
+    if(!reduce) raf=requestAnimationFrame(frame);
+  }
+  const ro=new ResizeObserver(()=>{resize(); if(reduce) frame();}); ro.observe(cv);
+  resize(); frame();
+  return {set(l){level=l; audio.level(l); if(reduce){drops=[];for(let i=0;i<Math.round(140*l);i++){const d=spawn();d.y=Math.random()*H;drops.push(d);}frame();}}};
+})();
+
+const audio=(()=>{
+  let ac=null, gain=null, filt=null, lvl=.5;
+  function init(){
+    if(ac) return;
+    ac=new (window.AudioContext||window.webkitAudioContext)();
+    const len=ac.sampleRate*3, buf=ac.createBuffer(1,len,ac.sampleRate), d=buf.getChannelData(0);
+    let last=0; for(let i=0;i<len;i++){ const w=Math.random()*2-1; last=(last+0.02*w)/1.02; d[i]=last*3.2 + w*0.08; }
+    const src=ac.createBufferSource(); src.buffer=buf; src.loop=true;
+    filt=ac.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=1400;
+    gain=ac.createGain(); gain.gain.value=0;
+    src.connect(filt).connect(gain).connect(ac.destination); src.start();
+  }
+  function apply(){ if(!ac) return; const t=ac.currentTime; gain.gain.cancelScheduledValues(t); gain.gain.linearRampToValueAtTime(prefs.sound? .1+.22*lvl : 0, t+.8); filt.frequency.linearRampToValueAtTime(900+900*lvl,t+.8); }
+  return {
+    toggle(){ try{ init(); if(ac.state==='suspended') ac.resume(); }catch(e){ return false; } prefs.sound=!prefs.sound; apply(); return prefs.sound; },
+    level(l){ lvl=l; apply(); },
+    bell(){ if(!ac||!prefs.sound) return; const t=ac.currentTime;
+      [1318.5,1760].forEach((f,i)=>{ const o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.value=f;
+        g.gain.setValueAtTime(0,t+i*.12); g.gain.linearRampToValueAtTime(.08,t+i*.12+.01); g.gain.exponentialRampToValueAtTime(.0001,t+i*.12+1.4);
+        o.connect(g).connect(ac.destination); o.start(t+i*.12); o.stop(t+i*.12+1.5); }); }
+  };
+})();
+function bell(){ audio.bell(); }
+$('soundBtn').onclick=()=>{ const on=audio.toggle(); $('soundBtn').textContent= on?'雨音 ON':'雨音 OFF'; $('soundBtn').setAttribute('aria-pressed',on); };
+
+/* ================= Boot ================= */
+buildIngs();
+showTitle();
+})();
+</script>
+</body>
+</html>

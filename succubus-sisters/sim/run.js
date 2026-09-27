@@ -46,6 +46,7 @@ const PAGE = 'file://' + path.join(__dirname, '..', 'index.html');
     // 描画と待ち時間を止める
     window.render = () => {};
     window.fx = () => {};
+    window.cutin = async () => {};
     window.wait = async () => {};
     window.ask = async () => true;
 

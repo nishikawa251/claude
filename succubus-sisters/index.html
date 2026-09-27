@@ -64,9 +64,24 @@ button:focus-visible{outline:2px solid var(--rose);outline-offset:2px}
 .char .nm{font-weight:700}
 .char .tx{font-size:12px;color:var(--muted);line-height:1.5}
 .gem{
-  flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
-  background:var(--gem);color:#1a0f1d;font-family:var(--display);font-size:14px;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2)
+  position:relative;overflow:hidden;flex:none;width:38px;height:38px;border-radius:10px;display:grid;place-items:center;
+  background:var(--gem);color:#1a0f1d;font-family:var(--display);font-size:14px;box-shadow:0 0 0 2px var(--gem)
 }
+.gem img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.gem.oni{box-shadow:0 0 0 2px var(--rose),0 0 12px rgba(255,112,167,.65)}
+.dead .gem img{filter:grayscale(1)}
+.char .gem{width:60px;height:60px}
+.mepanel .gem{width:48px;height:48px}
+.preview{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.preview button{padding:0;border:0;background:none;cursor:zoom-in;display:flex;flex-direction:column;gap:4px;align-items:center;font-size:11px;color:var(--muted)}
+.preview img{width:132px;max-width:100%;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.preview .ptext{flex:1 1 220px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.preview .ptext b{color:var(--ink);font-size:15px}
+.art{height:190px;max-width:100%;border-radius:12px;box-shadow:0 0 0 2px var(--rose),0 0 28px rgba(255,112,167,.45);animation:pop .45s ease}
+.sheet .art{height:auto;width:200px;align-self:center}
+.sheet.zoom{width:min(420px,100%);align-items:center}
+.sheet.zoom img{width:100%;border-radius:12px;background:#fff}
+.zoombtn{margin-left:8px;vertical-align:baseline}
 .start-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;bottom:0;z-index:5;padding-block:14px calc(12px + env(safe-area-inset-bottom, 0px));background:linear-gradient(to bottom,transparent,var(--bg) 40%)}
 
 /* players */
@@ -111,7 +126,7 @@ button:focus-visible{outline:2px solid var(--rose);outline-offset:2px}
 }
 .duel{display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap}
 .who{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;max-width:120px}
-.who .gem{width:40px;height:40px;font-size:18px}
+.who .gem{width:64px;height:64px;font-size:22px;border-radius:14px}
 .arrow{font-family:var(--display);color:var(--rose);font-size:22px}
 .stitle{font-family:var(--display);font-size:22px;letter-spacing:.04em}
 .chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
@@ -230,7 +245,9 @@ table.score td.num{text-align:right}
   .stage{min-height:170px}
   .foes{grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px}
   .pl{padding:6px 7px;gap:4px}
-  .pl .gem{width:22px;height:22px;font-size:11px}
+  .pl .gem{width:26px;height:26px;font-size:11px;border-radius:7px}
+  .who .gem{width:52px;height:52px}
+  .art{height:150px}
   .pname{font-size:11.5px}
   .stats{gap:5px;font-size:10px}
   .hand{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
@@ -579,7 +596,7 @@ const CARD_DEFS = buildCardDefs();
    ================================================================ */
 const ABORT = Symbol('abort');
 let M = null, G = null, gameId = 0, speed = 1, uidSeq = 0;
-const UI = { mode:'setup', sel:[], fsel:[], target:null, extra:{}, resolve:null, focus:null, rules:false, setup:{ count:5, char:0 }, mfocus:null };
+const UI = { zoom:null, mode:'setup', sel:[], fsel:[], target:null, extra:{}, resolve:null, focus:null, rules:false, setup:{ count:5, char:0 }, mfocus:null };
 
 const rand = n => Math.floor(Math.random() * n);
 function shuffle(a){ for (let i = a.length - 1; i > 0; i--){ const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -658,7 +675,7 @@ function roleIntro(p){
 async function run(){
   try {
     const intro = roleIntro(me());
-    await ask('notice', { title:`第${M.game}戦　あなたの神託`, role:intro.role, body:intro.body });
+    await ask('notice', { title:`第${M.game}戦　あなたの神託`, role:intro.role, body:intro.body, art:artSrc(me().char, intro.role === 'succubus' ? 'oni' : 'hito') });
     while (!G.ending){
       const p = G.players[G.turn];
       if (p.alive) await takeTurn(p);
@@ -775,7 +792,7 @@ async function manifest(p, o){
   else log('断罪により手札は補充されない', 'judge');
   log(`サキュバス能力：${p.char.text}`, 'rose');
   G.pendingConfession = true;
-  G.stage = { src:p, title:'顕現', result:{ text:`${p.name}はサキュバス！`, cls:'rose' } };
+  G.stage = { src:p, title:'顕現', art:artSrc(p.char, 'oni'), result:{ text:`${p.name}はサキュバス！`, cls:'rose' } };
   render(); await wait(1200);
 }
 async function handleConfessions(){
@@ -1612,7 +1629,11 @@ function cardInfo(c, owner){
   return s;
 }
 function chip(f){ return `<span class="chip el-${f.el} ${f.isHeart ? 'heart' : ''}">${esc(f.name)}${f.atk ? ` ${f.atk}` : f.def ? ` 防${f.def}` : ''}</span>`; }
-function gem(p){ return `<span class="gem" style="--gem:${p.char.gem}">${p.char.glyph}</span>`; }
+const faceSrc = (c, side) => `img/face/${c.key}_${side}.jpg`;
+const artSrc = (c, side) => `img/chara/${c.key}_${side}.jpg`;
+const cardSrc = def => `img/cards/${String(def.id).padStart(3, '0')}.jpg`;
+function portrait(c, side){ return `<span class="gem ${side === 'oni' ? 'oni' : ''}" style="--gem:${c.gem}">${c.glyph}<img src="${faceSrc(c, side)}" alt="" onerror="this.remove()"></span>`; }
+function gem(p){ return portrait(p.char, isSucc(p) ? 'oni' : 'hito'); }
 function roleBadge(p, viewer){
   if (p.revealed) return `<span class="role ${p.role}">${ROLE[p.role]}</span>`;
   if (p === viewer) return `<span class="role private ${p.role}" title="あなただけが知っている">${ROLE[p.role]}</span>`;
@@ -1673,8 +1694,13 @@ function renderSetup(){
     </div>
     <div class="sect"><h2>あなたのキャラクター</h2>
       <div class="seg-note">サキュバスになって【顕現】したときに、ここに書かれた能力が使える。共通：${COMMON_SUCC}</div>
+      <div class="preview">
+        <button type="button" data-zoom="${artSrc(CHARACTERS[s.char], 'hito')}"><img src="${artSrc(CHARACTERS[s.char], 'hito')}" alt="${esc(CHARACTERS[s.char].name)}（シスターの姿）">シスターの姿</button>
+        <button type="button" data-zoom="${artSrc(CHARACTERS[s.char], 'oni')}"><img src="${artSrc(CHARACTERS[s.char], 'oni')}" alt="${esc(CHARACTERS[s.char].name)}（サキュバスの姿）">サキュバスの姿</button>
+        <div class="ptext"><b>${esc(CHARACTERS[s.char].name)}</b><span>${esc(CHARACTERS[s.char].common || COMMON_SUCC)}</span><span>${esc(CHARACTERS[s.char].text)}</span><span>画像をタップすると大きく表示する。</span></div>
+      </div>
       <div class="chars">${CHARACTERS.map((c, i) => `<button type="button" class="char ${i === s.char ? 'on' : ''}" data-char="${i}">
-        <span class="gem" style="--gem:${c.gem}">${c.glyph}</span>
+        ${portrait(c, 'hito')}
         <span><span class="nm">${esc(c.name)}</span><br><span class="tx">${c.common ? esc(c.common) + '<br>' : ''}${esc(c.text)}</span></span></button>`).join('')}</div>
     </div>
     <div class="start-row"><button type="button" class="btn" data-start="1">3戦マッチを始める</button><button type="button" class="btn sub" id="btnRules2">ルールを読む</button></div>`;
@@ -1689,6 +1715,7 @@ function renderStage(){
   } else {
     h += `<div class="duel"><div class="who">${gem(s.src)}</div><div class="stitle">${esc(s.title)}</div></div>`;
   }
+  if (s.art) h += `<img class="art" src="${s.art}" alt="">`;
   if (s.faces && s.faces.length) h += `<div class="chips">${s.faces.map(chip).join('')}</div>`;
   if (s.atk) h += `<div class="power"><b style="color:var(--el-${s.atk.el})">〔${EL[s.atk.el]}〕</b> ${s.atk.instakill ? '<b>即死</b>' : `攻撃力 <b>${s.atk.power}</b>`}${s.atk.magic ? '・魔法' : ''}${s.atk.kiss ? '・防御1枚まで' : ''}</div>`;
   if (s.flips) h += `<div class="flips">${s.flips.map(x => `<span class="${x.ok ? 'ok' : 'ng'}">${esc(x.t.name)}：${esc(x.c.def.top.name)}〔${x.c.def.trig}〕${x.ok ? ' 命中' : ' 外れ'}</span>`).join('')}</div>`;
@@ -1731,7 +1758,7 @@ function renderControls(plan){
   let info;
   const f = UI.focus && (p.hand.includes(UI.focus) || usableField(p).includes(UI.focus)) ? UI.focus : null;
   if (f){
-    info = cardInfo(f, p);
+    info = cardInfo(f, p) + `<button type="button" class="btn-ghost zoombtn" data-zoom="${cardSrc(f.def)}">実物カードを見る</button>`;
     if (UI.mode === 'action'){ const why = p.hand.includes(f) ? playProblem(p, f, UI.extra.magicOnly) : fieldProblem(p, f, UI.extra.magicOnly); if (why) info += `\n（${why}）`; }
   } else if (UI.mode === 'defend'){
     info = '属性つきの攻撃は同じ属性の防御カードでしか守れない。無属性の攻撃はどの防御カードでも守れる。防御カードは何枚でも重ねられる。';
@@ -1777,10 +1804,11 @@ function renderHand(){
 function renderModal(){
   const m = $('#modal');
   let h = '';
-  if (UI.rules) h = rulesHTML();
+  if (UI.zoom) h = `<div class="sheet zoom"><img src="${UI.zoom}" alt="" onerror="this.replaceWith('画像がありません')"><div class="row"><button type="button" class="btn" data-zoomclose="1">閉じる</button></div></div>`;
+  else if (UI.rules) h = rulesHTML();
   else if (UI.mode === 'notice'){
     const x = UI.extra;
-    h = `<div class="sheet"><h2>${esc(x.title)}</h2>${x.role ? `<div class="bigrole ${x.role}">${ROLE[x.role]}</div>` : ''}<p style="white-space:pre-line">${esc(x.body)}</p>
+    h = `<div class="sheet"><h2>${esc(x.title)}</h2>${x.role ? `<div class="bigrole ${x.role}">${ROLE[x.role]}</div>` : ''}${x.art ? `<img class="art" src="${x.art}" alt="">` : ''}<p style="white-space:pre-line">${esc(x.body)}</p>
       <div class="row"><button type="button" class="btn" data-ok="1">わかった</button></div></div>`;
   } else if (UI.mode === 'option'){
     const x = UI.extra;
@@ -1792,7 +1820,7 @@ function renderModal(){
     const fc = UI.mfocus ? x.cards.find(c => c.uid === UI.mfocus) : null;
     h = `<div class="sheet"><h2>${esc(x.title)}</h2><p>${esc(x.body)}</p>
       <div class="hand">${x.cards.map(c => cardHTML(c, x.owner, UI.sel.includes(c.uid) ? 'sel' : '')).join('')}</div>
-      <div class="info">${fc ? cardInfo(fc, x.owner) : 'カードをタップして選ぶ。'}</div>
+      <div class="info">${fc ? cardInfo(fc, x.owner) + `<button type="button" class="btn-ghost zoombtn" data-zoom="${cardSrc(fc.def)}">実物カードを見る</button>` : 'カードをタップして選ぶ。'}</div>
       <div class="row"><span class="muted" style="margin-right:auto">${n}枚選択${x.min === x.max ? `（${x.min}枚選ぶ）` : `（${x.min}〜${x.max}枚）`}</span>
       <button type="button" class="btn" data-mc="ok" ${okN ? '' : 'disabled'}>${n ? '決定' : '選ばずに決定'}</button></div></div>`;
   } else if (UI.mode === 'player'){
@@ -1882,6 +1910,8 @@ document.addEventListener('click', e => {
   const t = e.target.closest('button');
   if (!t) return;
   const d = t.dataset;
+  if (d.zoom){ UI.zoom = d.zoom; render(); return; }
+  if (d.zoomclose){ UI.zoom = null; render(); return; }
   if (d.closerules){ UI.rules = false; render(); return; }
   if (t.id === 'btnRules2'){ UI.rules = true; render(); return; }
   if (d.count){ UI.setup.count = +d.count; render(); return; }

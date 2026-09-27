@@ -96,6 +96,18 @@ button:focus-visible{outline:2px solid var(--rose);outline-offset:2px}
 .target::after{content:"対象";position:absolute;top:-9px;right:8px;background:var(--hp);color:#1a0f1d;font-size:10px;font-weight:700;padding:0 6px;border-radius:4px}
 .active{box-shadow:0 0 0 2px var(--holy),0 0 18px rgba(241,214,140,.28)!important}
 .dead{opacity:.4;filter:grayscale(.75)}
+.attacker{box-shadow:0 0 0 2px var(--warn),0 0 20px rgba(255,195,107,.5)!important}
+.defender{box-shadow:0 0 0 2px var(--hp),0 0 20px rgba(255,93,122,.55)!important}
+.attacker::before,.defender::before{position:absolute;top:-9px;left:8px;z-index:2;font-size:10px;font-weight:700;padding:0 6px;border-radius:4px}
+.attacker::before{content:"攻撃";background:var(--warn);color:#2a1d05}
+.defender::before{content:"標的";background:var(--hp);color:#1a0f1d}
+#arrows{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:30;overflow:visible}
+#arrows .shaft{fill:none;stroke:currentColor;stroke-width:5;stroke-linecap:round;stroke-dasharray:14 9;animation:flow .6s linear infinite}
+#arrows .glow{fill:none;stroke:currentColor;stroke-width:13;stroke-linecap:round;opacity:.22}
+#arrows .head{fill:currentColor}
+#arrows .preview .shaft{stroke-width:3;stroke-dasharray:5 7;opacity:.85}
+#arrows .preview .glow{display:none}
+@keyframes flow{to{stroke-dashoffset:-23}}
 .hit{animation:hit .45s ease}
 @keyframes hit{0%,100%{transform:none}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
 .phead{display:flex;align-items:center;gap:7px;min-width:0}
@@ -287,6 +299,7 @@ table.score td.num{text-align:right}
     </div>
   </section>
 </div>
+<svg id="arrows" aria-hidden="true"></svg>
 <div id="fx"></div>
 <div class="modal" id="modal" hidden></div>
 
@@ -1649,7 +1662,7 @@ function render(){
   const inGame = !!G && UI.mode !== 'setup';
   $('#setup').hidden = inGame;
   $('#game').hidden = !inGame;
-  if (!inGame){ renderSetup(); $('#meta').textContent = ''; renderModal(); return; }
+  if (!inGame){ renderSetup(); $('#meta').textContent = ''; renderModal(); drawArrows(); return; }
   $('#meta').textContent = `第${M.game}/${GAMES}戦・${G.round}巡目・山札${G.deck.length}`;
   const p0 = me();
   const plan = UI.mode === 'action' ? actionPlan() : null;
@@ -1662,6 +1675,7 @@ function render(){
     if (isHit(q)) cls.push('hit');
     if (pickable(q)) cls.push('pickable');
     if (pickable(q) && UI.target === q) cls.push('target');
+    cls.push(...duelRole(q));
     return `<button type="button" class="${cls.join(' ')}" data-pid="${q.i}">
       <div class="phead">${gem(q)}<span class="pname">${esc(q.name)}</span>${roleBadge(q, p0)}</div>
       ${bar(q)}
@@ -1671,12 +1685,66 @@ function render(){
   }).join('');
 
   const mp = $('#mePanel');
-  mp.className = 'mepanel' + (isActive(p0) ? ' active' : '') + (isHit(p0) ? ' hit' : '') + (pickable(p0) ? ' pickable' : '') + (pickable(p0) && UI.target === p0 ? ' target' : '');
+  mp.className = 'mepanel' + (isActive(p0) ? ' active' : '') + (isHit(p0) ? ' hit' : '') + (pickable(p0) ? ' pickable' : '') + (pickable(p0) && UI.target === p0 ? ' target' : '') + duelRole(p0).map(c => ' ' + c).join('');
   mp.dataset.pid = 0;
   mp.innerHTML = `${gem(p0)}<b>あなた（${esc(p0.char.short)}）</b>${roleBadge(p0, p0)}${bar(p0)}
     <div class="stats"><span>手札 ${p0.hand.length}/${handMax(p0)}</span><span class="vp">勝点 ${p0.vp}</span>${p0.heartSealed ? '<span class="badge seal">♥封印</span>' : ''}</div>`;
 
   renderStage(); renderLog(); renderControls(plan); renderHand(); renderModal();
+  requestAnimationFrame(drawArrows);
+}
+
+/* ---------- 攻撃の矢印 ---------- */
+// いまの攻撃で「攻撃している人」「狙われている人」
+function duelLinks(){
+  const s = G && G.stage, out = [];
+  if (!s || !s.src) return out;
+  const color = s.atk ? `var(--el-${s.atk.el})` : 'var(--rose)';
+  if (s.dst && s.dst !== s.src) out.push({ from:s.src, to:s.dst, color });
+  if (s.flips) s.flips.filter(x => x.ok).forEach(x => out.push({ from:s.src, to:x.t, color }));
+  return out;
+}
+function duelRole(p){
+  const links = duelLinks(), r = [];
+  if (links.some(l => l.from === p)) r.push('attacker');
+  if (links.some(l => l.to === p)) r.push('defender');
+  return r;
+}
+function panelOf(p){ return document.querySelector(p.human ? '#mePanel' : `.pl[data-pid="${p.i}"]`); }
+function edgePoint(r, tx, ty, pad){
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2, dx = tx - cx, dy = ty - cy;
+  const k = Math.min(dx ? (r.width / 2 + pad) / Math.abs(dx) : Infinity, dy ? (r.height / 2 + pad) / Math.abs(dy) : Infinity, 1);
+  return [cx + dx * k, cy + dy * k];
+}
+function arrowSVG(a, b, color, cls){
+  const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+  if (!ra.width || !rb.width) return '';
+  const ca = [ra.left + ra.width / 2, ra.top + ra.height / 2], cb = [rb.left + rb.width / 2, rb.top + rb.height / 2];
+  const p0 = edgePoint(ra, cb[0], cb[1], 2), p1 = edgePoint(rb, ca[0], ca[1], 6);
+  const dx = p1[0] - p0[0], dy = p1[1] - p0[1], len = Math.hypot(dx, dy) || 1;
+  const bend = Math.max(26, Math.min(90, len * 0.25));
+  const c = [(p0[0] + p1[0]) / 2 - dy / len * bend, (p0[1] + p1[1]) / 2 + dx / len * bend];
+  // 矢じり：曲線の終点での向き
+  const tx = p1[0] - c[0], ty = p1[1] - c[1], tl = Math.hypot(tx, ty) || 1, ux = tx / tl, uy = ty / tl;
+  const hl = cls ? 12 : 18, hw = cls ? 7 : 10;
+  const base = [p1[0] - ux * hl, p1[1] - uy * hl];
+  const head = `${p1[0]},${p1[1]} ${base[0] - uy * hw},${base[1] + ux * hw} ${base[0] + uy * hw},${base[1] - ux * hw}`;
+  const d = `M${p0[0]},${p0[1]} Q${c[0]},${c[1]} ${base[0]},${base[1]}`;
+  return `<g class="${cls}" style="color:${color}"><path class="glow" d="${d}"/><path class="shaft" d="${d}"/><polygon class="head" points="${head}"/></g>`;
+}
+function drawArrows(){
+  const svg = $('#arrows');
+  if (!svg) return;
+  let h = '';
+  if (G && !$('#game').hidden){
+    for (const l of duelLinks()){ const a = panelOf(l.from), b = panelOf(l.to); if (a && b) h += arrowSVG(a, b, l.color, ''); }
+    // 自分の番：選んだ対象へ点線の矢印
+    if (UI.mode === 'action' && UI.target && UI.target !== me() && UI.target.alive){
+      const plan = actionPlan();
+      if (plan.ok && plan.tk && plan.tk !== 'none'){ const a = panelOf(me()), b = panelOf(UI.target); if (a && b) h += arrowSVG(a, b, 'var(--rose)', 'preview'); }
+    }
+  }
+  svg.innerHTML = h;
 }
 
 function renderSetup(){
@@ -1945,6 +2013,8 @@ document.addEventListener('click', e => {
   const mp = e.target.closest('#mePanel');
   if (mp && !e.target.closest('button')) onPlayer(0);
 });
+window.addEventListener('resize', drawArrows);
+window.addEventListener('scroll', drawArrows, { passive:true });
 $('#btnRules').addEventListener('click', () => { UI.rules = true; render(); });
 $('#btnSpeed').addEventListener('click', e => {
   speed = speed === 1 ? 0.45 : speed === 0.45 ? 0.15 : 1;

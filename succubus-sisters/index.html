@@ -683,7 +683,8 @@ function checkEnd(){
   if (G.ending) return true;
   const alive = alivePlayers();
   const succ = G.players.find(p => p.role === 'succubus');
-  if (!succ.alive || alive.length <= 1) G.ending = 'done';
+  // サキュバスと堕天使だけが残ったら、その時点でサキュバス陣営の勝ち
+  if (!succ.alive || alive.length <= 1 || alive.every(p => p.role !== 'sister')) G.ending = 'done';
   return !!G.ending;
 }
 
@@ -1260,6 +1261,7 @@ async function finishGame(){
   if (!alive.length){ reason = 'none'; text = '全員が昇天した。勝利点の計算はない。'; }
   else if (!succ.alive){ reason = 'succubus'; text = 'サキュバスが昇天した。シスター陣営の勝ち。'; }
   else if (alive.length === 1){ reason = 'last'; text = '最後まで残ったのはサキュバス。サキュバス陣営の勝ち。'; }
+  else if (alive.every(p => p.role !== 'sister')){ reason = 'last'; text = '生き残ったのはサキュバスと堕天使だけ。サキュバス陣営の勝ち。'; }
   else { reason = 'deck'; text = '山札が尽きてゲーム終了。'; }
   const gain = new Map(G.players.map(p => [p, []]));
   const add = (p, v, why) => gain.get(p).push({ v, why });
@@ -1825,7 +1827,7 @@ function rulesHTML(){
     <h3>勝ち方</h3>
     <ul>
       <li>神託でサキュバス1人・シスター・堕天使（5人以上）に分かれる。自分の神託だけが見える。</li>
-      <li>サキュバスが昇天すればシスター陣営の勝ち。サキュバスが最後の1人になればサキュバス陣営の勝ち。山札が尽きても終わる。</li>
+      <li>サキュバスが昇天すればシスター陣営の勝ち。サキュバスが最後の1人になるか、生き残りがサキュバスと堕天使だけになればサキュバス陣営の勝ち。山札が尽きても終わる。</li>
       <li>3戦して勝利点の合計を競う。</li>
     </ul>
     <h3>ターン</h3>
@@ -1840,7 +1842,7 @@ function rulesHTML(){
     </ul>
     <h3>勝利点</h3>
     <ul>
-      <li>サキュバスが最後の1人：サキュバスと堕天使に＋3。</li>
+      <li>サキュバスが最後の1人、または生き残りがサキュバスと堕天使だけ：サキュバスと堕天使に＋3。</li>
       <li>サキュバスが昇天：生存者全員＋1、サキュバスと堕天使は−2、断罪を成功させた人＋1、生存者が1人ならその人に＋3。</li>
       <li>山札切れ：生存者全員＋1、サキュバス−2。全員昇天なら計算なし。</li>
     </ul>

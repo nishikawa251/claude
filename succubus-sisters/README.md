@@ -58,6 +58,15 @@
 
 - 生き残りがサキュバスと堕天使だけになったら、その時点でゲーム終了。サキュバス陣営の勝ち（サキュバスと堕天使に＋3）
 
+## バランス調査
+
+`sim/` にCPU同士の自動対戦で強さを集計する仕組みがある。結果は `balance.html`（レポート）と `sim/chars.csv`・`sim/cards.csv`。
+
+```
+node sim/run.js 1000      # 13キャラ＋能力なし × 4〜8人 × 1000戦（約5分）
+python3 sim/report.py     # balance.html と CSV を作る
+```
+
 ## 構成
 
 `index.html` 一枚です。主な関数：

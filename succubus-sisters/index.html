@@ -630,6 +630,8 @@ async function wait(ms){
   await new Promise(r => setTimeout(r, ms * speed));
   if (id !== gameId) throw ABORT;
 }
+// 集計用のフック（シミュレーター sim/ から使う。通常のプレイでは何もしない）
+function emit(type, data){ if (typeof window.onGameEvent === 'function') window.onGameEvent(type, data); }
 function log(text, cls = ''){ G.log.push({ text, cls }); if (G.log.length > 200) G.log.shift(); }
 
 /* ================================================================
@@ -797,6 +799,7 @@ async function revealSelf(p){
   else { reveal(p); G.stage = { src:p, title:'正体を明かした', result:{ text:ROLE[p.role], cls:p.role === 'sister' ? 'gold' : 'rose' } }; render(); await wait(700); }
 }
 async function manifest(p, o){
+  emit('manifest', { p, o });
   p.revealed = true; p.manifested = true;
   log(`${p.name}が顕現した！ 正体はサキュバス（${p.char.name}）`, 'rose');
   if (!o.noHpReset){ p.hp = p.char.key === 'kururu' ? 40 : HP_START; log(`HPが${p.hp}になった`, 'rose'); }
@@ -935,7 +938,7 @@ async function playAction(p, act){
   const f0 = faces[0];
   if (f0.isMagic){
     const cost = magicCost(p, f0);
-    if (cost){ p.hp -= cost; fx(p, `HP-${cost}`, 'hp'); log(`${p.name}はHPを${cost}払った`); }
+    if (cost){ p.hp -= cost; emit('cost', { p, face:f0, hp:cost }); fx(p, `HP-${cost}`, 'hp'); log(`${p.name}はHPを${cost}払った`); }
   }
   if (!act.fromField){
     takeFromHand(p, cards);
@@ -943,6 +946,7 @@ async function playAction(p, act){
     G.curUsed.push(...cards);
   }
   G.ts.played = true;
+  emit('play', { p, faces });
   if (f0.isAtk){ await doAttack(p, cards, faces, act.target); return {}; }
   return await doSupport(p, f0, act.target);
 }
@@ -1009,7 +1013,7 @@ async function doSupport(p, f, target){
     }
     default: {
       if (f.kw.vigor){ G.ts.freeMagic = true; log('このターン、魔法を消費HP無しで使える', 'good'); res('《活力》', 'gold'); render(); await wait(500); return { extra:true, magicOnly:true }; }
-      if (f.kw.heal){ const h = heal(t, f.kw.heal); log(`${t.name}のHPが${h}回復`, 'good'); res(`HP+${h}`); }
+      if (f.kw.heal){ const h = heal(t, f.kw.heal); emit('heal', { p, t, face:f, amount:h }); log(`${t.name}のHPが${h}回復`, 'good'); res(`HP+${h}`); }
     }
   }
   render(); await wait(800);
@@ -1150,7 +1154,7 @@ async function strike(atk, src, t, depth = 0){
   const d = t.human ? await ask('defend', { atk, src }) : cpuDefend(t, atk, src);
   if (!t.revealed && d.cards.some(c => c.def.heart || faceFor(t, c).isJudge)) await revealSelf(t);
   const faces = [...d.cards, ...d.field].map(c => faceFor(t, c));
-  for (const f of faces) if (f.isMagic){ const cost = magicCost(t, f); if (cost){ t.hp = Math.max(1, t.hp - cost); fx(t, `HP-${cost}`, 'hp'); } }
+  for (const f of faces) if (f.isMagic){ const cost = magicCost(t, f); if (cost){ const b = t.hp; t.hp = Math.max(1, t.hp - cost); emit('cost', { p:t, face:f, hp:b - t.hp }); fx(t, `HP-${cost}`, 'hp'); } }
   takeFromHand(t, d.cards);
   d.cards.forEach(c => faceFor(t, c).isMagic ? t.field.push(c) : G.trash.push(c));
   G.stage.def = faces;
@@ -1161,16 +1165,19 @@ async function strike(atk, src, t, depth = 0){
 
   if (atk.heart && faces.some(f => f.sp === 'putInPlace')){
     if (src.role === 'succubus'){ src.heartSealed = true; log(`${src.name}は次の自分のターンまで♥カードを使えない`, 'judge'); }
+    emit('strike', { atk, src, t, faces, dmg:0, prevented:atk.power, by:faces.find(f => f.sp === 'putInPlace') });
     G.stage.result = { text:'立場をわからせた', cls:'gold' }; log(`${t.name}は♥攻撃を無効にした`, 'good');
     render(); await wait(900); return;
   }
   const reflect = faces.some(f => f.kw.reflectAll) || (atk.magic && (faces.some(f => f.kw.reflectMagic && f.sp !== 'choose') || d.mode === 'reflect'));
   if (reflect){
     let to = src;
-    if (faces.some(f => f.sp === 'freeReflect')) to = t.human ? await ask('player', { title:'リリスミラージュ', body:'跳ね返す相手を選ぶ。', players:othersClockwise(t) }) : cpuPickEnemy(t);
+    if (faces.some(f => f.sp === 'freeReflect') && othersClockwise(t).length) to = t.human ? await ask('player', { title:'リリスミラージュ', body:'跳ね返す相手を選ぶ。', players:othersClockwise(t) }) : cpuPickEnemy(t);
+    const rf = faces.find(f => f.kw.reflectAll) || faces.find(f => f.kw.reflectMagic && f.sp !== 'choose') || faces.find(f => f.sp === 'choose');
+    emit('strike', { atk, src, t, faces, dmg:0, prevented:atk.power, by:rf });
     G.stage.result = { text:'反射！', cls:'gold' }; log(`${t.name}は攻撃を${to.name}へ跳ね返した`, 'good');
     render(); await wait(800);
-    await reflectTo(atk, t, to, depth); return;
+    await reflectTo({ ...atk, reflectedBy:rf }, t, to, depth); return;
   }
 
   const nullified = faces.some(f => f.kw.nullify && f.kw.nullify.includes(el));
@@ -1189,6 +1196,7 @@ async function strike(atk, src, t, depth = 0){
   } else {
     G.stage.result = { text:nullified ? '無効！' : '防いだ！', cls:'ok' }; log(`${t.name}は${nullified ? '攻撃を無効にした' : '防ぎきった'}`, 'good');
   }
+  emit('strike', { atk, src, t, faces, dmg, el, defSum, nullified, killed:t.hp <= 0 });
   render(); await wait(850);
 
   if (dmg > 0 && drain && src.alive && src !== t){ const h = heal(src, dmg); if (h) log(`${src.name}はHPを${h}吸収した`, 'rose'); }
@@ -1198,11 +1206,12 @@ async function strike(atk, src, t, depth = 0){
 
   if (t.hp > 0 && depth < 6){
     const ctr = faces.find(f => f.kw.counter && f.sp !== 'choose');
-    if (ctr && dmg > 0){
+    const counterable = othersClockwise(t).length > 0;   // 反撃できる相手が残っているか
+    if (ctr && dmg > 0 && counterable){
       const to = t.human ? await ask('player', { title:ctr.name, body:`受けた${dmg}ダメージを、プレイヤー1人に与える。`, players:othersClockwise(t) }) : cpuPickEnemy(t);
-      damage(to, dmg); log(`${t.name}の反撃！ ${to.name}に${dmg}ダメージ`, 'hit'); render(); await wait(700);
+      damage(to, dmg); emit('counter', { p:t, to, face:ctr, dmg }); log(`${t.name}の反撃！ ${to.name}に${dmg}ダメージ`, 'hit'); render(); await wait(700);
     }
-    if (d.mode === 'counter' && dmg > 0){
+    if (d.mode === 'counter' && dmg > 0 && counterable){
       const to = t.human ? await ask('player', { title:'反撃', body:`${dmg * 2}ダメージ（〔無〕・防御可能）を与える相手を選ぶ。`, players:othersClockwise(t) }) : cpuPickEnemy(t);
       await settle();
       await strike({ name:'反撃', power:dmg * 2, el:'none', range:{ kind:'single' }, faces:[] }, t, to, depth + 1);
@@ -1259,6 +1268,7 @@ async function die(p){
   const amulet = p.hand.find(c => faceFor(p, c).sp === 'amulet');
   if (amulet){
     takeFromHand(p, [amulet]); G.removed.push(amulet);
+    emit('amulet', { p, face:amulet.def.top });
     p.hp = 10; fx(p, '+10', 'heal');
     log(`${p.name}の太陽のお守りが輝いた！ HP10で踏みとどまる`, 'good');
     render(); await wait(800);
@@ -1273,6 +1283,7 @@ async function die(p){
   if (bow){
     // 昇天弓は手札にあれば必ず撃たれる（サキュバスの昇天でゲームが終わる場合も撃ち切る）
     log(`${p.name}の昇天弓が放たれる！`, 'hit');
+    emit('bowfire', { p, face:bow.def.top });
     const atk = { name:'昇天弓', power:30, el:'none', range:{ kind:'random', set:['B', 'D'] }, faces:[bow.def.top] };
     G.bowFiring++;
     try {
@@ -1309,6 +1320,7 @@ async function finishGame(){
     p.revealed = true;
   });
   G.result = { reason, text, gain };
+  emit('end', { reason, gain });
   log(text, 'turn');
   UI.mode = 'wait'; render();
   await ask('result');

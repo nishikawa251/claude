@@ -308,7 +308,8 @@ table.score td.num{text-align:right}
 'use strict';
 /* ================================================================
    カードリスト
-   GFカードシート【印刷】260714 _120枚Ver の A〜V 列をそのまま貼ったもの。
+   GFカードシート【印刷】260714 _120枚Ver の A〜V 列をもとに、強化案と回復カードの範囲変更を反映したもの
+   （Googleドライブの「GFカードシート【強化版】260927 _120枚Ver」と同じ内容）。
    シートで行をコピーしてこの中に貼り替えれば、カードを更新できる。
    ================================================================ */
 const CARD_TSV = `
@@ -395,9 +396,9 @@ TRUE	FALSE	72	☆, ▲	＜稲妻＞	全体	〔雷〕	5	-	Ba	C	HP-生存✕1	-
 TRUE	FALSE	73	☆, ▲	＜雷霆＞	全体	〔雷〕	9	-	Ba	D	HP-生存✕3	-
 TRUE	FALSE	74	☆, ○	＜乱気流＞	単体	〔無〕	-	-	Ba	A	HP-5	《反射》☆魔法による攻撃を相手に跳ね返す。
 TRUE	FALSE	75	☆, ○	＜石壁＞	単体	〔無〕	-	-	Ba	A	HP-5	《無効》〔無〕属性による攻撃を打ち消す。
-TRUE	FALSE	76	△	ハートのせいすい	単体	〔無〕	-	-	Ba	B	-	HPを10回復する。
-TRUE	FALSE	77	△	ハートのせいすい	単体	〔無〕	-	-	Ba	B	-	HPを10回復する。
-TRUE	FALSE	78	△	天の川のおいしい水	単体	〔無〕	-	-	Ba	C	-	HPを15回復する。
+TRUE	FALSE	76	△	ハートのせいすい	自分	〔無〕	-	-	Ba	B	-	HPを10回復する。
+TRUE	FALSE	77	△	ハートのせいすい	自分	〔無〕	-	-	Ba	B	-	HPを10回復する。
+TRUE	FALSE	78	△	天の川のおいしい水	自分	〔無〕	-	-	Ba	C	-	HPを15回復する。
 TRUE	FALSE	79	△	ソーサリーリング	単体	〔無〕	-	-	Ba	C	-	《活力》続けてもう1枚☆カードを出しても良い。このターン中、魔法を消費HP無しで使える。
 TRUE	FALSE	80	△	ドキドキなみだ	単体	〔無〕	-	-	1st	D	-	"対象を1人選ぶ。対象は山札の上からカードを1枚表にする。
 B・D：HPを10回復する。／A・C・E：HPを10減らす。これは防御できない。"
@@ -473,7 +474,7 @@ TRUE	FALSE	114	○	ビッグシールド	単体	〔無〕	-	0	1st	E	-	《無効�
 TRUE	FALSE	115	☆, ▲	＜灼熱＞	C, D, E	〔火〕	11	-	1st	A	HP-3	-		♥, ☆, ▲	《快楽の炎》	A, B, C	〔火〕	13	-	HP-3	-
 TRUE	FALSE	116	☆, ▲	＜雪崩＞	単体	〔水〕	14	-	1st	B	HP-4	-		♥, ☆, ▲	《水攻めの悦》	単体	〔水〕	13	-	HP-3	-
 TRUE	FALSE	117	☆, ▲	＜大嵐＞	全体	〔雷〕	6	-	1st	C	HP-生存✕1	-		♥, ☆, ▲	《電気ショック》	D, E	〔雷〕	20	-	HP-3	この攻撃で発生したダメージで、サキュバスは《吸収》による回復をしない。
-TRUE	FALSE	118	△	最強のおいしい水	単体	〔無〕	-	-	Ba	E	-	HPを20回復する。		♥, △	サキュバスポーション	単体	〔無〕	-	-	-	"HPを20回復する。
+TRUE	FALSE	118	△	最強のおいしい水	自分	〔無〕	-	-	Ba	E	-	HPを20回復する。		♥, △	サキュバスポーション	自分	〔無〕	-	-	-	"HPを20回復する。
 その後、続けてもう1枚カードをプレイしても良い。"
 TRUE	FALSE	119	○	にじのカーテン	単体	〔無〕	-	0	Ba	E	-	《除去》受けている攻撃を〔無〕属性にする。		♥, ○	「どれにしようかな～♥」	単体	〔無〕	-	-	-	"以下の効果から選ぶ。
 ・《反射》☆魔法
@@ -947,7 +948,7 @@ function targetKind(faces){
   const f0 = faces[0], last = faces[faces.length - 1];
   if (f0.isAtk) return last.range.kind === 'single' ? 'other' : 'none';
   if (['donation', 'peek', 'broom'].includes(f0.sp)) return 'other';
-  if (f0.sp === 'tears' || f0.kw.heal) return 'any';
+  if (f0.sp === 'tears') return 'any';   // 回復カードは自分にだけ使える（対象を選ばない）
   return 'none';
 }
 
@@ -1669,6 +1670,7 @@ function faceText(f){
   if (f.atk !== null) parts.push(`攻撃${f.atk}`);
   if (f.def !== null) parts.push(`防御${f.def}`);
   if (f.isAtk) parts.push(`範囲：${rangeName(f.range)}`);
+  else if (f.range.kind === 'self') parts.push('範囲：自分だけ');
   if (f.cost) parts.push(`コスト：HP${f.cost.hp ?? `−生存人数×${f.cost.perAlive}`}`);
   return parts.join('　') + (f.text ? `\n${f.text}` : '');
 }
@@ -1681,9 +1683,9 @@ function chip(f){ return `<span class="chip el-${f.el} ${f.isHeart ? 'heart' : '
 const faceSrc = (c, side) => `img/face/${c.key}_${side}.jpg`;
 const artSrc = (c, side) => `img/chara/${c.key}_${side}.jpg`;
 const cardSrc = def => `img/cards/${String(def.id).padStart(3, '0')}.jpg`;
-// 強化案（sim/patches/buff2.json）で数値や効果を変えたカード。実物カードの画像は変更前のまま
-const BUFFED_IDS = new Set([1, 2, 3, 4, 5, 6, 8, 12, 13, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33, 37, 38, 44, 45, 68, 70, 72, 96, 97, 115, 116, 117]);
-const zoomNote = src => { const m = /img\/cards\/(\d+)\.jpg$/.exec(src || ''); return m && BUFFED_IDS.has(Number(m[1])) ? '<p class="zoomnote">このカードは強化案で数値・効果を変えています。画像は変更前のもので、ゲームでは画面の説明文の値を使います。</p>' : ''; };
+// 強化案（sim/patches/buff2.json）と回復カードの範囲変更で、シートから値を変えたカード。実物カードの画像は変更前のまま
+const BUFFED_IDS = new Set([1, 2, 3, 4, 5, 6, 8, 12, 13, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33, 37, 38, 44, 45, 68, 70, 72, 76, 77, 78, 96, 97, 115, 116, 117, 118]);
+const zoomNote = src => { const m = /img\/cards\/(\d+)\.jpg$/.exec(src || ''); return m && BUFFED_IDS.has(Number(m[1])) ? '<p class="zoomnote">このカードは数値・範囲・効果を変更しています。画像は変更前のもので、ゲームでは画面の説明文の値を使います。</p>' : ''; };
 function portrait(c, side){ return `<span class="gem ${side === 'oni' ? 'oni' : ''}" style="--gem:${c.gem}">${c.glyph}<img src="${faceSrc(c, side)}" alt="" onerror="this.remove()"></span>`; }
 function gem(p){ return portrait(p.char, isSucc(p) ? 'oni' : 'hito'); }
 function roleBadge(p, viewer){
@@ -1989,7 +1991,7 @@ function rulesHTML(){
       <li>《反射》《無効》《除去》や「立場をわからせる」は、効果が働く攻撃なら属性に関係なく出せる。</li>
       <li>《追撃》で重ねた杖の「属性を変えてもよい」は、常に変える。</li>
       <li>昇天はダメージを受けた時点ですぐに処理する。</li>
-      <li>回復カード（単体）は自分にもほかの人にも使える。</li>
+      <li>回復カードは自分にだけ使える。</li>
       <li>仮ルール：何もしないときはパスでき、そのとき手札を1枚捨ててもよい（手札が回らなくなるのを防ぐため）。</li>
     </ul>
     <div class="row"><button type="button" class="btn" data-closerules="1">閉じる</button></div></div>`;

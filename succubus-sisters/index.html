@@ -573,6 +573,7 @@ function parseKw(t){
   if (/《除去》/.test(t)) k.remove = true;
   if (/《反撃》/.test(t)) k.counter = /受けたダメージ\}×2/.test(t) ? 2 : 1;
   if (/《活力》/.test(t)) k.vigor = true;
+  if (/防御に使ったら、?カードを1枚引く/.test(t)) k.drawOnDef = true;
   const ce = t.match(/属性を(〔.〕)に変えてもよい/); if (ce) k.changeEl = EL_KEY[ce[1]];
   const hm = t.match(/HPを(\d+)回復する/); if (hm) k.heal = +hm[1];
   if (/続けてもう1枚☆?カードを/.test(t)) k.extra = true;
@@ -1192,6 +1193,7 @@ async function strike(atk, src, t, depth = 0){
   takeFromHand(t, d.cards);
   d.cards.forEach(c => faceFor(t, c).isMagic ? t.field.push(c) : G.trash.push(c));
   G.stage.def = faces;
+  if (faces.some(f => f.kw.drawOnDef)) draw(t, faces.filter(f => f.kw.drawOnDef).length);
   if (faces.length) log(`${t.name}は${faces.map(f => f.name).join('・')}で防御${d.mode ? `（${{ reflect:'反射', remove:'除去', counter:'反撃' }[d.mode]}）` : ''}`);
 
   let el = atk.el;

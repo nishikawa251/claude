@@ -1,7 +1,10 @@
 // サキュバスシスターズ：CPU同士の自動対戦で、サキュバス能力とカードの強さを集計する
 //
 // 使い方（Playwright が入っている環境で）
-//   node sim/run.js [1キャラ×1人数あたりの試合数=40] [出力先=sim/result.json]
+//   node sim/run.js [1キャラ×1人数あたりの試合数=40] [出力先=sim/result.json] [カード差し替えJSON]
+//
+// カード差し替えJSON（例：sim/patches/buff1.json）を渡すと、カードの数値や効果文を書き換えた状態で回す。
+//   [{ "ids":[1,2], "face":"top", "set":{ "atk":6, "cost":"HP-3", "text":"《追撃》続けてもう1枚▲カードを出しても良い。" } }]
 //
 // 13キャラ＋「能力なし（比較用）」を、3〜6人それぞれで同じ試合数ずつサキュバスにして対戦させる。
 // 画面の描画と待ち時間を止め、全員をCPUにして index.html のゲーム処理をそのまま動かす。
@@ -12,6 +15,7 @@ try { playwright = require('playwright'); } catch { playwright = require('/opt/n
 
 const PER = Number(process.argv[2] || 40);
 const OUT = process.argv[3] || path.join(__dirname, 'result.json');
+const PATCH = process.argv[4] ? JSON.parse(fs.readFileSync(process.argv[4], 'utf8')) : [];
 const PAGE = 'file://' + path.join(__dirname, '..', 'index.html');
 
 (async () => {
@@ -23,7 +27,22 @@ const PAGE = 'file://' + path.join(__dirname, '..', 'index.html');
   await page.route('**fonts.g**', r => r.abort());
   await page.goto(PAGE);
 
-  const result = await page.evaluate(async PER => {
+  const result = await page.evaluate(async ([PER, PATCH]) => {
+    // カードの差し替え（面ごと）
+    for (const pt of PATCH){
+      for (const d of CARD_DEFS.filter(d => pt.ids.includes(d.id))){
+        const f = d[pt.face || 'top'];
+        if (!f) continue;
+        const st = pt.set;
+        if ('atk' in st) f.atk = st.atk;
+        if ('def' in st) f.def = st.def;
+        if ('el' in st) f.el = EL_KEY[st.el] || st.el;
+        if ('range' in st) f.range = parseRange(st.range);
+        if ('cost' in st) f.cost = parseCost(st.cost);
+        if ('text' in st){ f.text = st.text; f.kw = parseKw(st.text); }
+        f.isDef = f.marks.includes('○') || f.def !== null;
+      }
+    }
     // 描画と待ち時間を止める
     window.render = () => {};
     window.fx = () => {};
@@ -118,7 +137,7 @@ const PAGE = 'file://' + path.join(__dirname, '..', 'index.html');
 
     return { per:PER, ms, games, stuck, cards:Object.values(cards), baseline:{ sister:base('sister'), succubus:base('succubus'), fallen:base('fallen') },
       chars:SUCC_CHARS.map(c => ({ key:c.key, name:c.name, text:c.text, common:c.common || COMMON_SUCC })) };
-  }, PER);
+  }, [PER, PATCH]);
 
   fs.writeFileSync(OUT, JSON.stringify({ ...result, errors }, null, 1));
   console.log(`games=${result.games.length} time=${(result.ms / 1000).toFixed(1)}s errors=${errors.length} -> ${OUT}`);

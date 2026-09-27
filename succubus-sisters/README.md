@@ -70,6 +70,13 @@ node sim/run.js 1000      # 13キャラ＋能力なし × 3〜6人 × 1000戦（
 python3 sim/report.py     # balance.html と CSV を作る
 ```
 
+弱いカードの強化案は `proposal.html`。変更内容は `sim/patches/buff2.json` にあり、ゲーム本体のカードはまだ変えていない。差し替えた状態で回すには次のようにする。
+
+```
+node sim/run.js 1000 /tmp/buff2.json sim/patches/buff2.json
+python3 sim/proposal.py sim/patches/buff2.json sim/result.json /tmp/buff2.json proposal.html
+```
+
 ## 構成
 
 `index.html` 一枚です。主な関数：

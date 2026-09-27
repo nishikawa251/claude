@@ -3,7 +3,7 @@
 // 使い方（Playwright が入っている環境で）
 //   node sim/run.js [1キャラ×1人数あたりの試合数=40] [出力先=sim/result.json]
 //
-// 13キャラ＋「能力なし（比較用）」を、4〜8人それぞれで同じ試合数ずつサキュバスにして対戦させる。
+// 13キャラ＋「能力なし（比較用）」を、3〜6人それぞれで同じ試合数ずつサキュバスにして対戦させる。
 // 画面の描画と待ち時間を止め、全員をCPUにして index.html のゲーム処理をそのまま動かす。
 const path = require('path');
 const fs = require('fs');
@@ -107,7 +107,7 @@ const PAGE = 'file://' + path.join(__dirname, '..', 'index.html');
     });
 
     const t0 = performance.now();
-    for (let n = 4; n <= 8; n++)
+    for (let n = 3; n <= 6; n++)
       for (const sc of SUCC_CHARS)
         for (let k = 0; k < PER; k++) await runOne(n, sc);
     const ms = performance.now() - t0;

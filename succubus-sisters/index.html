@@ -491,6 +491,8 @@ const EL_KEY = { '〔無〕':'none', '〔火〕':'fire', '〔水〕':'water', '�
 const EL = { none:'無', fire:'火', water:'水', thunder:'雷' };
 const ROLE = { sister:'シスター', succubus:'サキュバス', fallen:'堕天使' };
 const HP_START = 30, HP_CAP = 40, HAND_BASE = 6, GAMES = 3, ROUND_LIMIT = 40;
+// 堕天使の人数：3人はなし、4〜6人は1人
+const fallenCount = n => n >= 4 ? 1 : 0;
 
 // 名前で決まる固有効果（キーワードだけでは表せないもの）
 const SPECIAL = {
@@ -510,16 +512,16 @@ const JUDGE = {
 
 const COMMON_SUCC = '手札上限＋1。全ての攻撃は《吸収》を持つ。';
 const CHARACTERS = [
-  { key:'kagiko',   name:'赤鬼 カギコ',       short:'カギコ',   glyph:'鬼', gem:'#ff6b6b', text:'［攻撃時］自分のすべての攻撃に＋5ダメージ。自分のすべての攻撃は〔無〕属性になる。' },
-  { key:'botan',    name:'首塚 ボタン',       short:'ボタン',   glyph:'牡', gem:'#ffa24a', text:'［攻撃時］自分のすべての〔火〕〔水〕〔雷〕属性攻撃に＋3ダメージ。' },
+  { key:'kagiko',   name:'赤鬼 カギコ',       short:'カギコ',   glyph:'鬼', gem:'#ff6b6b', text:'［攻撃時］自分のすべての〔無〕属性攻撃に＋7ダメージ。' },
+  { key:'botan',    name:'首塚 ボタン',       short:'ボタン',   glyph:'牡', gem:'#ffa24a', text:'［ターン開始時］手札補充の前に、手札を1枚まで捨てても良い。［攻撃時］自分のすべての〔火〕〔水〕〔雷〕属性攻撃に＋3ダメージ。' },
   { key:'chinon',   name:'悪亜 チノン',       short:'チノン',   glyph:'悪', gem:'#8f80ff', text:'［防御時］自分が受ける全ての攻撃を−3ダメージ。※HPコストは減少しない。' },
-  { key:'chiamo',   name:'最愛 チアモ',       short:'チアモ',   glyph:'愛', gem:'#ff86cf', text:'［防御時］のぞむなら、山札を1枚めくる。手札から、めくったカードと同じトリガーを持つカードを1枚以上捨てた時、受けた攻撃を《反射》する。' },
+  { key:'chiamo',   name:'最愛 チアモ',       short:'チアモ',   glyph:'愛', gem:'#ff86cf', text:'［攻撃時］のぞむなら、手札から1枚捨てる。その後山札を1枚めくり、そのカードが手札から捨てたカードと同じトリガーを持つなら、受けた攻撃ダメージを2倍にする。' },
   { key:'miyomi',   name:'不死 ミヨミ',       short:'ミヨミ',   glyph:'死', gem:'#a4adc2', text:'手札上限をさらに＋1。' },
   { key:'malariya', name:'マラリヤ',          short:'マラリヤ', glyph:'瘴', gem:'#79d279', text:'［防御時］手札から▲攻撃カードを2枚捨てるなら、《無効》：☆魔法。他プレイヤーの場に出ている☆魔法を、自分の場にあるかのように使用しても良い。' },
   { key:'joka',     name:'華我錠 ジョウカ',   short:'ジョウカ', glyph:'錠', gem:'#ebc84f', text:'［攻撃時］手札を1枚捨てるなら、自分の攻撃に＋10ダメージ。' },
   { key:'miroku',   name:'骸雷 ミロク',       short:'ミロク',   glyph:'骸', gem:'#ffe277', text:'［攻撃時］自分のすべての攻撃を−5ダメージ。すべての攻撃の対象は全体になる。' },
   { key:'kureha',   name:'紅刃',              short:'紅刃',     glyph:'紅', gem:'#e6475b', text:'［攻撃時］手札を3枚捨てるなら、このターンのすべての攻撃は〔火〕属性になる。' },
-  { key:'kururu',   name:'痕部 クルル',       short:'クルル',   glyph:'痕', gem:'#b98aff', common:'手札上限は12枚になる。（このキャラは《吸収》を持たない）', text:'［顕現時］HP修正を「40」にする。このプレイヤーはドローフェイズをスキップする。攻撃ダメージを受けるたび、山札からカードを1枚引く。' },
+  { key:'kururu',   name:'痕部 クルル',       short:'クルル',   glyph:'痕', gem:'#b98aff', common:'手札上限は12枚になる。全ての攻撃は《吸収》を持つ。', text:'［顕現時］HP修正を「40」にする。このプレイヤーはドローフェイズをスキップする。攻撃ダメージを受けるたび、山札からカードを1枚引く。' },
   { key:'tsubaki',  name:'首塚 ツバキ',       short:'ツバキ',   glyph:'椿', gem:'#ff7a95', text:'［ターン開始時］手札補充の前に、手札を1枚まで捨てても良い。［防御時］自分が受ける全ての〔火〕〔水〕〔雷〕属性の攻撃を−3ダメージ。' },
   { key:'pine',     name:'パイン',            short:'パイン',   glyph:'葉', gem:'#84e3bb', text:'［ターン開始時］HPを10回復する。［防御時］受けるダメージをピッタリ0にできた時、カードを1枚引く。' },
   { key:'jasui',    name:'天獄焉魔 ジャスイ', short:'ジャスイ', glyph:'獄', gem:'#6a78ff', text:'［ターン開始時］手札補充の前に、山札の一番上のカードを1枚まで見て、のぞむなら捨てても良い。［ターン開始時］手札を2枚捨て、捨て札にある、前の手番プレイヤーが使用したカードを1枚取得する。' },
@@ -652,7 +654,7 @@ function nextGame(){
   gameId++;
   M.game++;
   const n = M.players.length;
-  const roles = ['succubus', ...Array(n >= 7 ? 2 : n >= 5 ? 1 : 0).fill('fallen')];
+  const roles = ['succubus', ...Array(fallenCount(n)).fill('fallen')];
   while (roles.length < n) roles.push('sister');
   shuffle(roles);
   const deck = shuffle(CARD_DEFS.map(def => ({ uid:++uidSeq, def })));
@@ -674,7 +676,7 @@ function nextGame(){
 
 function roleIntro(p){
   const n = G.players.length;
-  const fallenN = n >= 7 ? 2 : n >= 5 ? 1 : 0;
+  const fallenN = fallenCount(n);
   const cast = `この戦いはサキュバス1人${fallenN ? `・堕天使${fallenN}人` : ''}・シスター${n - 1 - fallenN}人。`;
   const goal = {
     sister:'サキュバスを昇天させればシスター陣営の勝ち。誰がサキュバスかはまだわからない。',
@@ -819,7 +821,7 @@ async function handleConfessions(){
   for (const f of G.players.filter(p => p.role === 'fallen' && p.alive && !p.revealed)){
     const yes = f.human
       ? await ask('option', { title:'告解', body:'サキュバスが顕現した。あなたも堕天使として正体を明かしますか？ 明かすと、手札をサキュバスに渡す【供与】ができるようになる。', options:[{ label:'告解する', value:true, cls:'' }, { label:'黙っている', value:false, cls:'sub' }] })
-      : Math.random() < 0.65;
+      : f.hand.some(c => c.def.heart) || Math.random() < 0.65;
     if (!yes) continue;
     reveal(f, '告解。');
     render(); await wait(600);
@@ -837,7 +839,10 @@ async function doGift(p, optional){
   if (p.human){
     const r = await ask('cards', { title:'供与', body:`${succ.name}（サキュバス）に渡すカードを1枚選ぶ。${optional ? '渡さないなら選ばずに決定。' : ''}`, cards:p.hand, owner:p, min:optional ? 0 : 1, max:1 });
     pick = r[0];
-  } else pick = p.hand.slice().sort((a, b) => cardValue(succ, b) - cardValue(succ, a))[0];
+  } else {
+    const hearts = p.hand.filter(c => c.def.heart);   // ♥カードを優先して渡す
+    pick = (hearts.length ? hearts : p.hand).slice().sort((a, b) => cardValue(succ, b) - cardValue(succ, a))[0];
+  }
   if (!pick) return;
   takeFromHand(p, [pick]); succ.hand.push(pick);
   log(`${p.name}は${succ.name}にカードを1枚供与した`, 'rose');
@@ -849,9 +854,9 @@ async function doGift(p, optional){
 async function turnStartAbilities(p){
   const k = p.char.key;
   if (k === 'pine'){ const h = heal(p, 10); if (h) log(`${p.name}はHPを${h}回復（パイン）`, 'good'); render(); }
-  if (k === 'tsubaki' && p.hand.length){
+  if ((k === 'tsubaki' || k === 'botan') && p.hand.length){
     const pick = p.human
-      ? await ask('cards', { title:'ツバキの能力', body:'手札補充の前に、手札を1枚まで捨てられる。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:1 })
+      ? await ask('cards', { title:`${p.char.short}の能力`, body:'手札補充の前に、手札を1枚まで捨てられる。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:1 })
       : (p.hand.length >= handMax(p) ? [lowest(p, p.hand)] : []);
     discard(p, pick);
   }
@@ -1043,8 +1048,6 @@ async function doAttack(p, cards, faces, target){
 async function attackAbilities(p, atk){
   if (!isSucc(p)) return;
   const k = p.char.key;
-  if (k === 'kagiko'){ atk.power += 5; atk.el = 'none'; }
-  if (k === 'botan' && atk.el !== 'none') atk.power += 3;
   if (k === 'miroku'){ atk.power = Math.max(0, atk.power - 5); atk.range = { kind:'all' }; }
   if (k === 'kureha'){
     if (!G.ts.kurehaFire && atk.el !== 'fire' && p.hand.length >= 3){
@@ -1054,6 +1057,20 @@ async function attackAbilities(p, atk){
       if (pick.length === 3){ discard(p, pick); G.ts.kurehaFire = true; }
     }
     if (G.ts.kurehaFire) atk.el = 'fire';
+  }
+  if (k === 'kagiko' && atk.el === 'none') atk.power += 7;
+  if (k === 'botan' && atk.el !== 'none') atk.power += 3;
+  if (k === 'chiamo' && p.hand.length && G.deck.length){
+    const pick = p.human
+      ? await ask('cards', { title:'チアモの能力', body:'手札を1枚捨てて山札を1枚めくる。同じトリガーなら、この攻撃で受けるダメージが2倍になる。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:1 })
+      : (atk.power >= 6 && cardValue(p, lowest(p, p.hand)) < 7 ? [lowest(p, p.hand)] : []);
+    if (pick.length){
+      discard(p, pick);
+      const c = flip();
+      const hit = c && c.def.trig === pick[0].def.trig;
+      log(`${p.name}は〔${pick[0].def.trig}〕を捨てて山札をめくった：${c ? `${c.def.top.name}〔${c.def.trig}〕` : 'なし'} → ${hit ? 'ダメージ2倍！' : '不一致'}`, hit ? 'rose' : '');
+      if (hit) atk.dmgMul = 2;
+    }
   }
   if (k === 'joka' && p.hand.length){
     const pick = p.human
@@ -1146,7 +1163,6 @@ async function strike(atk, src, t, depth = 0){
   if (t !== src && atk.range.kind === 'single') t.sus[src.i] = (t.sus[src.i] || 0) + 1;
   render(); await wait(t.human ? 300 : 750);
 
-  if (isSucc(t) && t.char.key === 'chiamo' && t !== src && await chiamoAbility(t, atk)){ await reflectTo(atk, t, src, depth); return; }
   if (isSucc(t) && t.char.key === 'malariya' && atk.magic && await malariyaAbility(t, atk)){
     G.stage.result = { text:'無効！', cls:'ok' }; log(`${t.name}は魔法を無効にした（マラリヤ）`, 'good'); render(); await wait(700); return;
   }
@@ -1185,7 +1201,8 @@ async function strike(atk, src, t, depth = 0){
   let dmg = nullified ? 0 : Math.max(0, atk.power - defSum);
   if (!nullified && isSucc(t) && t.char.key === 'chinon') dmg = Math.max(0, dmg - 3);
   if (!nullified && isSucc(t) && t.char.key === 'tsubaki' && el !== 'none') dmg = Math.max(0, dmg - 3);
-  const drain = atk.cardDrain || (isSucc(src) && !atk.noAbsorb && src.char.key !== 'kururu');
+  if (atk.dmgMul && dmg > 0) dmg *= atk.dmgMul;
+  const drain = atk.cardDrain || (isSucc(src) && !atk.noAbsorb);
 
   if (atk.instakill && dmg > 0){
     const lost = t.hp; t.hp = 0; t.hitAt = Date.now(); fx(t, '即死', 'hp');
@@ -1229,25 +1246,6 @@ async function reflectTo(atk, from, to, depth){
   await strike({ ...atk, noHeartDef:false, range:{ kind:'single' } }, from, to, depth + 1);
 }
 
-async function chiamoAbility(t, atk){
-  if (!G.deck.length) return false;
-  const go = t.human
-    ? await ask('option', { title:'チアモの能力', body:'山札を1枚めくり、同じトリガーのカードを手札から1枚以上捨てれば、この攻撃を《反射》できる。', options:[{ label:'めくる', value:true, cls:'' }, { label:'めくらない', value:false, cls:'sub' }] })
-    : atk.power >= 8 || atk.instakill;
-  if (!go) return false;
-  const c = flip();
-  log(`${t.name}は山札をめくった：${c.def.top.name}〔${c.def.trig}〕`);
-  const match = t.hand.filter(h => h.def.trig === c.def.trig);
-  if (!match.length){ log('同じトリガーのカードがない'); render(); await wait(500); return false; }
-  const pick = t.human
-    ? await ask('cards', { title:'チアモの能力', body:`〔${c.def.trig}〕のカードを1枚以上捨てると反射する。やめるなら選ばずに決定。`, cards:match, owner:t, min:0, max:match.length })
-    : [lowest(t, match)];
-  if (!pick.length) return false;
-  discard(t, pick);
-  G.stage.result = { text:'反射！', cls:'gold' }; log(`${t.name}は攻撃を跳ね返した（チアモ）`, 'good');
-  render(); await wait(700);
-  return true;
-}
 async function malariyaAbility(t, atk){
   const atks = t.hand.filter(c => faceFor(t, c).isAtk);
   if (atks.length < 2) return false;
@@ -1332,6 +1330,11 @@ async function finishGame(){
    CPU
    ================================================================ */
 function cardValue(p, c){
+  // 堕天使にとって♥カードはサキュバスに渡すための札（手放さない）
+  const keep = p.role === 'fallen' && c.def.heart && G.players.some(q => q.role === 'succubus' && q.alive) ? 15 : 0;
+  return keep + baseValue(p, c);
+}
+function baseValue(p, c){
   const f = faceFor(p, c);
   if (f.isJudge) return p.role === 'sister' ? 14 : 1;
   if (f.sp === 'amulet') return 12;
@@ -1373,7 +1376,7 @@ function wantManifest(p){
 function heartOK(p, c){
   if (!c.def.heart) return true;
   if (p.role === 'sister') return true;
-  if (p.role === 'fallen') return p.revealed;
+  if (p.role === 'fallen') return p.revealed && !G.players.some(q => q.role === 'succubus' && q.alive);
   return p.revealed || p.hp <= 20 || Math.random() < 0.25;
 }
 
@@ -1385,7 +1388,7 @@ function cpuPlan(p, magicOnly){
 
   if (!magicOnly && !G.ts.played && G.round > 1){
     if (wantManifest(p)) return { type:'manifest' };
-    if (!G.ts.gifted && canGift(p) && p.hand.length > 2 && Math.random() < 0.7) return { type:'gift' };
+    if (!G.ts.gifted && canGift(p) && (p.hand.some(c => c.def.heart) || (p.hand.length > 2 && Math.random() < 0.7))) return { type:'gift' };
   }
   // 回復
   if (p.hp <= 15){
@@ -1477,6 +1480,7 @@ function cpuDefend(t, atk, src){
   return out([...prefix, ...chosen]);
 }
 function heartOKDef(t, c){
+  if (c.def.heart && t.role === 'fallen' && G.players.some(q => q.role === 'succubus' && q.alive)) return false;   // 堕天使は♥カードを供与用に取っておく
   if (!c.def.heart || t.revealed) return true;
   if (t.role === 'sister') return true;
   if (t.role === 'succubus') return G.round > 1 && (t.hp <= 18 || Math.random() < 0.3);
@@ -1761,7 +1765,7 @@ function drawArrows(){
 
 function renderSetup(){
   const s = UI.setup;
-  const n = s.count, fallenN = n >= 7 ? 2 : n >= 5 ? 1 : 0;
+  const n = s.count, fallenN = fallenCount(n);
   $('#setup').innerHTML = `
     <div class="hero">
       <span class="eyebrow">異端審問バトルロイヤル</span>
@@ -1769,7 +1773,7 @@ function renderSetup(){
       <p>神託でシスターとサキュバスに分かれ、正体を隠したまま武器・盾・魔法のカードで戦う。サキュバスを見つけて昇天させるか、最後の1人まで生き残るか。3戦して勝利点を競う。</p>
     </div>
     <div class="sect"><h2>人数</h2>
-      <div class="seg">${[4, 5, 6, 7, 8].map(k => `<button type="button" data-count="${k}" class="${k === n ? 'on' : ''}">${k}人</button>`).join('')}</div>
+      <div class="seg">${[3, 4, 5, 6].map(k => `<button type="button" data-count="${k}" class="${k === n ? 'on' : ''}">${k}人</button>`).join('')}</div>
       <div class="seg-note">あなた＋CPU${n - 1}人。神託はサキュバス1${fallenN ? `・堕天使${fallenN}` : ''}・シスター${n - 1 - fallenN}。</div>
     </div>
     <div class="sect"><h2>あなたのキャラクター</h2>
@@ -1934,7 +1938,7 @@ function rulesHTML(){
   return `<div class="sheet"><h2>ルール（260717版）</h2>
     <h3>勝ち方</h3>
     <ul>
-      <li>神託でサキュバス1人・シスター・堕天使（5人以上）に分かれる。自分の神託だけが見える。</li>
+      <li>神託でサキュバス1人・シスター・堕天使（4人以上で1人）に分かれる。3〜6人で遊ぶ。自分の神託だけが見える。</li>
       <li>サキュバスが昇天すればシスター陣営の勝ち。サキュバスが最後の1人になるか、生き残りがサキュバスと堕天使だけになればサキュバス陣営の勝ち。山札が尽きても終わる。</li>
       <li>3戦して勝利点の合計を競う。</li>
     </ul>
@@ -1964,7 +1968,6 @@ function rulesHTML(){
       <li>昇天はダメージを受けた時点ですぐに処理する。</li>
       <li>回復カード（単体）は自分にもほかの人にも使える。</li>
       <li>仮ルール：何もしないときはパスでき、そのとき手札を1枚捨ててもよい（手札が回らなくなるのを防ぐため）。</li>
-      <li>3人用の特殊ルールは未定のため、4〜8人のみ。</li>
     </ul>
     <div class="row"><button type="button" class="btn" data-closerules="1">閉じる</button></div></div>`;
 }

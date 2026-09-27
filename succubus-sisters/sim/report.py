@@ -6,6 +6,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 d = json.load(open(os.path.join(HERE, 'result.json')))
 games = d['games']
+COUNTS = sorted({g['n'] for g in games})
 N = len(games)
 esc = html.escape
 
@@ -25,7 +26,7 @@ for key, gs in by.items():
                win=w, lose=rate(gs, lambda g: g['reason'] == 'succubus'), draw=rate(gs, lambda g: g['reason'] in ('deck', 'none')),
                ci=1.96 * math.sqrt(w * (1 - w) / n), diff=w - ctl, manifest=len(man) / n,
                win_man=rate(man, lambda g: g['reason'] == 'last'), vp=sum(g['vp'] for g in gs) / n,
-               by_n={k: rate([g for g in gs if g['n'] == k], lambda g: g['reason'] == 'last') for k in range(4, 9)})
+               by_n={k: rate([g for g in gs if g['n'] == k], lambda g: g['reason'] == 'last') for k in COUNTS})
     row['tier'] = '基準' if key == 'control' else next(t for t, th in CHAR_TIERS if row['diff'] * 100 >= th)
     chars.append(row)
 chars.sort(key=lambda r: -r['win'])
@@ -49,9 +50,9 @@ cards.sort(key=lambda r: (r['effect'], -r['value']))
 # ---------------------------------------------------------------- CSV
 with open(os.path.join(HERE, 'chars.csv'), 'w', newline='', encoding='utf-8-sig') as f:
     w = csv.writer(f)
-    w.writerow(['Tier', 'キャラ', '試合数', 'サキュバス陣営の勝率', '能力なしとの差', '95%信頼区間±', '顕現率', '顕現したときの勝率', 'サキュバスの平均勝利点'] + [f'{k}人戦の勝率' for k in range(4, 9)])
+    w.writerow(['Tier', 'キャラ', '試合数', 'サキュバス陣営の勝率', '能力なしとの差', '95%信頼区間±', '顕現率', '顕現したときの勝率', 'サキュバスの平均勝利点'] + [f'{k}人戦の勝率' for k in COUNTS])
     for r in chars:
-        w.writerow([r['tier'], r['name'], r['n'], f"{r['win']:.3f}", f"{r['diff']:+.3f}", f"{r['ci']:.3f}", f"{r['manifest']:.3f}", f"{r['win_man']:.3f}", f"{r['vp']:+.2f}"] + [f"{r['by_n'][k]:.3f}" for k in range(4, 9)])
+        w.writerow([r['tier'], r['name'], r['n'], f"{r['win']:.3f}", f"{r['diff']:+.3f}", f"{r['ci']:.3f}", f"{r['manifest']:.3f}", f"{r['win_man']:.3f}", f"{r['vp']:+.2f}"] + [f"{r['by_n'][k]:.3f}" for k in COUNTS])
 with open(os.path.join(HERE, 'cards.csv'), 'w', newline='', encoding='utf-8-sig') as f:
     w = csv.writer(f)
     w.writerow(['Tier', 'カード', '種類', 'ID', '100戦あたり使用回数', '1回あたりHP価値', '与ダメージ/回', '軽減/回', '回復/回', '反撃・反射/回', 'HPコスト/回', '撃破/回', '使った側の勝率差（参考）'])
@@ -102,9 +103,9 @@ def heat(v):
     return f'style="--h:{a:.2f}"'
 count_rows = ''.join(
     f'<tr><td class="nm">{face(r["key"], r["name"], "sm")}{esc(r["name"])}</td><td><span class="tier t{r["tier"] if r["tier"] != "基準" else "X"}">{r["tier"]}</span></td>'
-    + ''.join(f'<td class="num heat" {heat(r["by_n"][k])}>{r["by_n"][k] * 100:.0f}%</td>' for k in range(4, 9))
+    + ''.join(f'<td class="num heat" {heat(r["by_n"][k])}>{r["by_n"][k] * 100:.0f}%</td>' for k in COUNTS)
     + f'<td class="num">{pct(r["manifest"])}</td><td class="num">{pct(r["win_man"])}</td><td class="num">{r["vp"]:+.2f}</td></tr>' for r in chars)
-avg_by_n = {k: rate([g for g in games if g['n'] == k], lambda g: g['reason'] == 'last') for k in range(4, 9)}
+avg_by_n = {k: rate([g for g in games if g['n'] == k], lambda g: g['reason'] == 'last') for k in COUNTS}
 
 # カード表
 def card_row(r):
@@ -124,7 +125,46 @@ def card_row(r):
 card_rows = ''.join(card_row(r) for r in cards)
 tier_count = collections.Counter(r['tier'] for r in cards)
 
-top = chars[0]; strong = [r for r in chars if r['tier'] in ('A',)]; weak = [r for r in chars if r['tier'] == 'D']
+top = chars[0]
+byname = {r['key']: r for r in chars}
+tiers_of = lambda t: [r for r in chars if r['tier'] == t]
+prev_path = os.path.join(HERE, 'prev_summary.json')
+prev = json.load(open(prev_path)) if os.path.exists(prev_path) else None
+def win_in(key, counts):
+    gs = [g for g in by[key] if g['n'] in counts]
+    return rate(gs, lambda g: g['reason'] == 'last'), len(gs)
+CHANGED = ['chiamo', 'kagiko', 'botan', 'kururu']
+compare_html = ''
+notes = []
+if prev:
+    cs = prev['counts']
+    rows = ''
+    for r in sorted(chars, key=lambda r: (r['key'] not in CHANGED, -r['win'])):
+        if r['key'] not in prev['win']: continue
+        now_w, n_now = win_in(r['key'], cs)
+        dlt = now_w - prev['win'][r['key']]
+        mark = '<span class="tier tA">変更</span>' if r['key'] in CHANGED else ''
+        rows += (f'<tr><td class="nm">{face(r["key"], r["name"], "sm")}{esc(r["name"])}</td><td>{mark}</td>'
+                 f'<td class="num">{pct(prev["win"][r["key"]])}</td><td class="num">{pct(now_w)}</td><td class="num strong">{dlt * 100:+.1f}</td></tr>')
+    compare_html = f"""<section>
+  <h2>変更前との比較</h2>
+  <p>{esc(prev['label'])}と比べた。人数の範囲が変わったので、どちらでも堕天使が1人になる{'・'.join(f'{c}人' for c in cs)}戦だけで比べている。CPUの堕天使の動き（♥カードを供与に回す）も変えたので、変更していないキャラも少し動く。</p>
+  <div class="tbl"><table><thead><tr><th>キャラ</th><th></th><th class="num">変更前</th><th class="num">変更後</th><th class="num">差（pt）</th></tr></thead><tbody>{rows}</tbody></table></div>
+</section>"""
+    ch = lambda k: (prev['win'][k], win_in(k, cs)[0])
+    a, b2 = ch('chiamo'); notes.append(('チアモは最上位から中位へ', f"{'・'.join(f'{c}人' for c in cs)}戦の勝率が {pct(a)} → {pct(b2)}。防御時の《反射》をやめ、攻撃時に1/5の確率で2倍になる能力にしたため。"))
+    ka, kb = ch('kagiko'); ku, kv = ch('kururu'); ba, bb = ch('botan')
+    notes.append(('カギコ・クルルは能力なし以上に', f"カギコ {pct(ka)} → {pct(kb)}、クルル {pct(ku)} → {pct(kv)}。ボタンは {pct(ba)} → {pct(bb)} とほぼ変わらず、ターン開始時の1枚捨ての効果は小さい。"))
+upper = tiers_of('S') + tiers_of('A')
+lower = tiers_of('D')
+bl = d['baseline']
+gap = bl['sister'] - bl['succubus']
+notes.insert(0, ('陣営の勝率はほぼ五分' if abs(gap) < 0.05 else ('シスター陣営が有利' if gap > 0 else 'サキュバス陣営が有利'),
+                 f"サキュバス陣営 {pct(bl['succubus'])}・シスター陣営 {pct(bl['sister'])}（全人数・全キャラ平均）。"))
+if upper: notes.append(('上位は' + '・'.join(esc(r['name']) for r in upper), '、'.join(f"{esc(r['name'])} {pt(r['diff'])}pt" for r in upper) + '（能力なしとの差）。'))
+if lower: notes.append(('下位は' + '・'.join(esc(r['name']) for r in lower), '、'.join(f"{esc(r['name'])} {pt(r['diff'])}pt" for r in lower) + '。能力なしとほぼ同じ。'))
+notes.append(('人数で有利不利が大きく変わる', '全キャラ平均のサキュバス陣営勝率は ' + '・'.join(f"{k}人 {pct(avg_by_n[k])}" for k in COUNTS) + '。4人戦はシスター2人に対してサキュバス＋堕天使の2対2になり、サキュバス側が有利。6人戦はシスター4人で不利。'))
+findings = ''.join(f'<li><b>{t}</b>{body}</li>' for t, body in notes)
 reasons = collections.Counter(g['reason'] for g in games)
 avg_rounds = sum(g['rounds'] for g in games) / N
 now = datetime.date.today().isoformat()
@@ -238,7 +278,7 @@ ul.plain{{margin:0;padding-left:1.2em;color:var(--ink2);max-width:72ch}} ul.plai
 <body>
 <main>
 <header>
-  <div class="eyebrow">260717基本ルール・120枚Ver</div>
+  <div class="eyebrow">260717基本ルール・120枚Ver ＋ 能力調整案（チアモ・カギコ・ボタン・クルル）・3〜6人</div>
   <h1>サキュバスシスターズ バランス調査</h1>
   <p class="lede">デジタル版のCPU同士で {N:,} 戦を回し、サキュバス能力ごとの勝率と、カード1枚ごとの働きを集計した。バランス調整の叩き台として使うための資料。</p>
   <div class="meta">
@@ -252,20 +292,17 @@ ul.plain{{margin:0;padding-left:1.2em;color:var(--ink2);max-width:72ch}} ul.plai
 
 <section>
   <h2>要点</h2>
-  <ul class="findings">
-    <li><b>{esc(top['name'])}が突出して強い</b>サキュバス陣営の勝率 {pct(top['win'])}。能力なしより {pt(top['diff'])}pt 高い。トリガーは5種類なので、手札が6〜7枚あれば同じトリガーのカードを持っている確率は74〜79%。大きな攻撃の大半を《反射》できてしまう。</li>
-    <li><b>{'・'.join(esc(r['name']) for r in strong)}も強め</b>{'、'.join(f"{esc(r['name'])} {pt(r['diff'])}pt" for r in strong)}。どちらも「毎回の攻撃・防御に効く」能力。</li>
-    <li><b>{'・'.join(esc(r['name']) for r in weak)}は能力なし以下</b>{'、'.join(f"{esc(r['name'])} {pt(r['diff'])}pt" for r in weak)}。考えられる理由：カギコは＋5の代わりに攻撃が〔無〕になり、どの盾でも防がれる。クルルは《吸収》がなくドローフェイズもないため、HP40でも削り負ける。</li>
-    <li><b>人数が増えるとサキュバスが勝てない</b>全キャラ平均の勝率は 4人 {pct(avg_by_n[4])}・5人 {pct(avg_by_n[5])}・6人 {pct(avg_by_n[6])}・7人 {pct(avg_by_n[7])}・8人 {pct(avg_by_n[8])}。8人戦は堕天使2人がいても厳しい。</li>
-  </ul>
+  <ul class="findings">{findings}</ul>
 </section>
 
 <section>
   <h2>サキュバス能力 Tier表</h2>
   <p>そのキャラがサキュバスになった試合で、サキュバス陣営が勝った割合。比較用に、共通能力（手札上限＋1・《吸収》）だけの「能力なし」も同じ条件で回した。Tierは能力なしとの差で決めている。</p>
   <div class="tiers">{tier_rows}</div>
-  <p class="note">試合数は各キャラ {len(by['control']):,} 戦。勝率の誤差（95%信頼区間）は約±1.9pt、能力なしとの差の誤差は約±2.6pt。Cに入った5人は互いの差が誤差の範囲。</p>
+  <p class="note">試合数は各キャラ {len(by['control']):,} 戦。勝率の誤差（95%信頼区間）は約±{chars[0]['ci'] * 100:.1f}pt、能力なしとの差の誤差はその約1.4倍。隣り合うキャラの差が数pt以内なら、順位は入れ替わりうる。</p>
 </section>
+
+{compare_html}
 
 <section>
   <h2>勝率と誤差の幅</h2>
@@ -275,9 +312,9 @@ ul.plain{{margin:0;padding-left:1.2em;color:var(--ink2);max-width:72ch}} ul.plai
 
 <section>
   <h2>人数別の勝率</h2>
-  <p>人数ごとに各 {d['per']:,} 戦。5人戦から堕天使が1人、7人戦から2人加わる。「顕現したときの勝率」は、サキュバスが顕現できた試合だけの勝率。</p>
+  <p>人数ごとに各 {d['per']:,} 戦。3人戦は堕天使なし、4〜6人戦は堕天使が1人。「顕現したときの勝率」は、サキュバスが顕現できた試合だけの勝率。</p>
   <div class="tbl"><table>
-    <thead><tr><th>キャラ</th><th>Tier</th>{''.join(f'<th class="num">{k}人</th>' for k in range(4, 9))}<th class="num">顕現率</th><th class="num">顕現時の勝率</th><th class="num">平均勝利点</th></tr></thead>
+    <thead><tr><th>キャラ</th><th>Tier</th>{''.join(f'<th class="num">{k}人</th>' for k in COUNTS)}<th class="num">顕現率</th><th class="num">顕現時の勝率</th><th class="num">平均勝利点</th></tr></thead>
     <tbody>{count_rows}</tbody>
   </table></div>
 </section>

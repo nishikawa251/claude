@@ -82,6 +82,7 @@ button:focus-visible{outline:2px solid var(--rose);outline-offset:2px}
 .sheet.zoom{width:min(420px,100%);align-items:center}
 .sheet.zoom img{width:100%;border-radius:12px;background:#fff}
 .zoombtn{margin-left:8px;vertical-align:baseline}
+.zoomnote{margin:8px 0 0;font-size:12px;line-height:1.5;color:var(--muted, #aaa);max-width:40ch}
 .start-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;bottom:0;z-index:5;padding-block:14px calc(12px + env(safe-area-inset-bottom, 0px));background:linear-gradient(to bottom,transparent,var(--bg) 40%)}
 
 /* players */
@@ -312,19 +313,19 @@ table.score td.num{text-align:right}
    ================================================================ */
 const CARD_TSV = `
 採用	面付済	ID	カード種	カード名(名称仮)	範囲	属性	攻撃	防御	エキスパ	トリガー	コスト	効果	→♥カード	カード種	カード名(名称仮)	範囲	属性	攻撃	防御	コスト	効果
-TRUE	FALSE	1	▲	こんぼう	単体	〔無〕	5	-	Ba	A	-
-TRUE	FALSE	2	▲	こんぼう	単体	〔無〕	5	-	Ba	A	-
-TRUE	FALSE	3	▲	どうのナイフ	単体	〔無〕	8	-	Ba	B	-
-TRUE	FALSE	4	▲	どうのナイフ	単体	〔無〕	8	-	Ba	B	-
-TRUE	FALSE	5	▲	こうてつのやり	単体	〔無〕	10	-	Ba	C	-
-TRUE	FALSE	6	▲	こうてつのやり	単体	〔無〕	10	-	Ba	C	-	-
+TRUE	FALSE	1	▲	こんぼう	単体	〔無〕	6	-	Ba	A	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	2	▲	こんぼう	単体	〔無〕	6	-	Ba	A	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	3	▲	どうのナイフ	単体	〔無〕	8	-	Ba	B	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	4	▲	どうのナイフ	単体	〔無〕	8	-	Ba	B	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	5	▲	こうてつのやり	単体	〔無〕	12	-	Ba	C	-
+TRUE	FALSE	6	▲	こうてつのやり	単体	〔無〕	12	-	Ba	C	-	-
 TRUE	FALSE	7	▲	エクスカリバー	単体	〔無〕	30	-	Ba	D	-	-
-TRUE	FALSE	8	▲, ○	いばらのムチ	単体	〔無〕	6	2	1st	A	-	-
+TRUE	FALSE	8	▲, ○	いばらのムチ	単体	〔無〕	7	4	1st	A	-	-
 TRUE	FALSE	9	▲, ○	はがねのムチ	単体	〔無〕	8	4	1st	B	-	-
 TRUE	FALSE	10	▲, ○	ローズウィップ	単体	〔無〕	10	10	1st	C	-	-
 TRUE	FALSE	11	▲	エクスカリバーのさや	単体	〔無〕	18	1	Ba	D	-	-
-TRUE	FALSE	12	▲	ゴーストソード	単体	〔無〕	8	-	Ba	E	-	《吸収》相手に与えたダメージ分、自分のHPを回復する。
-TRUE	FALSE	13	▲	ゴーストソード	単体	〔無〕	8	-	Ba	E	-	《吸収》相手に与えたダメージ分、自分のHPを回復する。
+TRUE	FALSE	12	▲	ゴーストソード	単体	〔無〕	10	-	Ba	E	-	《吸収》相手に与えたダメージ分、自分のHPを回復する。
+TRUE	FALSE	13	▲	ゴーストソード	単体	〔無〕	10	-	Ba	E	-	《吸収》相手に与えたダメージ分、自分のHPを回復する。
 TRUE	FALSE	14	▲	リアルゴーストソード	単体	〔無〕	14	-	1st	D	-	《吸収》相手に与えたダメージ分、自分のHPを回復する。
 TRUE	FALSE	15	▲	じゃしんのつるぎ	単体	〔無〕	20	-	1st	E	-	ダメージ判定後、相手に与えたダメージと同数の〔無〕ダメージを自分に与える（自分に与えるダメージは○防御カードで軽減することができない）。
 TRUE	FALSE	16	▲	どくばり	単体	〔無〕	1	-	Ba	A	-	"《即死》このカードのダメージを防御で0以下にできなかった場合、防御側のHPは0になる。
@@ -333,37 +334,37 @@ TRUE	FALSE	17	▲	どくばり	単体	〔無〕	1	-	Ba	A	-	"《即死》この�
 この攻撃にはダメージ、属性を追加できない。《追撃不可》"
 TRUE	FALSE	18	▲	アサシンダガー	単体	〔無〕	3	-	Ba	B	-	"《即死》このカードのダメージを防御で0以下にできなかった場合、防御側のHPは0になる。
 この攻撃にはダメージ、属性を追加できない。《追撃不可》"
-TRUE	FALSE	19	▲	ほのおのやいば	単体	〔火〕	4	-	Ba	C	-	-
-TRUE	FALSE	20	▲	ほのおのやいば	単体	〔火〕	4	-	Ba	C	-	-
-TRUE	FALSE	21	▲	こおりのやいば	単体	〔水〕	5	-	Ba	D	-	-
-TRUE	FALSE	22	▲	こおりのやいば	単体	〔水〕	5	-	Ba	D	-	-
-TRUE	FALSE	23	▲	いかづちのきば	単体	〔雷〕	3	-	Ba	E	-	-
-TRUE	FALSE	24	▲	いかづちのきば	単体	〔雷〕	3	-	Ba	E	-	-
-TRUE	FALSE	25	▲	ふきや	単体	〔無〕	2	-	Ba	A	-	《追撃》続けてもう1枚▲カードを出しても良い。
-TRUE	FALSE	26	▲	ふきや	単体	〔無〕	2	-	Ba	A	-	《追撃》続けてもう1枚▲カードを出しても良い。
-TRUE	FALSE	27	▲	クロスボウ	単体	〔無〕	4	-	Ba	B	-	《追撃》続けてもう1枚▲カードを出しても良い。
-TRUE	FALSE	28	▲	クロスボウ	単体	〔無〕	4	-	Ba	B	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	19	▲	ほのおのやいば	単体	〔火〕	6	-	Ba	C	-	-
+TRUE	FALSE	20	▲	ほのおのやいば	単体	〔火〕	6	-	Ba	C	-	-
+TRUE	FALSE	21	▲	こおりのやいば	単体	〔水〕	7	-	Ba	D	-	-
+TRUE	FALSE	22	▲	こおりのやいば	単体	〔水〕	7	-	Ba	D	-	-
+TRUE	FALSE	23	▲	いかづちのきば	単体	〔雷〕	6	-	Ba	E	-	-
+TRUE	FALSE	24	▲	いかづちのきば	単体	〔雷〕	6	-	Ba	E	-	-
+TRUE	FALSE	25	▲	ふきや	単体	〔無〕	5	-	Ba	A	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	26	▲	ふきや	単体	〔無〕	5	-	Ba	A	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	27	▲	クロスボウ	単体	〔無〕	8	-	Ba	B	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	28	▲	クロスボウ	単体	〔無〕	8	-	Ba	B	-	《追撃》続けてもう1枚▲カードを出しても良い。
 TRUE	FALSE	29	▲	かぜきりの弓	単体	〔無〕	8	-	Ba	C	-	《追撃》続けてもう1枚▲カードを出しても良い。
 TRUE	FALSE	30	▲	かぜきりの弓	単体	〔無〕	8	-	Ba	C	-	《追撃》続けてもう1枚▲カードを出しても良い。
-TRUE	FALSE	31	▲	マグマのつえ	単体	〔火〕	2	-	1st	A	-	"《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	31	▲	マグマのつえ	単体	〔火〕	5	-	1st	A	-	"《追撃》続けてもう1枚▲カードを出しても良い。
 攻撃の属性を〔火〕に変えてもよい。"
-TRUE	FALSE	32	▲	うみなりのつえ	単体	〔水〕	2	-	1st	B	-	"《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	32	▲	うみなりのつえ	単体	〔水〕	5	-	1st	B	-	"《追撃》続けてもう1枚▲カードを出しても良い。
 攻撃の属性を〔水〕に変えてもよい。"
-TRUE	FALSE	33	▲	いかづちのつえ	単体	〔雷〕	2	-	1st	C	-	"《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	33	▲	いかづちのつえ	単体	〔雷〕	5	-	1st	C	-	"《追撃》続けてもう1枚▲カードを出しても良い。
 攻撃の属性を〔雷〕に変えてもよい。"
 TRUE	FALSE	34	▲	ほのおのブーメラン	A, B, C	〔火〕	4	-	Ba	D	-	-
 TRUE	FALSE	35	▲	ほのおのブーメラン	A, B, C	〔火〕	4	-	Ba	D	-	-
 TRUE	FALSE	36	▲	メテオエッジ	A, E	〔火〕	10	-	Ba	A	-	-
-TRUE	FALSE	37	▲	こおりのブーメラン	B, C, D	〔水〕	3	-	Ba	E	-	-
-TRUE	FALSE	38	▲	こおりのブーメラン	B, C, D	〔水〕	3	-	Ba	E	-	-
+TRUE	FALSE	37	▲	こおりのブーメラン	B, C, D	〔水〕	5	-	Ba	E	-	-
+TRUE	FALSE	38	▲	こおりのブーメラン	B, C, D	〔水〕	5	-	Ba	E	-	-
 TRUE	FALSE	39	▲	アイスエッジ	B, C	〔水〕	9	-	Ba	B	-	-
 TRUE	FALSE	40	▲	かみなりブーメラン	C, D, E	〔雷〕	4	-	Ba	D	-	-
 TRUE	FALSE	41	▲	かみなりブーメラン	C, D, E	〔雷〕	4	-	Ba	D	-	-
 TRUE	FALSE	42	▲	サンダーエッジ	D, E	〔雷〕	11	-	Ba	C	-	-
 TRUE	FALSE	43	▲	昇天弓	単体	〔雷〕	1	-	1st	D	-	"昇天時、手札にあれば必ず出して使用する。
 その場合、攻撃効果は「【ランダム：B D】〔無〕30ダメージ」になる。"
-TRUE	FALSE	44	○	なべのふた	単体	〔無〕	-	1	Ba	A	-	-
-TRUE	FALSE	45	○	なべのふた	単体	〔無〕	-	1	Ba	A	-	-
+TRUE	FALSE	44	○	なべのふた	単体	〔無〕	-	2	Ba	A	-	防御に使ったら、カードを1枚引く。
+TRUE	FALSE	45	○	なべのふた	単体	〔無〕	-	2	Ba	A	-	防御に使ったら、カードを1枚引く。
 TRUE	FALSE	46	○	かわのたて	単体	〔無〕	-	3	Ba	B	-	-
 TRUE	FALSE	47	○	かわのたて	単体	〔無〕	-	3	Ba	B	-	-
 TRUE	FALSE	48	○	せいどうのたて	単体	〔無〕	-	5	Ba	C	-	-
@@ -386,11 +387,11 @@ TRUE	FALSE	64	○	ふうまのたて	単体	〔雷〕	-	4	Ba	C	-	-
 TRUE	FALSE	65	○	ふうまのたて	単体	〔雷〕	-	4	Ba	C	-	-
 TRUE	FALSE	66	○	ルーンバックラー	単体	〔雷〕	-	11	1st	E	-	-
 TRUE	FALSE	67	○	ミラーフォース	単体	〔無〕	-	-	Ba	C	-	《全反射》すべての行動を相手に跳ね返す。
-TRUE	FALSE	68	☆, ▲	＜火の玉＞	A, B, C	〔火〕	5	-	Ba	D	HP-2	-
+TRUE	FALSE	68	☆, ▲	＜火の玉＞	A, B, C	〔火〕	7	-	Ba	D	HP-2	-
 TRUE	FALSE	69	☆, ▲	＜マグマ＞	D, E	〔火〕	14	-	Ba	E	HP-4	-
-TRUE	FALSE	70	☆, ▲	＜氷の柱＞	単体	〔水〕	6	-	Ba	A	HP-3	-
+TRUE	FALSE	70	☆, ▲	＜氷の柱＞	単体	〔水〕	9	-	Ba	A	HP-2	-
 TRUE	FALSE	71	☆, ▲	＜滝＞	単体	〔水〕	22	-	Ba	B	HP-12	-
-TRUE	FALSE	72	☆, ▲	＜稲妻＞	全体	〔雷〕	3	-	Ba	C	HP-生存✕1	-
+TRUE	FALSE	72	☆, ▲	＜稲妻＞	全体	〔雷〕	5	-	Ba	C	HP-生存✕1	-
 TRUE	FALSE	73	☆, ▲	＜雷霆＞	全体	〔雷〕	9	-	Ba	D	HP-生存✕3	-
 TRUE	FALSE	74	☆, ○	＜乱気流＞	単体	〔無〕	-	-	Ba	A	HP-5	《反射》☆魔法による攻撃を相手に跳ね返す。
 TRUE	FALSE	75	☆, ○	＜石壁＞	単体	〔無〕	-	-	Ba	A	HP-5	《無効》〔無〕属性による攻撃を打ち消す。
@@ -436,11 +437,11 @@ TRUE	FALSE	95	†, ▲	聖なるわからせ棒	単体	〔無〕	20	-	1st	E	-	"�
 サキュバスはこの攻撃中、天罰カードを使用して防御できない。
 【断罪成功】サキュバスは[顕現]の際に手札補充を行えない。
 【断罪失敗】攻撃失敗。自分に〔無〕20ダメージ(防御可能)、手札を1枚選び捨てる。"
-TRUE	FALSE	96	†, ▲	聖なるわからせ竿	単体	〔無〕	10	-	1st	A	-	"正体を明かしているシスターのみが使用できる。
+TRUE	FALSE	96	†, ▲	聖なるわからせ竿	単体	〔無〕	14	-	1st	A	-	"正体を明かしているシスターのみが使用できる。
 《追撃》続けてもう1枚▲カードを出しても良い。
 【断罪成功】サキュバスは[顕現]の際に手札補充を行えない。
 【断罪失敗】攻撃失敗。手札を2枚選び捨てる。"
-TRUE	FALSE	97	†, ▲	聖なるわからせ竿	単体	〔無〕	10	-	1st	A	-	"正体を明かしているシスターのみが使用できる。
+TRUE	FALSE	97	†, ▲	聖なるわからせ竿	単体	〔無〕	14	-	1st	A	-	"正体を明かしているシスターのみが使用できる。
 《追撃》続けてもう1枚▲カードを出しても良い。
 【断罪成功】サキュバスは[顕現]の際に手札補充を行えない。
 【断罪失敗】攻撃失敗。手札を2枚選び捨てる。"
@@ -469,9 +470,9 @@ TRUE	FALSE	112	○	エナジーシールド	単体	〔無〕	-	10	Ba	D	-	-		♥,
 TRUE	FALSE	113	○	ミラーシールド	単体	〔無〕	-	0	1st	E	-	《反射》☆魔法による攻撃を相手に跳ね返す。		♥, ○	リリスミラージュ	単体	〔無〕	-	15	-	"《反射》☆魔法による攻撃を相手に跳ね返す。
 反射対象を自由に選んで良い。"
 TRUE	FALSE	114	○	ビッグシールド	単体	〔無〕	-	0	1st	E	-	《無効》〔無〕属性による攻撃を打ち消す。		♥, ○	ききませ～ん♥	単体	〔無〕	-	-	-	《無効》〔火〕〔水〕〔雷〕属性による攻撃を打ち消す。
-TRUE	FALSE	115	☆, ▲	＜灼熱＞	C, D, E	〔火〕	9	-	1st	A	HP-3	-		♥, ☆, ▲	《快楽の炎》	A, B, C	〔火〕	13	-	HP-3	-
-TRUE	FALSE	116	☆, ▲	＜雪崩＞	単体	〔水〕	12	-	1st	B	HP-6	-		♥, ☆, ▲	《水攻めの悦》	単体	〔水〕	9	-	HP-3	-
-TRUE	FALSE	117	☆, ▲	＜大嵐＞	全体	〔雷〕	6	-	1st	C	HP-生存✕2	-		♥, ☆, ▲	《電気ショック》	D, E	〔雷〕	20	-	HP-3	この攻撃で発生したダメージで、サキュバスは《吸収》による回復をしない。
+TRUE	FALSE	115	☆, ▲	＜灼熱＞	C, D, E	〔火〕	11	-	1st	A	HP-3	-		♥, ☆, ▲	《快楽の炎》	A, B, C	〔火〕	13	-	HP-3	-
+TRUE	FALSE	116	☆, ▲	＜雪崩＞	単体	〔水〕	14	-	1st	B	HP-4	-		♥, ☆, ▲	《水攻めの悦》	単体	〔水〕	13	-	HP-3	-
+TRUE	FALSE	117	☆, ▲	＜大嵐＞	全体	〔雷〕	6	-	1st	C	HP-生存✕1	-		♥, ☆, ▲	《電気ショック》	D, E	〔雷〕	20	-	HP-3	この攻撃で発生したダメージで、サキュバスは《吸収》による回復をしない。
 TRUE	FALSE	118	△	最強のおいしい水	単体	〔無〕	-	-	Ba	E	-	HPを20回復する。		♥, △	サキュバスポーション	単体	〔無〕	-	-	-	"HPを20回復する。
 その後、続けてもう1枚カードをプレイしても良い。"
 TRUE	FALSE	119	○	にじのカーテン	単体	〔無〕	-	0	Ba	E	-	《除去》受けている攻撃を〔無〕属性にする。		♥, ○	「どれにしようかな～♥」	単体	〔無〕	-	-	-	"以下の効果から選ぶ。
@@ -1680,6 +1681,9 @@ function chip(f){ return `<span class="chip el-${f.el} ${f.isHeart ? 'heart' : '
 const faceSrc = (c, side) => `img/face/${c.key}_${side}.jpg`;
 const artSrc = (c, side) => `img/chara/${c.key}_${side}.jpg`;
 const cardSrc = def => `img/cards/${String(def.id).padStart(3, '0')}.jpg`;
+// 強化案（sim/patches/buff2.json）で数値や効果を変えたカード。実物カードの画像は変更前のまま
+const BUFFED_IDS = new Set([1, 2, 3, 4, 5, 6, 8, 12, 13, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33, 37, 38, 44, 45, 68, 70, 72, 96, 97, 115, 116, 117]);
+const zoomNote = src => { const m = /img\/cards\/(\d+)\.jpg$/.exec(src || ''); return m && BUFFED_IDS.has(Number(m[1])) ? '<p class="zoomnote">このカードは強化案で数値・効果を変えています。画像は変更前のもので、ゲームでは画面の説明文の値を使います。</p>' : ''; };
 function portrait(c, side){ return `<span class="gem ${side === 'oni' ? 'oni' : ''}" style="--gem:${c.gem}">${c.glyph}<img src="${faceSrc(c, side)}" alt="" onerror="this.remove()"></span>`; }
 function gem(p){ return portrait(p.char, isSucc(p) ? 'oni' : 'hito'); }
 function roleBadge(p, viewer){
@@ -1907,7 +1911,7 @@ function renderHand(){
 function renderModal(){
   const m = $('#modal');
   let h = '';
-  if (UI.zoom) h = `<div class="sheet zoom"><img src="${UI.zoom}" alt="" onerror="this.replaceWith('画像がありません')"><div class="row"><button type="button" class="btn" data-zoomclose="1">閉じる</button></div></div>`;
+  if (UI.zoom) h = `<div class="sheet zoom"><img src="${UI.zoom}" alt="" onerror="this.replaceWith('画像がありません')">${zoomNote(UI.zoom)}<div class="row"><button type="button" class="btn" data-zoomclose="1">閉じる</button></div></div>`;
   else if (UI.rules) h = rulesHTML();
   else if (UI.mode === 'notice'){
     const x = UI.extra;

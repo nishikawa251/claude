@@ -3,7 +3,7 @@
 import json, math, csv, collections, html, os, datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-EYEBROW = '260717基本ルール・120枚Ver ＋ 能力調整案 第3版（チアモ・ミヨミ）・3〜6人'
+EYEBROW = '260717基本ルール・120枚Ver ＋ 能力調整案 第3版 ＋ カード強化案・3〜6人'
 ROOT = os.path.dirname(HERE)
 d = json.load(open(os.path.join(HERE, 'result.json')))
 games = d['games']

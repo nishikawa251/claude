@@ -1,0 +1,28 @@
+{
+  "site_name": "東方我楽多叢誌",
+  "languages": [
+    {"code": "ja", "label": "日本語", "match": "東方我楽多叢誌"},
+    {"code": "en", "label": "英語", "match": "Touhou Garakuta Magazine"},
+    {"code": "zh", "label": "中国語", "match": "东方我乐多丛志|东方我乐多杂志|东方我楽多丛志"}
+  ],
+  "primary_language": "ja",
+  "hub_pattern": "^(HOME|Home|漫画 小説|新着|漫画|小説|コラム|同人誌評|ゲーム評|音楽評|ニュース|インタビュー|リポート|特集|東方の遊び方|東方外來韋編|東方ステーション|Latest Posts|News|Manga Novel|Doujinshi Review|Game Review|大学東方サークル|東葉旅人の聖地巡礼手引き|週刊東方キャラクター|『週刊東方キャラクター』|東方ニコレクション|東方我楽多叢誌編集部|\\(not set\\))$|^【もくじ】|^\\(cache\\)|東方我楽多叢誌とは|お問い合わせ|ページが見つかりません|Page not found|検索結果|Search Results",
+  "categories": [
+    {"name": "連載漫画・小説", "pattern": "【東方外來韋編】|【月刊コンプエース】|【東方同人音楽流通】|【連載】妖世刃弔華"},
+    {"name": "ニュースまとめ", "pattern": "今週の東方ニュースまとめ"},
+    {"name": "キャラ紹介", "pattern": "週刊東方キャラクター", "evergreen": true},
+    {"name": "街で見かけた", "pattern": "街で見かけた"},
+    {"name": "聖地巡礼", "pattern": "聖地巡礼|元ネタ", "evergreen": true},
+    {"name": "ハウツー・ガイド", "pattern": "はじめかた|変換辞書|すすめ|書き方|buying|Guide|guide|まとめました", "evergreen": true},
+    {"name": "定期コーナー", "pattern": "カラオケ|TouHou定点観測|なんでもカレンダー|ニコレクション"},
+    {"name": "考察・コラム", "pattern": "考察|探る|面白さ|振り返る|仮説|について|座談会|の話|実存|セカイ"},
+    {"name": "原作の遊び方・攻略", "pattern": "あそびかた|遊び方|游玩方法|やってみよう、東方原作|攻略|解説|Where to Play|How to Play|初心者|入門", "evergreen": true},
+    {"name": "インタビュー", "pattern": "ZUN|インタビュー|Interview|interview|に聞く|聞いてみた|話を聞|対談|鼎談|访谈|采访"},
+    {"name": "レビュー", "pattern": "レビュー|評】|Review|review"},
+    {"name": "イベント情報", "pattern": "例大祭|東方ステーション|コミケ|コミックマーケット|イベント|開催|オンリー|紅楼夢|夏祭り|Reitaisai"},
+    {"name": "グッズ・コラボ", "pattern": "コラボ|グッズ|フィギュア|fumo|Fumo|発売|予約"},
+    {"name": "二次創作ゲーム告知", "pattern": "ゲーム|Steam|Switch|体験版|デモ版|リリース|配信開始"},
+    {"name": "同人誌・音楽告知", "pattern": "合同|頒布|CD|アルバム|同人誌"}
+  ],
+  "other_category": "その他"
+}

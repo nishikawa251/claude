@@ -3,6 +3,7 @@
 import json, math, csv, collections, html, os, datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+EYEBROW = '260717基本ルール・120枚Ver ＋ 能力調整案 第2版（ミロク・ジャスイ・ボタン・ツバキ・クルル）・3〜6人'
 ROOT = os.path.dirname(HERE)
 d = json.load(open(os.path.join(HERE, 'result.json')))
 games = d['games']
@@ -133,11 +134,11 @@ prev = json.load(open(prev_path)) if os.path.exists(prev_path) else None
 def win_in(key, counts):
     gs = [g for g in by[key] if g['n'] in counts]
     return rate(gs, lambda g: g['reason'] == 'last'), len(gs)
-CHANGED = ['chiamo', 'kagiko', 'botan', 'kururu']
 compare_html = ''
 notes = []
 if prev:
     cs = prev['counts']
+    CHANGED = prev.get('changed', [])
     rows = ''
     for r in sorted(chars, key=lambda r: (r['key'] not in CHANGED, -r['win'])):
         if r['key'] not in prev['win']: continue
@@ -147,14 +148,13 @@ if prev:
         rows += (f'<tr><td class="nm">{face(r["key"], r["name"], "sm")}{esc(r["name"])}</td><td>{mark}</td>'
                  f'<td class="num">{pct(prev["win"][r["key"]])}</td><td class="num">{pct(now_w)}</td><td class="num strong">{dlt * 100:+.1f}</td></tr>')
     compare_html = f"""<section>
-  <h2>変更前との比較</h2>
-  <p>{esc(prev['label'])}と比べた。人数の範囲が変わったので、どちらでも堕天使が1人になる{'・'.join(f'{c}人' for c in cs)}戦だけで比べている。CPUの堕天使の動き（♥カードを供与に回す）も変えたので、変更していないキャラも少し動く。</p>
-  <div class="tbl"><table><thead><tr><th>キャラ</th><th></th><th class="num">変更前</th><th class="num">変更後</th><th class="num">差（pt）</th></tr></thead><tbody>{rows}</tbody></table></div>
+  <h2>前回との比較</h2>
+  <p>{esc(prev['label'])}と比べた（{'・'.join(f'{c}人' for c in cs)}戦）。{esc(prev.get('note', ''))}</p>
+  <div class="tbl"><table><thead><tr><th>キャラ</th><th></th><th class="num">前回</th><th class="num">今回</th><th class="num">差（pt）</th></tr></thead><tbody>{rows}</tbody></table></div>
 </section>"""
-    ch = lambda k: (prev['win'][k], win_in(k, cs)[0])
-    a, b2 = ch('chiamo'); notes.append(('チアモは最上位から中位へ', f"{'・'.join(f'{c}人' for c in cs)}戦の勝率が {pct(a)} → {pct(b2)}。防御時の《反射》をやめ、攻撃時に1/5の確率で2倍になる能力にしたため。"))
-    ka, kb = ch('kagiko'); ku, kv = ch('kururu'); ba, bb = ch('botan')
-    notes.append(('カギコ・クルルは能力なし以上に', f"カギコ {pct(ka)} → {pct(kb)}、クルル {pct(ku)} → {pct(kv)}。ボタンは {pct(ba)} → {pct(bb)} とほぼ変わらず、ターン開始時の1枚捨ての効果は小さい。"))
+    if CHANGED:
+        moves = [(byname[k], prev['win'][k], win_in(k, cs)[0]) for k in CHANGED if k in byname and k in prev['win']]
+        notes.append(('変更したキャラの勝率', '、'.join(f"{esc(r['name'])} {pct(a)} → {pct(b2)}（{(b2 - a) * 100:+.1f}pt）" for r, a, b2 in moves) + '。'))
 upper = tiers_of('S') + tiers_of('A')
 lower = tiers_of('D')
 bl = d['baseline']
@@ -163,7 +163,8 @@ notes.insert(0, ('陣営の勝率はほぼ五分' if abs(gap) < 0.05 else ('シ�
                  f"サキュバス陣営 {pct(bl['succubus'])}・シスター陣営 {pct(bl['sister'])}（全人数・全キャラ平均）。"))
 if upper: notes.append(('上位は' + '・'.join(esc(r['name']) for r in upper), '、'.join(f"{esc(r['name'])} {pt(r['diff'])}pt" for r in upper) + '（能力なしとの差）。'))
 if lower: notes.append(('下位は' + '・'.join(esc(r['name']) for r in lower), '、'.join(f"{esc(r['name'])} {pt(r['diff'])}pt" for r in lower) + '。能力なしとほぼ同じ。'))
-notes.append(('人数で有利不利が大きく変わる', '全キャラ平均のサキュバス陣営勝率は ' + '・'.join(f"{k}人 {pct(avg_by_n[k])}" for k in COUNTS) + '。4人戦はシスター2人に対してサキュバス＋堕天使の2対2になり、サキュバス側が有利。6人戦はシスター4人で不利。'))
+best_n = max(COUNTS, key=lambda k: avg_by_n[k]); worst_n = min(COUNTS, key=lambda k: avg_by_n[k])
+notes.append(('人数ごとの有利不利', '全キャラ平均のサキュバス陣営勝率は ' + '・'.join(f"{k}人 {pct(avg_by_n[k])}" for k in COUNTS) + f"。サキュバス側が最も有利なのは{best_n}人戦、最も不利なのは{worst_n}人戦。" + ('4人戦はシスター2人に対してサキュバス＋堕天使の2対2になる。' if best_n == 4 else '')))
 findings = ''.join(f'<li><b>{t}</b>{body}</li>' for t, body in notes)
 reasons = collections.Counter(g['reason'] for g in games)
 avg_rounds = sum(g['rounds'] for g in games) / N
@@ -278,7 +279,7 @@ ul.plain{{margin:0;padding-left:1.2em;color:var(--ink2);max-width:72ch}} ul.plai
 <body>
 <main>
 <header>
-  <div class="eyebrow">260717基本ルール・120枚Ver ＋ 能力調整案（チアモ・カギコ・ボタン・クルル）・3〜6人</div>
+  <div class="eyebrow">{esc(EYEBROW)}</div>
   <h1>サキュバスシスターズ バランス調査</h1>
   <p class="lede">デジタル版のCPU同士で {N:,} 戦を回し、サキュバス能力ごとの勝率と、カード1枚ごとの働きを集計した。バランス調整の叩き台として使うための資料。</p>
   <div class="meta">

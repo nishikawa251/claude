@@ -545,13 +545,14 @@ const E=(cx,cy,rx,ry=rx)=>`M${cx-rx} ${cy} A${rx} ${ry} 0 1 0 ${cx+rx} ${cy} A${
 const R=(x,y,w,h)=>`M${x} ${y} h${w} v${h} h${-w} Z`;
 const SKIN='#f6cbb2', WHITE='#f3eef4';
 const LOOK = {
-  reimu: {hair:'#3a2a3c', hl:'#9a82c8', eye:'#c8444e', outfit:'#e8584f', back:'medium'},
+  reimu: {hair:'#43304f', hl:'#9f88d0', eye:'#c8444e', outfit:'#ec5a4e', back:'medium', eyes:'big'},
   marisa:{hair:'#f2d27a', hl:'#fff4cc', eye:'#d09a2a', outfit:'#2c2640', back:'wavy'},
   youmu: {hair:'#dfe2f0', hl:'#ffffff', eye:'#5a86d0', outfit:'#5e8c5c', back:'short'},
   sakuya:{hair:'#d2daee', hl:'#ffffff', eye:'#5670c4', outfit:'#4764b4', back:'short'},
   yukari:{hair:'#f3d88e', hl:'#fff6d8', eye:'#9a62d0', outfit:'#7454b4', back:'long'},
 };
-function ramp(hexc){
+function ramp(hexc, pal){
+  if(pal) return {b:rgb(pal.b), l:rgb(pal.l), s:rgb(pal.s), d:rgb(pal.d)};
   const b=rgb(hexc);
   return {b, l:mixA(b,[255,246,236],.3), s:mixA(b,[118,58,128],.4), d:mixA(b,[58,28,78],.62)};
 }
@@ -568,7 +569,72 @@ const STRANDS='M110 62 L104 98 M96 66 L86 102 M124 64 L130 98 M82 76 L72 112 M14
 const SHINE='M76 96 L84 82 M90 90 L97 76 M103 86 L108 74 M116 84 L121 74 M128 88 L135 76 M142 94 L148 82';
 const BODY='M22 262 C26 214 62 196 110 196 C158 196 194 214 198 262 Z';
 
+// Hand-designed portrait: every part is its own shape with a hand-picked four-tone palette,
+// so clumps of hair, bow folds and frills each catch light and shadow separately.
+const PAL={
+  hair:   {l:'#6a5288', b:'#43304f', s:'#2f2238', d:'#1f1726'},
+  hairBk: {l:'#43304f', b:'#2f2238', s:'#241a2d', d:'#18111e'},
+  skin:   {l:'#fde4d2', b:'#f6cbb2', s:'#dc9c9e', d:'#b06e84'},
+  red:    {l:'#ff8a72', b:'#ec5a4e', s:'#b83e5a', d:'#7e2a4c'},
+  white:  {l:'#ffffff', b:'#eee8f4', s:'#bdb4d8', d:'#8f86b4'},
+  yellow: {l:'#ffe8a0', b:'#f2c24e', s:'#c98a4a', d:'#8e5a3e'},
+};
+function reimuLayers(){
+  const Ls=[], add=(d,o)=>Ls.push(Object.assign({d},o));
+  const P=(pal,k,extra)=>Object.assign({pal:PAL[pal],c:PAL[pal].b,k},extra||{});
+  const flat=(c,k,extra)=>Object.assign({c,k,flat:true},extra||{});
+  // bow
+  const loopL='M108 58 C92 28 62 6 38 14 C24 20 26 48 40 64 C56 80 86 76 108 64 Z';
+  const loopR='M112 58 C128 28 158 6 182 14 C196 20 194 48 180 64 C164 80 134 76 112 64 Z';
+  add(loopL+' '+loopR, P('white','acc',{sw:9}));
+  add([[40,18],[30,30],[28,46],[36,60],[50,72],[180,18],[190,30],[192,46],[184,60],[170,72]].map(([x,y])=>E(x,y,6)).join(' '), P('white','acc'));
+  add(loopL+' '+loopR, P('red','acc'));
+  add('M108 60 C94 48 78 44 62 48 C78 56 94 62 108 64 Z M112 60 C126 48 142 44 158 48 C142 56 126 62 112 64 Z', flat(PAL.red.s,'acc'));
+  add('M44 60 C58 72 86 72 106 62 L106 66 C84 78 56 76 42 64 Z M176 60 C162 72 134 72 114 62 L114 66 C136 78 164 76 178 64 Z', flat(PAL.red.d,'acc'));
+  add('M46 24 C62 18 80 26 94 40 C80 34 62 30 48 34 Z M174 24 C158 18 140 26 126 40 C140 34 158 30 172 34 Z', flat(PAL.red.l,'acc'));
+  add(E(110,50,10,9), P('red','acc'));
+  add('M104 44 C108 42 112 42 116 44', flat(PAL.red.l,'acc',{sw:2.5}));
+  // hair behind
+  add('M62 92 C44 124 40 168 46 214 L54 202 L58 222 L66 206 L70 218 L76 196 L144 196 L150 218 L154 206 L162 222 L166 202 L174 214 C180 168 176 124 158 92 Z', P('hairBk','hair'));
+  add('M58 130 L52 200 M68 120 L64 206 M162 130 L168 200 M152 120 L156 206', flat(PAL.hairBk.s,'hair',{sw:2,on:'hair'}));
+  // shoulders, sleeves, top
+  add('M34 262 C36 230 54 210 82 202 L138 202 C166 210 184 230 186 262 Z', P('skin','skin'));
+  add('M14 262 C16 236 28 220 46 212 C54 222 60 240 64 262 Z M206 262 C204 236 192 220 174 212 C166 222 160 240 156 262 Z', P('white','cloth'));
+  add('M16 246 C22 230 32 220 46 214 M204 246 C198 230 188 220 174 214', flat(PAL.red.b,'cloth',{sw:4}));
+  add('M26 262 C28 250 30 240 34 232 M194 262 C192 250 190 240 186 232', flat(PAL.white.s,'cloth',{sw:2}));
+  add('M66 204 C84 198 96 198 110 198 C124 198 136 198 154 204 C158 222 160 242 162 262 L58 262 C60 242 62 222 66 204 Z', P('red','cloth'));
+  add('M126 228 C134 242 138 252 140 262 L152 262 C148 248 140 236 126 228 Z M74 236 C72 246 70 254 70 262 L76 262 C76 252 76 244 74 236 Z', flat(PAL.red.s,'cloth'));
+  add([70,79,88,132,141,150].map(x=>E(x,203,5,4)).join(' '), P('white','cloth'));
+  add('M86 196 L110 228 L134 196 L128 193 L110 216 L92 193 Z', P('white','cloth'));
+  add('M101 206 L110 214 L119 206 L123 222 L114 218 L116 242 L110 234 L104 242 L106 218 L97 222 Z', P('yellow','acc'));
+  // head
+  add('M100 156 h20 v46 h-20z', P('skin','skin',{cast:9}));
+  add(HEAD, P('skin','skin'));
+  add('M147 116 C147 140 138 156 124 164 C134 150 141 136 144 116 Z', flat(PAL.skin.s,'skin'));
+  // hair on top of the head, then front clumps from left to right
+  add('M62 118 C56 76 84 54 110 54 C138 54 166 76 158 118 C150 100 132 88 110 88 C88 88 70 100 62 118 Z', P('hair','hair'));
+  add('M74 94 L84 74 L89 76 L81 96 Z M90 86 L99 66 L104 68 L96 88 Z M108 82 L113 64 L118 65 L114 83 Z M123 84 L130 66 L135 68 L129 86 Z M138 92 L145 76 L149 78 L143 94 Z', flat('#9f88d0','hair',{on:'hair'}));
+  add('M85 76 L81 86 M101 68 L98 76 M132 69 L129 77', flat('#c4b4ea','hair',{sw:1.6,on:'hair'}));
+  add('M108 56 C104 40 112 30 124 32 C114 38 112 46 112 56 Z', P('hair','hair'));
+  [
+    'M60 98 C64 112 66 124 64 142 C72 128 76 114 80 94 Z',
+    'M72 88 C77 104 81 118 79 134 C88 120 92 106 92 88 Z',
+    'M86 84 C91 98 95 112 97 130 C102 114 104 100 104 84 Z',
+    'M101 84 C105 102 109 120 112 140 C116 120 118 102 119 84 Z',
+    'M116 84 C120 98 124 110 124 128 C130 112 132 98 131 84 Z',
+    'M128 86 C134 102 138 116 140 132 C144 114 145 100 143 88 Z',
+    'M140 92 C148 106 152 122 155 140 C159 122 159 106 157 94 Z',
+  ].forEach(d=>add(d, P('hair','hair')));
+  // side locks wrapped in hair tubes
+  add('M66 116 C58 150 56 186 60 228 L66 214 L70 230 L75 190 C74 160 76 136 79 118 Z M154 116 C162 150 164 186 160 228 L154 214 L150 230 L145 190 C146 160 144 136 141 118 Z', P('hair','hair'));
+  add('M70 130 L66 180 M150 130 L154 180', flat('#7a62a0','hair',{sw:1.8,on:'hair'}));
+  add(R(55,176,22,22)+R(143,176,22,22), P('white','acc'));
+  add(R(55,178,22,3)+R(55,193,22,3)+R(143,178,22,3)+R(143,193,22,3), flat(PAL.red.b,'acc'));
+  return Ls;
+}
+
 function charLayers(id){
+  if(id==='reimu') return reimuLayers();
   const L=LOOK[id], hair={c:L.hair,k:'hair'}, cloth={c:L.outfit,k:'cloth'};
   const Ls=[], add=(d,o)=>Ls.push(Object.assign({d},o));
   const head=()=>{ add('M100 156 h20 v46 h-20z',{c:SKIN,k:'skin',cast:9}); add(HEAD,{c:SKIN,k:'skin'}); };
@@ -657,9 +723,11 @@ function rasterize(layers, w, h, sc, oy){
 // shape, a thin lit edge on the near side, or the base colour.
 function paint(layers, owner, w, h){
   const img=new ImageData(w,h), d=img.data;
-  const RP=layers.map(L=>ramp(L.c));
+  const RP=layers.map(L=>ramp(L.c,L.pal));
   const at=(x,y)=>(x<0||y<0||x>=w||y>=h)?-2:owner[y*w+x];
   const other=(v,li)=>v!==li&&v!==-2;
+  // for form shading only the shape's own silhouette counts, not whatever is drawn over it
+  const outside=(v,li)=>v===-1||(v>=0&&v<li);
   const solid=v=>v>=0&&!layers[v].flat;
   const bb=layers.map(()=>[w,h,-1,-1]);
   for(let y=0;y<h;y++) for(let x=0;x<w;x++){ const v=owner[y*w+x]; if(v<0) continue; const B=bb[v]; if(x<B[0])B[0]=x; if(y<B[1])B[1]=y; if(x>B[2])B[2]=x; if(y>B[3])B[3]=y; }
@@ -669,16 +737,16 @@ function paint(layers, owner, w, h){
     const L=layers[li], C=RP[li]; let c=C.b;
     const depth=L.cast||4;
     let cast=false;
-    for(let k=1;k<=depth&&!cast;k++){ const v=at(x-Math.ceil(k/2),y-k); if(v>li&&solid(v)) cast=true; }
+    for(let k=1;k<=depth&&!cast;k++){ const v=at(x-(k>1?1:0),y-k); if(v>li&&solid(v)) cast=true; }
     if(!L.flat){
       const [kx,ky]=reach[li];
-      const far=other(at(x+kx,y+ky),li)&&other(at(x+Math.ceil(kx/2),y+ky+1),li);
+      const far=outside(at(x+kx,y+ky),li)&&outside(at(x+Math.ceil(kx/2),y+ky+1),li);
       const rim=at(x+1,y)===-1||at(x+1,y+1)===-1||at(x,y+1)===-1&&at(x+2,y)===-1;
-      const near=other(at(x-1,y-1),li)||other(at(x-1,y),li)||other(at(x,y-1),li);
+      const near=outside(at(x-1,y-1),li)||outside(at(x-1,y),li)||outside(at(x,y-1),li);
       if(cast) c=(far||rim)?C.d:C.s;
       else if(rim) c=C.d;
       else if(far) c=C.s;
-      else if(L.k!=='skin' && (near || other(at(x-kx,y-ky),li)&&other(at(x-Math.ceil(kx/2),y-ky-1),li))) c=C.l;
+      else if(L.k!=='skin' && (near || outside(at(x-kx,y-ky),li)&&outside(at(x-Math.ceil(kx/2),y-ky-1),li))) c=C.l;
     } else if(cast) c=mixA(C.b,[118,58,128],.4);
     d[i*4]=c[0]; d[i*4+1]=c[1]; d[i*4+2]=c[2]; d[i*4+3]=255;
   }
@@ -690,6 +758,12 @@ const EYE={
   n:["...kkkkk.","kkkkddddk",".shhdddk.",".sdhiidd.","..diijj..","..jjjjj..","...lll..."],
   t:[".........","kkkkkkkkk",".sdddddk.",".shiidd..","..diijj..","..jjjjj..","...lll..."],
   s:[".........",".........","..kkkkk..",".k.....k.","k.......k",".........","........."],
+};
+// larger, more detailed eyes for the hand-designed portraits
+const EYE_BIG={
+  n:["...kkkkkk..","kkkkddddkkk",".ksdhhdddk.","..sdhhiidk.","..sdiiiid..","..sdijjhd..","...jjjjj...","....lll....","..........."],
+  t:["...........","kkkkkkkkkkk",".ksdddddk..","..sdhhiidk.","..sdiiiid..","..sdijjhd..","...jjjjj...","....lll....","..........."],
+  s:["...........","...........","...........","...kkkkk...",".kk.....kk.","k.........k","...........","...........","..........."],
 };
 const BROW={n:["......","bbbbbb"], t:["....bb","bbbb.."], s:[".bbbb.","b....b"]};
 const MOUTH={n:["mmm"], s:["kkkkk",".rrr."], t:[".mm.","m..m"]};
@@ -710,8 +784,14 @@ function drawFace(img, id, e, layers, owner){
   const onSkin=(x,y)=>{const v=owner[y*SW+x];return v>=0&&layers[v].k==='skin';};
   const pe={k:[42,20,38], d:mixA(eye,[40,10,40],.5), i:eye, j:mixA(eye,[255,220,210],.4), h:[255,255,255], s:[242,232,240], l:[154,90,106]};
   const ex=e==='t'?'t':(e==='s'?'s':'n');
-  stamp(img, EYE[ex], ...at(93,128,9,7), pe, false);
-  stamp(img, EYE[ex], ...at(127,128,9,7), pe, true);
+  if(L.eyes==='big'){
+    pe.d=mixA(eye,[60,10,40],.6); pe.j=mixA(eye,[255,190,160],.45);
+    stamp(img, EYE_BIG[ex], ...at(92,129,11,9), pe, false);
+    stamp(img, EYE_BIG[ex], ...at(128,129,11,9), pe, true);
+  } else {
+    stamp(img, EYE[ex], ...at(93,128,9,7), pe, false);
+    stamp(img, EYE[ex], ...at(127,128,9,7), pe, true);
+  }
   const pb={b:mixA(rgb(L.hair),[42,20,38],.5)};
   stamp(img, BROW[ex], ...at(92,112,6,2), pb, false, onSkin);
   stamp(img, BROW[ex], ...at(128,112,6,2), pb, true, onSkin);

@@ -1,5 +1,5 @@
 {
- "label": "前回（能力調整案 第1版：チアモ・カギコ・ボタン・クルル）",
+ "label": "前回（能力調整案 第2版）",
  "counts": [
   3,
   4,
@@ -7,27 +7,24 @@
   6
  ],
  "changed": [
-  "miroku",
-  "jasui",
-  "botan",
-  "tsubaki",
-  "kururu"
+  "chiamo",
+  "miyomi"
  ],
  "note": "人数・CPUの動きは前回と同じなので、差はほぼ能力変更によるもの。変更していないキャラの差は誤差（±2pt程度）。",
  "win": {
-  "kagiko": 0.47275,
-  "botan": 0.455,
-  "chinon": 0.547,
-  "chiamo": 0.47825,
-  "miyomi": 0.4635,
-  "malariya": 0.4865,
-  "joka": 0.5585,
-  "miroku": 0.41925,
-  "kureha": 0.4965,
-  "kururu": 0.4385,
-  "tsubaki": 0.47025,
-  "pine": 0.5145,
-  "jasui": 0.46,
-  "control": 0.40225
+  "kagiko": 0.46675,
+  "botan": 0.4665,
+  "chinon": 0.543,
+  "chiamo": 0.467,
+  "miyomi": 0.45575,
+  "malariya": 0.4875,
+  "joka": 0.56625,
+  "miroku": 0.48975,
+  "kureha": 0.49625,
+  "kururu": 0.48075,
+  "tsubaki": 0.475,
+  "pine": 0.5175,
+  "jasui": 0.452,
+  "control": 0.41025
  }
 }

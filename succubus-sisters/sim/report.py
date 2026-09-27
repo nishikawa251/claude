@@ -3,7 +3,7 @@
 import json, math, csv, collections, html, os, datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-EYEBROW = '260717基本ルール・120枚Ver ＋ 能力調整案 第2版（ミロク・ジャスイ・ボタン・ツバキ・クルル）・3〜6人'
+EYEBROW = '260717基本ルール・120枚Ver ＋ 能力調整案 第3版（チアモ・ミヨミ）・3〜6人'
 ROOT = os.path.dirname(HERE)
 d = json.load(open(os.path.join(HERE, 'result.json')))
 games = d['games']
@@ -126,6 +126,33 @@ def card_row(r):
 card_rows = ''.join(card_row(r) for r in cards)
 tier_count = collections.Counter(r['tier'] for r in cards)
 
+# ♥カード・☆カードだけのTierボード
+TIER_LABEL = [('S', '18以上'), ('A', '13〜18'), ('B', '8〜13'), ('C', '4〜8'), ('D', '4未満')]
+def card_board(items):
+    out = ''
+    for t, label in TIER_LABEL:
+        members = [it for it in items if it['tier'] == t]
+        lis = ''.join(f'<li class="tcard"><button type="button" class="cardlink" data-img="img/cards/{it["img"]:03d}.jpg">{it["title"]}</button><em>{it["sub"]}</em></li>' for it in members) or '<li class="none">該当なし</li>'
+        out += f'<div class="trow"><div class="tlabel t{t}"><b>{t}</b><span>HP価値/回 {label}</span></div><ul class="titems">{lis}</ul></div>'
+    return f'<div class="tiers">{out}</div>'
+face_by_id = collections.defaultdict(list)
+for r in cards:
+    for i in r['ids']: face_by_id[i].append(r)
+heart_items, seen = [], set()
+for r in cards:
+    if '♥' not in r['marks'] or r['name'] in seen: continue
+    seen.add(r['name'])
+    upper = next((u for u in face_by_id[r['ids'][0]] if '♥' not in u['marks']), None)
+    sub = f"♥面 {r['value']:.1f}／回・100戦で{r['per100']:.0f}回"
+    if upper: sub += f"　上の面「{esc(upper['name'])}」{upper['value']:.1f}"
+    heart_items.append(dict(tier=r['tier'], img=r['ids'][0], title=f"{esc(r['name'])}<small>{esc(r['marks'])}</small>", sub=sub, v=r['value']))
+heart_items.sort(key=lambda it: -it['v'])
+magic_items = sorted([dict(tier=r['tier'], img=r['ids'][0], title=f"{esc(r['name'])}<small>{esc(r['marks'])}</small>",
+                           sub=f"{r['value']:.1f}／回（HPコスト {r['cost_u']:.1f}込み）・100戦で{r['per100']:.0f}回", v=r['value'])
+                      for r in cards if '☆' in r['marks']], key=lambda it: -it['v'])
+heart_board = card_board(heart_items)
+magic_board = card_board(magic_items)
+
 top = chars[0]
 byname = {r['key']: r for r in chars}
 tiers_of = lambda t: [r for r in chars if r['tier'] == t]
@@ -165,6 +192,10 @@ if upper: notes.append(('上位は' + '・'.join(esc(r['name']) for r in upper),
 if lower: notes.append(('下位は' + '・'.join(esc(r['name']) for r in lower), '、'.join(f"{esc(r['name'])} {pt(r['diff'])}pt" for r in lower) + '。能力なしとほぼ同じ。'))
 best_n = max(COUNTS, key=lambda k: avg_by_n[k]); worst_n = min(COUNTS, key=lambda k: avg_by_n[k])
 notes.append(('人数ごとの有利不利', '全キャラ平均のサキュバス陣営勝率は ' + '・'.join(f"{k}人 {pct(avg_by_n[k])}" for k in COUNTS) + f"。サキュバス側が最も有利なのは{best_n}人戦、最も不利なのは{worst_n}人戦。" + ('4人戦はシスター2人に対してサキュバス＋堕天使の2対2になる。' if best_n == 4 else '')))
+hs = [r for r in cards if '♥' in r['marks']]; ms = [r for r in cards if '☆' in r['marks']]
+top_h = max(hs, key=lambda r: r['value']); top_m = max(ms, key=lambda r: r['value'])
+low_m = sum(1 for r in ms if r['tier'] in ('C', 'D'))
+notes.append(('♥カードと☆カード', f"♥面の最上位は{esc(top_h['name'])}（{top_h['value']:.1f}）、☆の最上位は{esc(top_m['name'])}（{top_m['value']:.1f}）。☆は{len(ms)}枚中{low_m}枚がC以下で、HPコストのぶん1回あたりの働きは小さい。"))
 findings = ''.join(f'<li><b>{t}</b>{body}</li>' for t, body in notes)
 reasons = collections.Counter(g['reason'] for g in games)
 avg_rounds = sum(g['rounds'] for g in games) / N
@@ -229,6 +260,10 @@ section{{display:flex;flex-direction:column;gap:12px}}
 .tC{{background:var(--tC);color:var(--onC)}} .tD{{background:var(--tD);color:var(--onD)}} .tE{{background:var(--tE);color:var(--onE)}}
 .tX{{background:var(--surface);color:var(--muted);border:1px solid var(--line)}}
 .titems{{list-style:none;margin:0;padding:8px;display:flex;flex-wrap:wrap;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;min-height:64px}}
+.tcard{{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:6px 10px;border-radius:10px;background:var(--band);max-width:100%}}
+.tcard .cardlink{{text-align:left}}
+.tcard .cardlink small{{font-weight:400;color:var(--muted);margin-left:6px;font-size:11px}}
+.tcard em{{font-style:normal;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}}
 .tchar{{display:flex;align-items:center;gap:8px;padding:4px 10px 4px 4px;border-radius:10px;background:var(--band)}}
 .tchar b{{display:block;font-size:13px;line-height:1.3}}
 .tchar em{{font-style:normal;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}}
@@ -332,6 +367,18 @@ ul.plain{{margin:0;padding-left:1.2em;color:var(--ink2);max-width:72ch}} ul.plai
       <th class="num sort" data-col="9">反撃・反射/回</th><th class="num sort" data-col="10">HPコスト/回</th><th class="num sort" data-col="11">撃破/回</th><th class="num sort" data-col="12">勝率差（参考）</th></tr></thead>
     <tbody>{card_rows}</tbody>
   </table></div>
+</section>
+
+<section>
+  <h2>♥カードのTier</h2>
+  <p>♥カード（両面カード）を、サキュバスが使う♥面の働きでTier分けした。基準はカード全体と同じ「1回あたりHP価値」。シスター・堕天使が使う上の面の値も並べている。カード名をタップすると実物カードを表示する。</p>
+  {heart_board}
+</section>
+
+<section>
+  <h2>☆カードのTier</h2>
+  <p>☆魔法（♥面の魔法も含む）だけのTier。1回あたりの値から、払ったHPを引いている。☆魔法は場に残って何度も使えるので、1枚あたりの合計の働きは「HP価値/回 × 使用回数」で見るとよい。</p>
+  {magic_board}
 </section>
 
 <section>

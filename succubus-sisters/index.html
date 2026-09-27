@@ -515,8 +515,8 @@ const CHARACTERS = [
   { key:'kagiko',   name:'赤鬼 カギコ',       short:'カギコ',   glyph:'鬼', gem:'#ff6b6b', text:'［攻撃時］自分のすべての〔無〕属性攻撃に＋7ダメージ。' },
   { key:'botan',    name:'首塚 ボタン',       short:'ボタン',   glyph:'牡', gem:'#ffa24a', text:'［ターン開始時］手札補充の前に、手札を1枚まで捨てても良い。［攻撃時］自分のすべての〔火〕〔水〕〔雷〕属性攻撃に＋5ダメージ。' },
   { key:'chinon',   name:'悪亜 チノン',       short:'チノン',   glyph:'悪', gem:'#8f80ff', text:'［防御時］自分が受ける全ての攻撃を−3ダメージ。※HPコストは減少しない。' },
-  { key:'chiamo',   name:'最愛 チアモ',       short:'チアモ',   glyph:'愛', gem:'#ff86cf', text:'［攻撃時］のぞむなら、手札から1枚捨てる。その後山札を1枚めくり、そのカードが手札から捨てたカードと同じトリガーを持つなら、受けた攻撃ダメージを2倍にする。' },
-  { key:'miyomi',   name:'不死 ミヨミ',       short:'ミヨミ',   glyph:'死', gem:'#a4adc2', text:'手札上限をさらに＋1。' },
+  { key:'chiamo',   name:'最愛 チアモ',       short:'チアモ',   glyph:'愛', gem:'#ff86cf', text:'［攻撃時］のぞむなら、手札から1枚捨てる。その後山札を1枚めくり、そのカードが手札から捨てたカードと同じトリガーを持つなら、攻撃ダメージを2倍にする。' },
+  { key:'miyomi',   name:'不死 ミヨミ',       short:'ミヨミ',   glyph:'死', gem:'#a4adc2', text:'手札上限をさらに＋1。堕天使が昇天した場合、手札上限をさらに＋1。' },
   { key:'malariya', name:'マラリヤ',          short:'マラリヤ', glyph:'瘴', gem:'#79d279', text:'［防御時］手札から▲攻撃カードを2枚捨てるなら、《無効》：☆魔法。他プレイヤーの場に出ている☆魔法を、自分の場にあるかのように使用しても良い。' },
   { key:'joka',     name:'華我錠 ジョウカ',   short:'ジョウカ', glyph:'錠', gem:'#ebc84f', text:'［攻撃時］手札を1枚捨てるなら、自分の攻撃に＋10ダメージ。' },
   { key:'miroku',   name:'骸雷 ミロク',       short:'ミロク',   glyph:'骸', gem:'#ffe277', text:'［攻撃時］すべての攻撃の対象は全体になる。自分のすべての攻撃を−Xダメージ。Xは現在判明しているシスターの数に等しい。' },
@@ -623,7 +623,7 @@ function othersClockwise(p){
   return out;
 }
 const isSucc = p => p.role === 'succubus' && p.revealed;
-const handMax = p => isSucc(p) ? HAND_BASE + 1 + (p.char.key === 'miyomi' ? 1 : 0) : HAND_BASE;
+const handMax = p => isSucc(p) ? HAND_BASE + 1 + (p.char.key === 'miyomi' ? 1 + (G.players.some(q => q.role === 'fallen' && !q.alive) ? 1 : 0) : 0) : HAND_BASE;
 const faceFor = (p, c) => (c.def.heart && p.role === 'succubus') ? c.def.heart : c.def.top;
 function knownRole(viewer, q){ if (q.revealed || viewer === q) return q.role; return viewer.known[q.i] || null; }
 
@@ -1080,14 +1080,14 @@ async function attackAbilities(p, atk){
   if (k === 'botan' && atk.el !== 'none') atk.power += 5;
   if (k === 'chiamo' && p.hand.length && G.deck.length){
     const pick = p.human
-      ? await ask('cards', { title:'チアモの能力', body:'手札を1枚捨てて山札を1枚めくる。同じトリガーなら、この攻撃で受けるダメージが2倍になる。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:1 })
+      ? await ask('cards', { title:'チアモの能力', body:'手札を1枚捨てて山札を1枚めくる。同じトリガーなら、この攻撃の攻撃力が2倍になる。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:1 })
       : (atk.power >= 6 && cardValue(p, lowest(p, p.hand)) < 7 ? [lowest(p, p.hand)] : []);
     if (pick.length){
       discard(p, pick);
       const c = flip();
       const hit = c && c.def.trig === pick[0].def.trig;
       log(`${p.name}は〔${pick[0].def.trig}〕を捨てて山札をめくった：${c ? `${c.def.top.name}〔${c.def.trig}〕` : 'なし'} → ${hit ? 'ダメージ2倍！' : '不一致'}`, hit ? 'rose' : '');
-      if (hit) atk.dmgMul = 2;
+      if (hit) atk.power *= 2;   // 攻撃ダメージ（防御の前）を2倍
     }
   }
   if (k === 'joka' && p.hand.length){
@@ -1219,7 +1219,6 @@ async function strike(atk, src, t, depth = 0){
   let dmg = nullified ? 0 : Math.max(0, atk.power - defSum);
   if (!nullified && isSucc(t) && t.char.key === 'chinon') dmg = Math.max(0, dmg - 3);
   if (!nullified && isSucc(t) && t.char.key === 'tsubaki' && el !== 'none') dmg = Math.max(0, dmg - 5);
-  if (atk.dmgMul && dmg > 0) dmg *= atk.dmgMul;
   const drain = atk.cardDrain || (isSucc(src) && !atk.noAbsorb);
 
   if (atk.instakill && dmg > 0){

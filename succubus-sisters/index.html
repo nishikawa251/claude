@@ -221,6 +221,23 @@ button:focus-visible{outline:2px solid var(--rose);outline-offset:2px}
 .fcard.off{opacity:.4}
 
 /* floating */
+/* オンライン対戦 */
+.modeseg{margin-top:4px}
+.netlabel{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);max-width:320px}
+.netrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.netlabel input,.netrow input{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-width:0;flex:1 1 180px;max-width:420px}
+.netlabel input{flex:none;width:100%}
+.netrow input:focus,.netlabel input:focus{outline:2px solid var(--rose);outline-offset:1px}
+#netCode{letter-spacing:.3em;text-transform:uppercase;font-weight:700;flex:0 1 200px}
+.roomcode{font-family:var(--display);font-size:clamp(40px,12vw,64px);letter-spacing:.18em;color:var(--holy);line-height:1}
+.members{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.members li{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
+.members em{font-style:normal;font-size:10px;font-weight:700;margin-left:6px;padding:0 6px;border-radius:999px;background:var(--rose-dim);color:var(--ink)}
+.members small{color:var(--muted)}
+.netmsg{margin:0;font-size:13px;color:var(--muted)}
+.netmsg.bad{color:var(--hp)}
+.netmsg a{color:var(--rose);overflow-wrap:anywhere}
+.seg button:disabled{opacity:.35;cursor:not-allowed}
 /* 太陽のお守り・昇天弓のカットイン */
 #cutin{position:fixed;inset:0;z-index:45;pointer-events:none;display:grid;place-items:center;overflow:hidden}
 #cutin:empty{display:none}
@@ -654,11 +671,11 @@ const CARD_DEFS = buildCardDefs();
    ================================================================ */
 const ABORT = Symbol('abort');
 let M = null, G = null, gameId = 0, speed = 1, uidSeq = 0;
-const UI = { zoom:null, mode:'setup', sel:[], fsel:[], target:null, extra:{}, resolve:null, focus:null, rules:false, setup:{ count:5, char:0 }, mfocus:null };
+const UI = { zoom:null, mode:'setup', sel:[], fsel:[], target:null, extra:{}, resolve:null, focus:null, rules:false, setup:{ count:5, char:0, online:false, name:'', joinCode:'' }, mfocus:null };
 
 const rand = n => Math.floor(Math.random() * n);
 function shuffle(a){ for (let i = a.length - 1; i > 0; i--){ const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
-const me = () => G.players[0];
+const me = () => G.players[Net.seat];
 const alivePlayers = () => G.players.filter(p => p.alive);
 function othersClockwise(p){
   const n = G.players.length, out = [];
@@ -683,6 +700,7 @@ function log(text, cls = ''){ G.log.push({ text, cls }); if (G.log.length > 200)
    マッチ（3戦）とゲームの準備
    ================================================================ */
 function startMatch(){
+  if (Net.role) netLeave();
   gameId++;
   const n = UI.setup.count, ci = UI.setup.char;
   const pool = shuffle(CHARACTERS.map((c, i) => i).filter(i => i !== ci));
@@ -734,8 +752,10 @@ function roleIntro(p){
    ================================================================ */
 async function run(){
   try {
-    const intro = roleIntro(me());
-    await ask('notice', { title:`第${M.game}戦　あなたの神託`, role:intro.role, body:intro.body, art:artSrc(me().char, intro.role === 'succubus' ? 'oni' : 'hito') });
+    await Promise.all(G.players.filter(p => p.human).map(p => {
+      const intro = roleIntro(p);
+      return askP(p, 'notice', { title:`第${M.game}戦　あなたの神託`, role:intro.role, body:intro.body, art:artSrc(p.char, intro.role === 'succubus' ? 'oni' : 'hito') });
+    }));
     while (!G.ending){
       const p = G.players[G.turn];
       if (p.alive) await takeTurn(p);
@@ -786,7 +806,7 @@ async function drawPhase(p){
   if (need <= 0) return;
   if (G.deck.length < need){ G.ending = 'deck'; log('山札が足りず、手札を補充できない。ゲーム終了。', 'turn'); return; }
   draw(p, need);
-  if (p.human) log(`カードを${need}枚引いた`);
+  if (p.human) log(`${p.name}はカードを${need}枚引いた`);
   render();
 }
 
@@ -816,7 +836,7 @@ function heal(p, n){
 async function actionPhase(p){
   let remaining = 1, magicOnly = false;
   while (remaining > 0 && p.alive && !G.ending){
-    const act = p.human ? await ask('action', { magicOnly }) : cpuPlan(p, magicOnly);
+    const act = p.human ? await askP(p, 'action', { magicOnly }) : cpuPlan(p, magicOnly);
     if (!act || act.type === 'pass'){
       if (act && act.discard){ discard(p, [act.discard]); render(); }
       if (!p.human) log(`${p.name}はパスした`);
@@ -863,7 +883,7 @@ async function handleConfessions(){
   if (!succ.alive) return;
   for (const f of G.players.filter(p => p.role === 'fallen' && p.alive && !p.revealed)){
     const yes = f.human
-      ? await ask('option', { title:'告解', body:'サキュバスが顕現した。あなたも堕天使として正体を明かしますか？ 明かすと、手札をサキュバスに渡す【供与】ができるようになる。', options:[{ label:'告解する', value:true, cls:'' }, { label:'黙っている', value:false, cls:'sub' }] })
+      ? await askP(f, 'option', { title:'告解', body:'サキュバスが顕現した。あなたも堕天使として正体を明かしますか？ 明かすと、手札をサキュバスに渡す【供与】ができるようになる。', options:[{ label:'告解する', value:true, cls:'' }, { label:'黙っている', value:false, cls:'sub' }] })
       : f.hand.some(c => c.def.heart) || Math.random() < 0.65;
     if (!yes) continue;
     reveal(f, '告解。');
@@ -873,14 +893,14 @@ async function handleConfessions(){
 }
 function canGift(p){
   const succ = G.players.find(q => q.role === 'succubus');
-  return p.role === 'fallen' && p.revealed && succ.alive && succ.revealed && p.hand.length > 0;
+  return p.role === 'fallen' && p.revealed && !!succ && succ.alive && succ.revealed && p.hand.length > 0;
 }
 async function doGift(p, optional){
   if (!canGift(p)) return;
   const succ = G.players.find(q => q.role === 'succubus');
   let pick;
   if (p.human){
-    const r = await ask('cards', { title:'供与', body:`${succ.name}（サキュバス）に渡すカードを1枚選ぶ。${optional ? '渡さないなら選ばずに決定。' : ''}`, cards:p.hand, owner:p, min:optional ? 0 : 1, max:1 });
+    const r = await askP(p, 'cards', { title:'供与', body:`${succ.name}（サキュバス）に渡すカードを1枚選ぶ。${optional ? '渡さないなら選ばずに決定。' : ''}`, cards:p.hand, owner:p, min:optional ? 0 : 1, max:1 });
     pick = r[0];
   } else {
     const hearts = p.hand.filter(c => c.def.heart);   // ♥カードを優先して渡す
@@ -898,7 +918,7 @@ async function turnStartAbilities(p){
   const k = p.char.key;
   if (k === 'kururu' && othersClockwise(p).length){
     const skip = p.human
-      ? await ask('option', { title:'クルルの能力', body:`ドローフェイズを飛ばすと、自分以外の全員に3ダメージ。（いまの手札 ${p.hand.length}/${handMax(p)}枚）`, options:[{ label:'飛ばして3ダメージ', value:true, cls:'' }, { label:'普通に引く', value:false, cls:'sub' }] })
+      ? await askP(p, 'option', { title:'クルルの能力', body:`ドローフェイズを飛ばすと、自分以外の全員に3ダメージ。（いまの手札 ${p.hand.length}/${handMax(p)}枚）`, options:[{ label:'飛ばして3ダメージ', value:true, cls:'' }, { label:'普通に引く', value:false, cls:'sub' }] })
       : (handMax(p) - p.hand.length <= 2 || othersClockwise(p).some(q => q.hp <= 3 && enemyScore(p, q) > 0));
     if (skip){
       G.ts.skipDraw = true;
@@ -913,7 +933,7 @@ async function turnStartAbilities(p){
   if (k === 'pine'){ const h = heal(p, 10); if (h) log(`${p.name}はHPを${h}回復（パイン）`, 'good'); render(); }
   if ((k === 'tsubaki' || k === 'botan') && p.hand.length){
     const pick = p.human
-      ? await ask('cards', { title:`${p.char.short}の能力`, body:'手札補充の前に、手札を1枚まで捨てられる。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:1 })
+      ? await askP(p, 'cards', { title:`${p.char.short}の能力`, body:'手札補充の前に、手札を1枚まで捨てられる。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:1 })
       : (p.hand.length >= handMax(p) ? [lowest(p, p.hand)] : []);
     discard(p, pick);
   }
@@ -921,7 +941,7 @@ async function turnStartAbilities(p){
     const top = G.deck[G.deck.length - 1];
     if (top){
       const drop = p.human
-        ? await ask('option', { title:'ジャスイの能力', body:'山札の一番上のカード。捨てますか？', card:top, options:[{ label:'捨てる', value:true, cls:'' }, { label:'そのまま', value:false, cls:'sub' }] })
+        ? await askP(p, 'option', { title:'ジャスイの能力', body:'山札の一番上のカード。捨てますか？', card:top, options:[{ label:'捨てる', value:true, cls:'' }, { label:'そのまま', value:false, cls:'sub' }] })
         : cardValue(p, top) < 6;
       if (drop){ G.trash.push(G.deck.pop()); log(`${p.name}は山札の一番上を捨てた`); }
     }
@@ -929,7 +949,7 @@ async function turnStartAbilities(p){
     if (used.length && p.hand.length >= 1){
       let take = null;
       if (p.human){
-        const r = await ask('cards', { title:'ジャスイの能力', body:'前の手番の人が使ったカードを1枚取る（代わりに手札を1枚捨てる）。取らないなら選ばずに決定。', cards:used, owner:p, min:0, max:1 });
+        const r = await askP(p, 'cards', { title:'ジャスイの能力', body:'前の手番の人が使ったカードを1枚取る（代わりに手札を1枚捨てる）。取らないなら選ばずに決定。', cards:used, owner:p, min:0, max:1 });
         take = r[0] || null;
       } else {
         const best = used.slice().sort((a, b) => cardValue(p, b) - cardValue(p, a))[0];
@@ -937,7 +957,7 @@ async function turnStartAbilities(p){
       }
       if (take){
         const drop = p.human
-          ? await ask('cards', { title:'ジャスイの能力', body:'捨てるカードを1枚選ぶ。', cards:p.hand, owner:p, min:1, max:1 })
+          ? await askP(p, 'cards', { title:'ジャスイの能力', body:'捨てるカードを1枚選ぶ。', cards:p.hand, owner:p, min:1, max:1 })
           : lowestN(p, p.hand, 1);
         discard(p, drop);
         G.trash = G.trash.filter(c => c !== take); p.hand.push(take);
@@ -1032,14 +1052,14 @@ async function doSupport(p, f, target){
     case 'broom': {
       if (t.field.length){ G.trash.push(...t.field); log(`${t.name}の場の魔法${t.field.length}枚が破棄された`, 'hit'); t.field = []; res('魔法を破棄', 'bad'); }
       else if (t.hand.length){
-        const pick = t.human ? await ask('cards', { title:'夜魔のホウキ', body:'場に魔法がないので、手札を1枚選んで捨てる。', cards:t.hand, owner:t, min:1, max:1 }) : [lowest(t, t.hand)];
+        const pick = t.human ? await askP(t, 'cards', { title:'夜魔のホウキ', body:'場に魔法がないので、手札を1枚選んで捨てる。', cards:t.hand, owner:t, min:1, max:1 }) : [lowest(t, t.hand)];
         discard(t, pick); res('手札を1枚破棄', 'bad');
       } else res('何も起きない', 'gold');
       break;
     }
     case 'prayer': {
       const pick = p.human
-        ? await ask('cards', { title:'誓いの祈り', body:'捨てるカードを好きな枚数選ぶ。捨てた枚数だけ山札から引く。', cards:p.hand, owner:p, min:0, max:p.hand.length })
+        ? await askP(p, 'cards', { title:'誓いの祈り', body:'捨てるカードを好きな枚数選ぶ。捨てた枚数だけ山札から引く。', cards:p.hand, owner:p, min:0, max:p.hand.length })
         : p.hand.filter(c => cardValue(p, c) < 7);
       discard(p, pick);
       const n = draw(p, pick.length);
@@ -1048,8 +1068,8 @@ async function doSupport(p, f, target){
     }
     case 'donation': {
       if (!p.hand.length || !t.hand.length){ res('交換できない', 'gold'); return { extra:true }; }
-      const mine = p.human ? (await ask('cards', { title:'寄進の行い', body:`${t.name}に渡すカードを1枚選ぶ。`, cards:p.hand, owner:p, min:1, max:1 }))[0] : lowest(p, p.hand);
-      const theirs = t.human ? (await ask('cards', { title:'寄進の行い', body:`${p.name}とカードを1枚交換する。渡すカードを選ぶ。`, cards:t.hand, owner:t, min:1, max:1 }))[0] : lowest(t, t.hand);
+      const mine = p.human ? (await askP(p, 'cards', { title:'寄進の行い', body:`${t.name}に渡すカードを1枚選ぶ。`, cards:p.hand, owner:p, min:1, max:1 }))[0] : lowest(p, p.hand);
+      const theirs = t.human ? (await askP(t, 'cards', { title:'寄進の行い', body:`${p.name}とカードを1枚交換する。渡すカードを選ぶ。`, cards:t.hand, owner:t, min:1, max:1 }))[0] : lowest(t, t.hand);
       takeFromHand(p, [mine]); takeFromHand(t, [theirs]); p.hand.push(theirs); t.hand.push(mine);
       log(`${p.name}の${mine.def.top.name}と${t.name}の${theirs.def.top.name}が入れ替わった`);
       res('交換', 'gold');
@@ -1063,10 +1083,10 @@ async function doSupport(p, f, target){
     }
     case 'peek': {
       p.known[t.i] = t.role;
-      if (p.human) await ask('notice', { title:'秘密の懺悔', role:t.role, body:`${t.name}の神託をこっそり確認した。` });
+      if (p.human) await askP(p, 'notice', { title:'秘密の懺悔', role:t.role, body:`${t.name}の神託をこっそり確認した。` });
       else log(`${p.name}は${t.name}の神託をこっそり確認した`);
       if (p.hand.length){
-        const give = p.human ? (await ask('cards', { title:'秘密の懺悔', body:`${t.name}に渡すカードを1枚選ぶ。`, cards:p.hand, owner:p, min:1, max:1 }))[0] : lowest(p, p.hand);
+        const give = p.human ? (await askP(p, 'cards', { title:'秘密の懺悔', body:`${t.name}に渡すカードを1枚選ぶ。`, cards:p.hand, owner:p, min:1, max:1 }))[0] : lowest(p, p.hand);
         takeFromHand(p, [give]); t.hand.push(give);
         log(`${p.name}は${t.name}にカードを1枚渡した`);
       }
@@ -1113,7 +1133,7 @@ async function attackAbilities(p, atk){
   if (k === 'kureha'){
     if (!G.ts.kurehaFire && atk.el !== 'fire' && p.hand.length >= 3){
       const pick = p.human
-        ? await ask('cards', { title:'紅刃の能力', body:'手札を3枚捨てると、このターンの攻撃はすべて〔火〕属性になる。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:3 })
+        ? await askP(p, 'cards', { title:'紅刃の能力', body:'手札を3枚捨てると、このターンの攻撃はすべて〔火〕属性になる。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:3 })
         : (p.hand.length >= 5 && Math.random() < 0.5 ? lowestN(p, p.hand, 3) : []);
       if (pick.length === 3){ discard(p, pick); G.ts.kurehaFire = true; }
     }
@@ -1123,7 +1143,7 @@ async function attackAbilities(p, atk){
   if (k === 'botan' && atk.el !== 'none') atk.power += 5;
   if (k === 'chiamo' && p.hand.length && G.deck.length){
     const pick = p.human
-      ? await ask('cards', { title:'チアモの能力', body:'手札を1枚捨てて山札を1枚めくる。同じトリガーなら、この攻撃の攻撃力が2倍になる。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:1 })
+      ? await askP(p, 'cards', { title:'チアモの能力', body:'手札を1枚捨てて山札を1枚めくる。同じトリガーなら、この攻撃の攻撃力が2倍になる。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:1 })
       : (atk.power >= 6 && cardValue(p, lowest(p, p.hand)) < 7 ? [lowest(p, p.hand)] : []);
     if (pick.length){
       discard(p, pick);
@@ -1135,7 +1155,7 @@ async function attackAbilities(p, atk){
   }
   if (k === 'joka' && p.hand.length){
     const pick = p.human
-      ? await ask('cards', { title:'ジョウカの能力', body:'手札を1枚捨てると、この攻撃に＋10ダメージ。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:1 })
+      ? await askP(p, 'cards', { title:'ジョウカの能力', body:'手札を1枚捨てると、この攻撃に＋10ダメージ。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:1 })
       : (cardValue(p, lowest(p, p.hand)) < 8 ? [lowest(p, p.hand)] : []);
     if (pick.length){ discard(p, pick); atk.power += 10; log(`${p.name}の攻撃が＋10された`, 'rose'); }
   }
@@ -1177,7 +1197,7 @@ async function doJudge(p, atk, t){
   if (J.fail.self) await strike({ name:'断罪失敗の反動', power:J.fail.self.power, el:'none', instakill:!!J.fail.self.instakill, range:{ kind:'single' }, faces:[] }, p, p);
   if (J.fail.discard && p.alive && p.hand.length){
     const n = Math.min(J.fail.discard, p.hand.length);
-    const pick = p.human ? await ask('cards', { title:'断罪失敗', body:`手札を${n}枚選んで捨てる。`, cards:p.hand, owner:p, min:n, max:n }) : lowestN(p, p.hand, n);
+    const pick = p.human ? await askP(p, 'cards', { title:'断罪失敗', body:`手札を${n}枚選んで捨てる。`, cards:p.hand, owner:p, min:n, max:n }) : lowestN(p, p.hand, n);
     discard(p, pick);
   }
 }
@@ -1228,7 +1248,7 @@ async function strike(atk, src, t, depth = 0){
     G.stage.result = { text:'無効！', cls:'ok' }; log(`${t.name}は魔法を無効にした（マラリヤ）`, 'good'); render(); await wait(700); return;
   }
 
-  const d = t.human ? await ask('defend', { atk, src }) : cpuDefend(t, atk, src);
+  const d = t.human ? await askP(t, 'defend', { atk, src }) : cpuDefend(t, atk, src);
   if (!t.revealed && d.cards.some(c => c.def.heart || faceFor(t, c).isJudge)) await revealSelf(t);
   const faces = [...d.cards, ...d.field].map(c => faceFor(t, c));
   for (const f of faces) if (f.isMagic){ const cost = magicCost(t, f); if (cost){ const b = t.hp; t.hp = Math.max(1, t.hp - cost); emit('cost', { p:t, face:f, hp:b - t.hp }); fx(t, `HP-${cost}`, 'hp'); } }
@@ -1250,7 +1270,7 @@ async function strike(atk, src, t, depth = 0){
   const reflect = faces.some(f => f.kw.reflectAll) || (atk.magic && (faces.some(f => f.kw.reflectMagic && f.sp !== 'choose') || d.mode === 'reflect'));
   if (reflect){
     let to = src;
-    if (faces.some(f => f.sp === 'freeReflect') && othersClockwise(t).length) to = t.human ? await ask('player', { title:'リリスミラージュ', body:'跳ね返す相手を選ぶ。', players:othersClockwise(t) }) : cpuPickEnemy(t);
+    if (faces.some(f => f.sp === 'freeReflect') && othersClockwise(t).length) to = t.human ? await askP(t, 'player', { title:'リリスミラージュ', body:'跳ね返す相手を選ぶ。', players:othersClockwise(t) }) : cpuPickEnemy(t);
     const rf = faces.find(f => f.kw.reflectAll) || faces.find(f => f.kw.reflectMagic && f.sp !== 'choose') || faces.find(f => f.sp === 'choose');
     emit('strike', { atk, src, t, faces, dmg:0, prevented:atk.power, by:rf });
     G.stage.result = { text:'反射！', cls:'gold' }; log(`${t.name}は攻撃を${to.name}へ跳ね返した`, 'good');
@@ -1286,11 +1306,11 @@ async function strike(atk, src, t, depth = 0){
     const ctr = faces.find(f => f.kw.counter && f.sp !== 'choose');
     const counterable = othersClockwise(t).length > 0;   // 反撃できる相手が残っているか
     if (ctr && dmg > 0 && counterable){
-      const to = t.human ? await ask('player', { title:ctr.name, body:`受けた${dmg}ダメージを、プレイヤー1人に与える。`, players:othersClockwise(t) }) : cpuPickEnemy(t);
+      const to = t.human ? await askP(t, 'player', { title:ctr.name, body:`受けた${dmg}ダメージを、プレイヤー1人に与える。`, players:othersClockwise(t) }) : cpuPickEnemy(t);
       damage(to, dmg); emit('counter', { p:t, to, face:ctr, dmg }); log(`${t.name}の反撃！ ${to.name}に${dmg}ダメージ`, 'hit'); render(); await wait(700);
     }
     if (d.mode === 'counter' && dmg > 0 && counterable){
-      const to = t.human ? await ask('player', { title:'反撃', body:`${dmg * 2}ダメージ（〔無〕・防御可能）を与える相手を選ぶ。`, players:othersClockwise(t) }) : cpuPickEnemy(t);
+      const to = t.human ? await askP(t, 'player', { title:'反撃', body:`${dmg * 2}ダメージ（〔無〕・防御可能）を与える相手を選ぶ。`, players:othersClockwise(t) }) : cpuPickEnemy(t);
       await settle();
       await strike({ name:'反撃', power:dmg * 2, el:'none', range:{ kind:'single' }, faces:[] }, t, to, depth + 1);
     }
@@ -1311,7 +1331,7 @@ async function malariyaAbility(t, atk){
   const atks = t.hand.filter(c => faceFor(t, c).isAtk);
   if (atks.length < 2) return false;
   const pick = t.human
-    ? await ask('cards', { title:'マラリヤの能力', body:'▲カードを2枚捨てると、この魔法攻撃を無効にできる。やめるなら選ばずに決定。', cards:atks, owner:t, min:0, max:2 })
+    ? await askP(t, 'cards', { title:'マラリヤの能力', body:'▲カードを2枚捨てると、この魔法攻撃を無効にできる。やめるなら選ばずに決定。', cards:atks, owner:t, min:0, max:2 })
     : (atk.power >= 7 ? lowestN(t, atks, 2) : []);
   if (pick.length !== 2) return false;
   discard(t, pick);
@@ -1321,6 +1341,7 @@ async function malariyaAbility(t, atk){
 /* ---------- 昇天 ---------- */
 // 太陽のお守り・昇天弓が発動したときの全画面カットイン
 async function cutin(kind, p, card){
+  if (Net.role === 'host') netBroadcast({ t:'cutin', kind, p:p.i, d:card.def.id });
   const el = $('#cutin');
   if (!el) return;
   const sparks = Array.from({ length:18 }, (_, i) => {
@@ -1403,9 +1424,9 @@ async function finishGame(){
   emit('end', { reason, gain });
   log(text, 'turn');
   UI.mode = 'wait'; render();
-  await ask('result');
+  await Promise.all(G.players.filter(p => p.human).map(p => askP(p, 'result')));
   if (M.game < GAMES) nextGame();
-  else { UI.mode = 'final'; render(); }
+  else { UI.mode = 'final'; render(); netNotifyAll('final'); }
 }
 
 /* ================================================================
@@ -1567,6 +1588,427 @@ function heartOKDef(t, c){
   if (t.role === 'sister') return true;
   if (t.role === 'succubus') return G.round > 1 && (t.hp <= 18 || Math.random() < 0.3);
   return false;
+}
+
+/* ================================================================
+   ネットワーク対戦
+   部屋を作った人（ホスト）のブラウザがゲームを進め、ほかの人は自分の操作だけを送る。
+   PeerJS（WebRTC）でブラウザどうしを直接つなぐ。部屋コードはホストの Peer ID の末尾。
+   ホストは各プレイヤーに「その人から見える状態」だけを送るので、他人の手札は届かない。
+   ================================================================ */
+const NET_PREFIX = 'succsis-v1-';
+const PEERJS_SRC = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
+const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const Net = {
+  role:null,          // null＝1人用 / 'host' / 'client'
+  seat:0,             // 自分の席（G.players の添字）
+  code:'', peer:null, status:'', error:'',
+  members:[],         // ホスト：参加者 { conn, name, char, token }
+  lobby:null,         // クライアント：ホストから届いた部屋の情報
+  host:null,          // クライアント：ホストへの接続
+  pending:new Map(),  // ホスト：返事待ちの問い合わせ
+  seq:0, syncTimer:0, joinTimer:0, beat:0, lastHost:0,
+};
+const BEAT_MS = 3000, LOST_MS = 15000;   // 生存確認の間隔と、切れたとみなすまでの時間
+const DEF_BY_ID = Object.fromEntries(CARD_DEFS.map(d => [d.id, d]));
+const CHAR_BY_KEY = Object.fromEntries(CHARACTERS.map(c => [c.key, c]));
+const FACE_REF = new Map();
+CARD_DEFS.forEach(d => { FACE_REF.set(d.top, [d.id, 0]); if (d.heart) FACE_REF.set(d.heart, [d.id, 1]); });
+
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v){ try { localStorage.setItem(k, v); } catch {} },
+};
+const cleanName = s => String(s || '').replace(/[\u0000-\u001f\u007f<>"]/g, '').trim().slice(0, 12);
+const randToken = () => Array.from({ length:16 }, () => CODE_CHARS[rand(CODE_CHARS.length)]).join('');
+const makeCode = () => Array.from({ length:5 }, () => CODE_CHARS[rand(CODE_CHARS.length)]).join('');
+const myName = () => cleanName(UI.setup.name) || 'プレイヤー';
+const inviteURL = () => `${location.origin}${location.pathname}?room=${Net.code}`;
+const PAGES_URL = 'https://nishikawa251.github.io/claude/succubus-sisters/';   // オンライン対戦はここで遊ぶ（GitHub Pages）
+
+/* ---------- 送受信する値の変換（プレイヤー・カード・カード面は番号にする） ---------- */
+function enc(v){
+  if (v === null || typeof v !== 'object') return v;
+  if (Array.isArray(v)) return v.map(enc);
+  if (FACE_REF.has(v)) return { $f:FACE_REF.get(v) };
+  if (v.def && 'uid' in v) return { $c:[v.uid, v.def.id] };
+  if ('char' in v && 'hp' in v && 'i' in v) return { $p:v.i };
+  const o = {};
+  for (const k of Object.keys(v)){ const x = v[k]; if (typeof x !== 'function' && !(x instanceof Map) && !(x instanceof Set)) o[k] = enc(x); }
+  return o;
+}
+// 画面の class 名や画像パスに入る文字列は、記号を含まないものだけ通す
+const ATTR_KEYS = new Set(['cls', 'role', 'el', 'art', 'mode', 'kind', 'reason', 'type', 'trig']);
+function dec(v, ctx, key){
+  if (typeof v === 'string') return ATTR_KEYS.has(key) && !/^[\w\/.\- ]{0,80}$/.test(v) ? '' : v;
+  if (v === null || typeof v !== 'object') return v;
+  if (Array.isArray(v)) return v.map(x => dec(x, ctx));
+  if (v.$p !== undefined) return ctx.player(v.$p);
+  if (v.$f){ const d = DEF_BY_ID[v.$f[0]]; return d ? (v.$f[1] ? d.heart : d.top) : null; }
+  if (v.$c) return ctx.card(v.$c[0], v.$c[1]);
+  const o = {};
+  for (const k of Object.keys(v)) if (k !== '__proto__' && k !== 'constructor' && k !== 'prototype') o[k] = dec(v[k], ctx, k);
+  return o;
+}
+
+/* ---------- 接続 ---------- */
+function loadPeerJS(){
+  if (window.Peer) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = PEERJS_SRC; s.onload = () => res(); s.onerror = () => rej(new Error('load'));
+    document.head.appendChild(s);
+  });
+}
+function peerOptions(){
+  // ?peerserver=host:port で自前の PeerJS サーバーを使う（動作確認用）
+  const q = new URLSearchParams(location.search).get('peerserver');
+  if (!q) return { debug:0 };
+  const [host, port] = q.split(':');
+  return { host, port:+port || 9000, path:'/', secure:false, debug:0 };
+}
+function netErrText(e){
+  const t = e && e.type;
+  if (t === 'peer-unavailable') return '部屋が見つからなかった。部屋コードを確かめてほしい。';
+  if (t === 'browser-incompatible') return 'このブラウザはオンライン対戦に対応していない。';
+  if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed') return '接続サーバーにつながらなかった。ネットワークを確かめて、もう一度試してほしい。';
+  return '接続に失敗した。もう一度試してほしい。';
+}
+function netReset(){
+  clearTimeout(Net.joinTimer); clearTimeout(Net.syncTimer); clearInterval(Net.beat);
+  try { if (Net.peer) Net.peer.destroy(); } catch {}
+  Object.assign(Net, { role:null, seat:0, code:'', peer:null, status:'', members:[], lobby:null, host:null, syncTimer:0, joinTimer:0, beat:0, lastHost:0 });
+  Net.pending.clear();
+}
+function netFail(msg){
+  netReset(); Net.error = msg;
+  gameId++; G = null; UI.mode = 'setup'; UI.setup.online = true;
+  render();
+}
+function netLeave(){
+  if (Net.role === 'host') netBroadcast({ t:'bye' });
+  else if (Net.host) send(Net.host, { t:'bye' });
+  netReset(); Net.error = '';
+}
+
+/* ---------- ホスト ---------- */
+async function netHost(){
+  netReset(); Net.error = ''; Net.status = '部屋を作っています…'; render();
+  try { await loadPeerJS(); } catch { return netFail('通信ライブラリを読み込めなかった。ネットワークを確かめてほしい。'); }
+  const open = () => {
+    Net.code = makeCode();
+    const peer = new Peer(NET_PREFIX + Net.code, peerOptions());
+    Net.peer = peer; Net.role = 'host'; Net.seat = 0;
+    peer.on('open', () => { Net.status = ''; render(); });
+    peer.on('connection', conn => netAccept(conn));
+    clearInterval(Net.beat);
+    Net.beat = setInterval(netHostBeat, BEAT_MS);
+    peer.on('disconnected', () => { if (Net.peer === peer) setTimeout(() => { try { if (Net.peer === peer && !peer.destroyed) peer.reconnect(); } catch {} }, 1500); });
+    peer.on('error', e => {
+      if (Net.peer !== peer) return;
+      if (e.type === 'unavailable-id'){ peer.destroy(); open(); return; }
+      if (e.type === 'peer-unavailable') return;
+      if (!G) netFail(netErrText(e));
+    });
+  };
+  open();
+}
+function netAccept(conn){
+  conn.seen = Date.now();
+  conn.on('data', d => { conn.seen = Date.now(); netHostData(conn, d); });
+  conn.on('close', () => netDrop(conn));
+  conn.on('error', () => netDrop(conn));
+}
+function lobbyInfo(){
+  return { t:'lobby', code:Net.code, count:UI.setup.count,
+    members:[{ name:myName(), char:UI.setup.char, host:true }, ...Net.members.map(m => ({ name:m.name, char:m.char }))] };
+}
+function netLobbyBroadcast(){
+  if (Net.role !== 'host') return;
+  const info = lobbyInfo();
+  Net.members.forEach((m, k) => send(m.conn, { ...info, you:k + 1 }));
+  render();
+}
+function send(conn, msg){ try { if (conn && conn.open) conn.send(msg); } catch {} }
+function netBroadcast(msg){
+  if (Net.role !== 'host') return;
+  if (M && G) M.players.forEach(p => { if (p.remote) send(p.remote, msg); });
+  else Net.members.forEach(m => send(m.conn, msg));
+}
+function netHostData(conn, d){
+  if (!d || typeof d !== 'object') return;
+  if (d.t === 'hello'){
+    const name = cleanName(d.name) || 'プレイヤー', token = String(d.token || '').slice(0, 32);
+    const char = Number.isInteger(d.char) && CHARACTERS[d.char] ? d.char : 0;
+    if (M && G){
+      // 対戦中：切れた人の席に戻る
+      const seat = M.players.find(p => p.token && p.token === token && !p.remote);
+      if (!seat){ send(conn, { t:'refuse', why:'started' }); setTimeout(() => conn.close(), 300); return; }
+      seat.remote = conn; seat.human = true; seat.name = seat.baseName;
+      Net.members.push({ conn, name:seat.baseName, char:CHARACTERS.indexOf(seat.char), token });
+      log(`${seat.name}がもどってきた`, 'good');
+      send(conn, { t:'start', seat:seat.i }); netSyncNow(); render();
+      return;
+    }
+    if (Net.members.some(m => m.conn === conn)) return;
+    if (Net.members.length >= 5){ send(conn, { t:'refuse', why:'full' }); setTimeout(() => conn.close(), 300); return; }
+    Net.members.push({ conn, name, char, token });
+    if (UI.setup.count < Net.members.length + 1) UI.setup.count = Math.max(3, Net.members.length + 1);
+    netLobbyBroadcast();
+    return;
+  }
+  if (d.t === 'bye'){ netDrop(conn); try { conn.close(); } catch {} return; }
+  if (d.t === 'char'){
+    const m = Net.members.find(m => m.conn === conn);
+    if (m && Number.isInteger(d.char) && CHARACTERS[d.char]){ m.char = d.char; netLobbyBroadcast(); }
+    return;
+  }
+  if (d.t === 'answer'){
+    const e = Net.pending.get(d.id);
+    if (!e || e.p.remote !== conn) return;
+    Net.pending.delete(d.id);
+    e.res(sanitizeAnswer(e, decHost(d.v, e)));
+  }
+}
+// ホスト：参加者に生存確認を送り、しばらく何も届かない人は切れたとみなす
+function netHostBeat(){
+  if (Net.role !== 'host') return;
+  const conns = new Set(Net.members.map(m => m.conn));
+  if (M) M.players.forEach(p => p.remote && conns.add(p.remote));
+  for (const c of conns){
+    if (Date.now() - (c.seen || 0) > LOST_MS){ netDrop(c); try { c.close(); } catch {} }
+    else send(c, { t:'ping' });
+  }
+}
+function netDrop(conn){
+  if (Net.role !== 'host' || conn.dropped) return;
+  conn.dropped = true;
+  const m = Net.members.find(m => m.conn === conn);
+  if (m && !(M && G)){ Net.members = Net.members.filter(x => x !== m); netLobbyBroadcast(); return; }
+  Net.members = Net.members.filter(x => x.conn !== conn);
+  if (!M) return;
+  const p = M.players.find(q => q.remote === conn);
+  if (!p) return;
+  p.remote = null; p.human = false; p.name = `${p.baseName}（CPU）`;
+  log(`${p.baseName}の接続が切れた。CPUが代わりに操作する`, 'judge');
+  for (const [id, e] of Net.pending) if (e.p === p){ Net.pending.delete(id); e.res(fallbackAnswer(e)); }
+  render();
+}
+function netStartMatch(){
+  gameId++;
+  const humans = [{ name:myName(), char:UI.setup.char, conn:null, token:'' }, ...Net.members];
+  const n = Math.max(3, humans.length, UI.setup.count);
+  const used = new Set();
+  const charOf = want => { const k = !used.has(want) ? want : shuffle(CHARACTERS.map((c, i) => i).filter(i => !used.has(i)))[0]; used.add(k); return CHARACTERS[k]; };
+  const seats = humans.map(h => ({ human:true, remote:h.conn, token:h.token, char:charOf(h.char), name:h.name }));
+  while (seats.length < n) seats.push({ human:false, remote:null, token:'', char:charOf(rand(CHARACTERS.length)), name:null });
+  M = { game:0, players:seats.map((s, k) => ({ i:k, human:s.human, remote:s.remote, token:s.token, char:s.char,
+    name:s.name || `${s.char.short}（CPU）`, baseName:s.name || s.char.short, vp:0, history:[] })) };
+  M.players.forEach(p => { if (p.remote) send(p.remote, { t:'start', seat:p.i }); });
+  UI.mode = 'wait';
+  nextGame();
+}
+
+/* ホスト → 各プレイヤー：その人から見える状態だけを送る */
+function snapshotFor(v){
+  const r = G.result;
+  return {
+    game:M.game, round:G.round, turn:G.turn, start:G.start, deck:G.deck.length, ending:G.ending,
+    ts:{ played:!!G.ts.played, gifted:!!G.ts.gifted, freeMagic:!!G.ts.freeMagic },
+    players:G.players.map(q => ({
+      i:q.i, name:q.name, char:q.char.key, human:!!q.human, role:(q === v || q.revealed) ? q.role : null,
+      hp:q.hp, alive:q.alive, revealed:q.revealed, manifested:q.manifested, heartSealed:q.heartSealed,
+      vp:q.vp, history:q.history, hitAgo:Date.now() - (q.hitAt || 0),
+      hand:q === v ? q.hand.map(enc) : q.hand.length, field:q.field.map(enc), known:q === v ? q.known : {},
+    })),
+    stage:enc(G.stage), log:G.log.slice(-80),
+    result:r ? { reason:r.reason, text:r.text, gain:G.players.map(q => r.gain.get(q) || []) } : null,
+  };
+}
+function netScheduleSync(){
+  if (Net.role !== 'host' || !G || !M || Net.syncTimer) return;
+  Net.syncTimer = setTimeout(netSyncNow, 40);
+}
+function netSyncNow(){
+  clearTimeout(Net.syncTimer); Net.syncTimer = 0;
+  if (Net.role !== 'host' || !G || !M) return;
+  for (const p of M.players) if (p.remote) send(p.remote, { t:'state', s:snapshotFor(p) });
+}
+function netNotifyAll(mode){
+  if (Net.role !== 'host') return;
+  netSyncNow();
+  M.players.forEach(p => { if (p.remote) send(p.remote, { t:'notify', mode }); });
+}
+
+/* ホスト：離れた席のプレイヤーに選んでもらう */
+function askP(p, mode, extra = {}){
+  if (Net.role === 'host' && p.remote) return netAsk(p, mode, extra);
+  return ask(mode, extra);
+}
+function netAsk(p, mode, extra){
+  const id = ++Net.seq, gid = gameId;
+  netSyncNow();
+  return new Promise(res => {
+    Net.pending.set(id, { p, mode, extra, res });
+    send(p.remote, { t:'ask', id, mode, extra:enc(extra) });
+  }).then(v => { if (gid !== gameId) throw ABORT; return v; });
+}
+function decHost(v, e){
+  const cards = new Map();
+  const add = list => (list || []).forEach(c => c && c.uid && cards.set(c.uid, c));
+  G.players.forEach(q => { add(q.hand); add(q.field); });
+  add(G.trash); add(G.deck); add(e.extra.cards);
+  return dec(v, { player:i => G.players[i] || null, card:uid => cards.get(uid) || null });
+}
+// 届いた返事を、ゲームのルールで受け付けられる形に直す（おかしなものはパス扱い）
+function sanitizeAnswer(e, v){
+  const { p, mode, extra:x } = e;
+  const inHand = c => !!c && p.hand.includes(c);
+  const uniq = (c, k, a) => a.indexOf(c) === k;
+  try {
+    switch (mode){
+      case 'action': {
+        const pass = { type:'pass', discard:v && !x.magicOnly && inHand(v.discard) ? v.discard : undefined };
+        if (!v || v.type === 'pass') return pass;
+        const free = !x.magicOnly && !G.ts.played && G.round > 1;
+        if (v.type === 'manifest') return free && p.role === 'succubus' && !p.revealed ? { type:'manifest' } : { type:'pass' };
+        if (v.type === 'gift') return free && !G.ts.gifted && canGift(p) ? { type:'gift' } : { type:'pass' };
+        if (v.type !== 'play') return { type:'pass' };
+        const cards = Array.isArray(v.cards) ? v.cards.filter(uniq) : [];
+        const pool = v.fromField ? usableField(p) : p.hand;
+        if (!cards.length || !cards.every(c => c && pool.includes(c))) return { type:'pass' };
+        if (v.fromField ? fieldProblem(p, cards[0], x.magicOnly) : playProblem(p, cards[0], x.magicOnly)) return { type:'pass' };
+        if (v.fromField && cards.length > 1) return { type:'pass' };
+        for (let k = 1; k < cards.length; k++) if (!(faceFor(p, cards[k - 1]).kw.chain && faceFor(p, cards[0]).isAtk && chainable(p, cards[k]))) return { type:'pass' };
+        const tk = targetKind(cards.map(c => faceFor(p, c)));
+        let target = v.target;
+        if (tk === 'other' && (!target || target === p || !target.alive)) return { type:'pass' };
+        if (tk === 'any' && (!target || !target.alive)) target = p;
+        if (tk === 'none') target = null;
+        return { type:'play', cards, fromField:!!v.fromField, target };
+      }
+      case 'defend': {
+        const field0 = usableField(p);
+        let cards = (v && Array.isArray(v.cards) ? v.cards : []).filter(uniq).filter(c => inHand(c) && defUsable(p, c, x.atk));
+        let field = (v && Array.isArray(v.field) ? v.field : []).filter(uniq).filter(c => c && field0.includes(c) && defUsable(p, c, x.atk));
+        if (x.atk.kiss && cards.length + field.length > 1){ if (cards.length){ cards = cards.slice(0, 1); field = []; } else field = field.slice(0, 1); }
+        const mode = ['reflect', 'remove', 'counter'].includes(v && v.mode) && cards.some(c => faceFor(p, c).sp === 'choose') ? v.mode : null;
+        return { cards, field, mode };
+      }
+      case 'cards': {
+        let pick = (Array.isArray(v) ? v : []).filter(uniq).filter(c => c && x.cards.includes(c)).slice(0, x.max);
+        if (pick.length < x.min) pick = lowestN(p, x.cards, x.min);
+        return pick;
+      }
+      case 'player': return x.players.includes(v) ? v : x.players[0];
+      case 'option': return x.options.some(o => o.value === v) ? v : x.options[x.options.length - 1].value;
+      default: return true;
+    }
+  } catch { return fallbackAnswer(e); }
+}
+// 返事が来ないまま接続が切れたとき：CPUの判断で代わりに答える
+function fallbackAnswer(e){
+  const { p, mode, extra:x } = e;
+  try {
+    if (mode === 'action') return cpuPlan(p, !!x.magicOnly);
+    if (mode === 'defend') return cpuDefend(p, x.atk, x.src);
+    if (mode === 'cards') return x.min ? lowestN(p, x.cards, x.min) : [];
+    if (mode === 'player'){ const q = cpuPickEnemy(p); return x.players.includes(q) ? q : x.players[0]; }
+    if (mode === 'option') return x.options[x.options.length - 1].value;
+  } catch {}
+  return mode === 'action' ? { type:'pass' } : mode === 'defend' ? { cards:[], field:[], mode:null } : mode === 'cards' ? [] : true;
+}
+
+/* ---------- 参加する側 ---------- */
+async function netJoin(code){
+  code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (code.length !== 5){ Net.error = '部屋コードは5文字。'; render(); return; }
+  netReset(); Net.error = ''; Net.status = '部屋に接続しています…'; Net.code = code; render();
+  try { await loadPeerJS(); } catch { return netFail('通信ライブラリを読み込めなかった。ネットワークを確かめてほしい。'); }
+  const peer = new Peer(undefined, peerOptions());
+  Net.peer = peer;
+  let token = store.get('ss-token-' + code);
+  if (!token){ token = randToken(); store.set('ss-token-' + code, token); }
+  peer.on('open', () => {
+    const conn = peer.connect(NET_PREFIX + code, { reliable:true });
+    Net.host = conn;
+    conn.on('open', () => {
+      send(conn, { t:'hello', name:myName(), token, char:UI.setup.char });
+      Net.lastHost = Date.now();
+      clearInterval(Net.beat);
+      Net.beat = setInterval(() => {
+        if (Net.host !== conn) return;
+        if (Net.role === 'client' && Date.now() - Net.lastHost > LOST_MS) return netFail('ホストとの接続が切れた。');
+        send(conn, { t:'ping' });
+      }, BEAT_MS);
+    });
+    conn.on('data', d => { Net.lastHost = Date.now(); netClientData(d); });
+    conn.on('close', () => { if (Net.host === conn) netFail('ホストとの接続が切れた。'); });
+    conn.on('error', () => { if (Net.host === conn) netFail('ホストとの接続が切れた。'); });
+  });
+  peer.on('error', e => { if (Net.peer === peer) netFail(netErrText(e)); });
+  Net.joinTimer = setTimeout(() => { if (Net.peer === peer && Net.role !== 'client') netFail('部屋に接続できなかった。部屋コードとネットワークを確かめてほしい。'); }, 15000);
+}
+const cardCache = new Map();
+function decCard(uid, id){
+  let c = cardCache.get(uid);
+  if (!c && DEF_BY_ID[id]){ c = { uid, def:DEF_BY_ID[id] }; cardCache.set(uid, c); }
+  return c || null;
+}
+const decClient = v => dec(v, { player:i => (G && G.players[i]) || null, card:decCard });
+function netClientData(d){
+  if (!d || typeof d !== 'object') return;
+  switch (d.t){
+    case 'lobby': clearTimeout(Net.joinTimer); Net.role = 'client'; Net.status = ''; Net.lobby = d; render(); break;
+    case 'refuse': netFail(d.why === 'full' ? '部屋が満員だった。' : 'この部屋はもう対戦を始めている。'); break;
+    case 'bye': netFail('ホストが部屋を閉じた。'); break;
+    case 'start': clearTimeout(Net.joinTimer); Net.role = 'client'; Net.seat = +d.seat || 0; UI.mode = 'wait'; UI.zoom = null; render(); break;
+    case 'state': netApplyState(d.s); break;
+    case 'ask': {
+      if (!G) return;
+      const id = d.id;
+      ask(String(d.mode), decClient(d.extra || {})).then(v => send(Net.host, { t:'answer', id, v:enc(v) })).catch(() => {});
+      break;
+    }
+    case 'notify':
+      if (d.mode === 'final'){ UI.mode = 'final'; UI.resolve = null; render(); }
+      break;
+    case 'fx': if (G && G.players[d.p]) fx(G.players[d.p], String(d.text).slice(0, 20), /^[\w-]{0,20}$/.test(d.cls) ? d.cls : ''); break;
+    case 'cutin': if (G && G.players[d.p] && DEF_BY_ID[d.d]) cutin(d.kind === 'bow' ? 'bow' : 'sun', G.players[d.p], { def:DEF_BY_ID[d.d] }).catch(() => {}); break;
+  }
+}
+function netApplyState(s){
+  if (!s || !Array.isArray(s.players)) return;
+  const same = G && M && M.game === s.game && G.players.length === s.players.length;
+  const ROLES = ['sister', 'succubus', 'fallen'];
+  const players = s.players.map((x, k) => {
+    const q = same ? G.players[k] : {};
+    return Object.assign(q, {
+      i:k, name:cleanName(x.name) || '？', char:CHAR_BY_KEY[x.char] || CHARACTERS[0], human:!!x.human,
+      role:ROLES.includes(x.role) ? x.role : null, hp:+x.hp || 0, alive:!!x.alive, revealed:!!x.revealed, manifested:!!x.manifested,
+      heartSealed:!!x.heartSealed, vp:+x.vp || 0, history:Array.isArray(x.history) ? x.history.map(Number) : [],
+      hitAt:Date.now() - (+x.hitAgo || 1e9), sus:{}, known:{},
+    });
+  });
+  G = Object.assign(same ? G : {}, { players, round:+s.round || 1, turn:+s.turn || 0, start:+s.start || 0, ending:s.ending || null,
+    deck:{ length:+s.deck || 0 }, ts:s.ts || {}, trash:[], removed:[], judgeSuccess:new Set(), lastUsed:[], curUsed:[] });
+  // カードや演出の中身は、プレイヤーを作り直したあとで読む
+  s.players.forEach((x, k) => {
+    const q = players[k];
+    q.hand = Array.isArray(x.hand) ? decClient(x.hand).filter(Boolean) : Array(Math.max(0, Math.min(+x.hand || 0, 20))).fill(null);
+    q.field = decClient(x.field || []).filter(Boolean);
+    if (x.known && typeof x.known === 'object') for (const [i, r] of Object.entries(x.known)) if (ROLES.includes(r)) q.known[+i] = r;
+  });
+  G.stage = s.stage ? decClient(s.stage) : null;
+  if (G.stage && G.stage.art && !/^img\/chara\/\w+_(oni|hito)\.jpg$/.test(G.stage.art)) G.stage.art = '';
+  G.log = (Array.isArray(s.log) ? s.log : []).map(l => ({ text:String(l && l.text || ''), cls:/^[\w-]{0,12}$/.test(l && l.cls) ? l.cls : '' }));
+  G.result = s.result ? { reason:String(s.result.reason), text:String(s.result.text || ''),
+    gain:new Map(players.map((q, k) => [q, (s.result.gain[k] || []).map(x => ({ v:+x.v || 0, why:String(x.why || '') }))])) } : null;
+  M = { game:+s.game || 1, players };
+  if (UI.focus) UI.focus = me().hand.find(c => c && c.uid === UI.focus.uid) || usableField(me()).find(c => c.uid === UI.focus.uid) || null;
+  if (UI.target) UI.target = G.players[UI.target.i] || null;
+  if (UI.mode === 'setup') UI.mode = 'wait';
+  render();
 }
 
 /* ================================================================
@@ -1764,13 +2206,14 @@ function render(){
   const inGame = !!G && UI.mode !== 'setup';
   $('#setup').hidden = inGame;
   $('#game').hidden = !inGame;
+  $('#btnSpeed').hidden = Net.role === 'client';
   if (!inGame){ renderSetup(); $('#meta').textContent = ''; renderModal(); drawArrows(); return; }
   $('#meta').textContent = `第${M.game}/${GAMES}戦・${G.round}巡目・山札${G.deck.length}`;
   const p0 = me();
   const plan = UI.mode === 'action' ? actionPlan() : null;
   const pickable = q => UI.mode === 'action' && plan && plan.tk && q.alive && (plan.tk === 'any' || q !== p0);
 
-  $('#foes').innerHTML = G.players.filter(q => !q.human).map(q => {
+  $('#foes').innerHTML = G.players.filter(q => q !== p0).map(q => {
     const cls = ['pl'];
     if (!q.alive) cls.push('dead');
     if (isActive(q)) cls.push('active');
@@ -1794,6 +2237,7 @@ function render(){
 
   renderStage(); renderLog(); renderControls(plan); renderHand(); renderModal();
   requestAnimationFrame(drawArrows);
+  netScheduleSync();
 }
 
 /* ---------- 攻撃の矢印 ---------- */
@@ -1812,7 +2256,7 @@ function duelRole(p){
   if (links.some(l => l.to === p)) r.push('defender');
   return r;
 }
-function panelOf(p){ return document.querySelector(p.human ? '#mePanel' : `.pl[data-pid="${p.i}"]`); }
+function panelOf(p){ return document.querySelector(p === me() ? '#mePanel' : `.pl[data-pid="${p.i}"]`); }
 function edgePoint(r, tx, ty, pad){
   const cx = r.left + r.width / 2, cy = r.top + r.height / 2, dx = tx - cx, dy = ty - cy;
   const k = Math.min(dx ? (r.width / 2 + pad) / Math.abs(dx) : Infinity, dy ? (r.height / 2 + pad) / Math.abs(dy) : Infinity, 1);
@@ -1851,29 +2295,85 @@ function drawArrows(){
 
 function renderSetup(){
   const s = UI.setup;
-  const n = s.count, fallenN = fallenCount(n);
-  $('#setup').innerHTML = `
-    <div class="hero">
+  // 入力中の欄は描き直しても続きから打てるようにする
+  const act = document.activeElement, focusId = act && act.id && act.closest && act.closest('#setup') ? act.id : null;
+  const caret = focusId ? [act.selectionStart, act.selectionEnd] : null;
+  const tabs = Net.role ? '' : `<div class="seg modeseg" role="tablist">
+      <button type="button" data-online="0" class="${s.online ? '' : 'on'}">CPUと遊ぶ</button>
+      <button type="button" data-online="1" class="${s.online ? 'on' : ''}">オンライン対戦</button></div>`;
+  const hero = `<div class="hero">
       <span class="eyebrow">異端審問バトルロイヤル</span>
       <h1>サキュバス<br><span>シスターズ</span></h1>
       <p>神託でシスターとサキュバスに分かれ、正体を隠したまま武器・盾・魔法のカードで戦う。サキュバスを見つけて昇天させるか、最後の1人まで生き残るか。3戦して勝利点を競う。</p>
-    </div>
-    <div class="sect"><h2>人数</h2>
-      <div class="seg">${[3, 4, 5, 6].map(k => `<button type="button" data-count="${k}" class="${k === n ? 'on' : ''}">${k}人</button>`).join('')}</div>
-      <div class="seg-note">あなた＋CPU${n - 1}人。神託はサキュバス1${fallenN ? `・堕天使${fallenN}` : ''}・シスター${n - 1 - fallenN}。</div>
-    </div>
-    <div class="sect"><h2>あなたのキャラクター</h2>
+    </div>${tabs}`;
+  $('#setup').innerHTML = hero + (s.online || Net.role ? onlineSetupHTML() : offlineSetupHTML());
+  if (focusId){ const el = document.getElementById(focusId); if (el){ el.focus(); try { el.setSelectionRange(caret[0], caret[1]); } catch {} } }
+}
+function countHTML(n, note, min = 3, disabled = false){
+  return `<div class="sect"><h2>人数</h2>
+      <div class="seg">${[3, 4, 5, 6].map(k => `<button type="button" data-count="${k}" class="${k === n ? 'on' : ''}" ${disabled || k < min ? 'disabled' : ''}>${k}人</button>`).join('')}</div>
+      <div class="seg-note">${note}</div>
+    </div>`;
+}
+function castNote(n){ const f = fallenCount(n); return `神託はサキュバス1${f ? `・堕天使${f}` : ''}・シスター${n - 1 - f}。`; }
+function charsHTML(){
+  const s = UI.setup, c0 = CHARACTERS[s.char];
+  return `<div class="sect"><h2>あなたのキャラクター</h2>
       <div class="seg-note">サキュバスになって【顕現】したときに、ここに書かれた能力が使える。共通：${COMMON_SUCC}</div>
       <div class="preview">
-        <button type="button" data-zoom="${artSrc(CHARACTERS[s.char], 'hito')}"><img src="${artSrc(CHARACTERS[s.char], 'hito')}" alt="${esc(CHARACTERS[s.char].name)}（シスターの姿）">シスターの姿</button>
-        <button type="button" data-zoom="${artSrc(CHARACTERS[s.char], 'oni')}"><img src="${artSrc(CHARACTERS[s.char], 'oni')}" alt="${esc(CHARACTERS[s.char].name)}（サキュバスの姿）">サキュバスの姿</button>
-        <div class="ptext"><b>${esc(CHARACTERS[s.char].name)}</b><span>${esc(CHARACTERS[s.char].common || COMMON_SUCC)}</span><span>${esc(CHARACTERS[s.char].text)}</span><span>画像をタップすると大きく表示する。</span></div>
+        <button type="button" data-zoom="${artSrc(c0, 'hito')}"><img src="${artSrc(c0, 'hito')}" alt="${esc(c0.name)}（シスターの姿）">シスターの姿</button>
+        <button type="button" data-zoom="${artSrc(c0, 'oni')}"><img src="${artSrc(c0, 'oni')}" alt="${esc(c0.name)}（サキュバスの姿）">サキュバスの姿</button>
+        <div class="ptext"><b>${esc(c0.name)}</b><span>${esc(c0.common || COMMON_SUCC)}</span><span>${esc(c0.text)}</span><span>画像をタップすると大きく表示する。</span></div>
       </div>
       <div class="chars">${CHARACTERS.map((c, i) => `<button type="button" class="char ${i === s.char ? 'on' : ''}" data-char="${i}">
         ${portrait(c, 'hito')}
         <span><span class="nm">${esc(c.name)}</span><br><span class="tx">${c.common ? esc(c.common) + '<br>' : ''}${esc(c.text)}</span></span></button>`).join('')}</div>
+    </div>`;
+}
+function offlineSetupHTML(){
+  const n = UI.setup.count;
+  return countHTML(n, `あなた＋CPU${n - 1}人。${castNote(n)}`) + charsHTML() +
+    `<div class="start-row"><button type="button" class="btn" data-start="1">3戦マッチを始める</button><button type="button" class="btn sub" id="btnRules2">ルールを読む</button></div>`;
+}
+function memberListHTML(list, meIndex){
+  return `<ul class="members">${list.map((m, k) => `<li>${portrait(CHARACTERS[m.char] || CHARACTERS[0], 'hito')}<span><b>${esc(m.name)}</b>${k === meIndex ? '<em>あなた</em>' : ''}${m.host ? '<em>ホスト</em>' : ''}<br><small>${esc((CHARACTERS[m.char] || CHARACTERS[0]).name)}</small></span></li>`).join('')}</ul>`;
+}
+function onlineSetupHTML(){
+  const s = UI.setup;
+  const msg = Net.error ? `<p class="netmsg bad" role="alert">${esc(Net.error)}</p>` : Net.status ? `<p class="netmsg">${esc(Net.status)}</p>` : '';
+  if (Net.role === 'host' && Net.code && !Net.status){
+    const humans = Net.members.length + 1, n = Math.max(s.count, humans, 3);
+    const list = [{ name:myName(), char:s.char, host:true }, ...Net.members];
+    return `<div class="sect"><h2>部屋コード</h2>
+        <div class="roomcode">${esc(Net.code)}</div>
+        <div class="seg-note">友だちには、この部屋コードか下の招待URLを送る。開いた人がここに並ぶ。</div>
+        <div class="netrow"><input id="netURL" readonly value="${esc(inviteURL())}" aria-label="招待URL"><button type="button" class="btn sub" data-copy="1">URLをコピー</button></div>
+      </div>
+      <div class="sect"><h2>参加者（${humans}人）</h2>${memberListHTML(list, 0)}<div class="seg-note">キャラクターが重なった人は、始めるときに別のキャラクターになる。</div></div>
+      ${countHTML(n, `人間${humans}人${n > humans ? `＋CPU${n - humans}人` : ''}。${castNote(n)}`, Math.max(3, humans))}
+      ${charsHTML()}${msg}
+      <div class="start-row"><button type="button" class="btn" data-start="1">3戦マッチを始める</button><button type="button" class="btn sub" data-leave="1">部屋を閉じる</button></div>`;
+  }
+  if (Net.role === 'client' && Net.lobby){
+    const L = Net.lobby, n = Math.max(+L.count || 3, L.members.length, 3);
+    return `<div class="sect"><h2>部屋 ${esc(String(L.code || Net.code))} に参加中</h2>
+        <div class="seg-note">ホストが「始める」を押すと対戦が始まる。人数はホストが決める（いまは${n}人${n > L.members.length ? `・CPU${n - L.members.length}人` : ''}）。</div>
+        ${memberListHTML(L.members.map(m => ({ name:cleanName(m.name), char:+m.char || 0, host:!!m.host })), +L.you)}
+        <div class="seg-note">キャラクターが重なった人は、始めるときに別のキャラクターになる。</div>
+      </div>
+      ${charsHTML()}${msg}
+      <div class="start-row"><button type="button" class="btn sub" data-leave="1">部屋を出る</button></div>`;
+  }
+  const busy = !!Net.status;
+  return `<div class="sect"><h2>オンライン対戦</h2>
+      <div class="seg-note">部屋を作った人のブラウザでゲームが進み、ほかの人は自分の番に操作する。空いた席はCPUが入る。手札は本人にしか届かない。</div>
+      <label class="netlabel">あなたの名前<input id="netName" maxlength="12" autocomplete="nickname" value="${esc(s.name)}" placeholder="プレイヤー"></label>
+      <div class="netrow"><button type="button" class="btn" data-host="1" ${busy ? 'disabled' : ''}>部屋を作る</button></div>
+      <div class="netrow"><input id="netCode" maxlength="5" autocomplete="off" autocapitalize="characters" value="${esc(s.joinCode)}" placeholder="部屋コード（5文字）" aria-label="部屋コード"><button type="button" class="btn sub" data-join="1" ${busy ? 'disabled' : ''}>部屋に入る</button></div>
+      ${msg}
+      ${/github\.io$|^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '' : `<p class="netmsg">この画面ではつながらないことがある。そのときは GitHub Pages 版（<a href="${PAGES_URL}" target="_blank" rel="noopener">${PAGES_URL}</a>）で遊んでほしい。</p>`}
     </div>
-    <div class="start-row"><button type="button" class="btn" data-start="1">3戦マッチを始める</button><button type="button" class="btn sub" id="btnRules2">ルールを読む</button></div>`;
+    ${charsHTML()}`;
 }
 
 function renderStage(){
@@ -1918,9 +2418,11 @@ function renderControls(plan){
     const pr = predict(p, atk, faces, faces.some(f => f.sp === 'choose') ? 'choose' : null);
     prompt = `<strong>${esc(src.name)}の${esc(atk.name)}</strong>（${atkLabel(atk)}）があなたを狙う！ 光っているカードで防御できる。${atk.kiss ? '防御は1枚まで。' : ''}`;
     ctrl = `<button type="button" class="btn holy" data-ctl="def">${faces.length ? `防御する（${pr.text}）` : `そのまま受ける（${pr.text}）`}</button>`;
+  } else if (G.ending && Net.role === 'host' && Net.pending.size){
+    prompt = 'ほかのプレイヤーの確認を待っています…';
   } else if (!G.ending){
     const cur = G.players[G.turn];
-    prompt = !p.alive ? 'あなたは昇天した。ゲームの行方を見守ろう。' : cur && !cur.human ? `${esc(cur.name)}のターン…` : '';
+    prompt = !p.alive ? 'あなたは昇天した。ゲームの行方を見守ろう。' : cur && cur !== p ? `${esc(cur.name)}のターン…` : '';
   }
   $('#prompt').innerHTML = prompt;
   $('#controls').innerHTML = ctrl;
@@ -2002,7 +2504,7 @@ function renderModal(){
     h = `<div class="sheet"><h2>第${M.game}戦 終了</h2><p>${esc(r.text)}</p>
       <div class="tbl-wrap"><table class="score"><tr><th>プレイヤー</th><th>神託</th><th>状態</th><th>内訳</th><th class="num">今回</th><th class="num">合計</th></tr>
       ${G.players.map(p => { const g = r.gain.get(p); const d = g.reduce((s, x) => s + x.v, 0);
-        return `<tr><td class="nm">${esc(p.human ? `あなた（${p.char.short}）` : p.name)}</td><td><span class="role ${p.role}">${ROLE[p.role]}</span></td><td>${p.alive ? '生存' : '昇天'}</td>
+        return `<tr><td class="nm">${esc(p === me() ? `あなた（${p.char.short}）` : p.name)}</td><td><span class="role ${p.role}">${ROLE[p.role]}</span></td><td>${p.alive ? '生存' : '昇天'}</td>
         <td>${g.map(x => `${esc(x.why)} ${x.v > 0 ? '+' : ''}${x.v}`).join('、') || '—'}</td><td class="num ${d > 0 ? 'plus' : d < 0 ? 'minus' : ''}">${d > 0 ? '+' : ''}${d}</td><td class="num">${p.vp}</td></tr>`; }).join('')}
       </table></div>
       <div class="row"><button type="button" class="btn" data-ok="1">${M.game < GAMES ? `第${M.game + 1}戦へ` : '最終結果へ'}</button></div></div>`;
@@ -2012,9 +2514,9 @@ function renderModal(){
     const winners = ranked.filter(p => p.vp === top);
     h = `<div class="sheet"><h2>${winners.includes(M.players[0]) ? 'あなたが天界の覇者！' : `天界の覇者：${esc(winners.map(p => p.name).join('・'))}`}</h2>
       <div class="tbl-wrap"><table class="score"><tr><th>順位</th><th>プレイヤー</th>${M.players[0].history.map((_, i) => `<th class="num">${i + 1}戦</th>`).join('')}<th class="num">合計</th></tr>
-      ${ranked.map(p => `<tr><td>${ranked.filter(q => q.vp > p.vp).length + 1}位</td><td class="nm">${esc(p.human ? `あなた（${p.char.short}）` : p.name)}</td>${p.history.map(v => `<td class="num">${v > 0 ? '+' : ''}${v}</td>`).join('')}<td class="num">${p.vp}</td></tr>`).join('')}
+      ${ranked.map(p => `<tr><td>${ranked.filter(q => q.vp > p.vp).length + 1}位</td><td class="nm">${esc(p === me() ? `あなた（${p.char.short}）` : p.name)}</td>${p.history.map(v => `<td class="num">${v > 0 ? '+' : ''}${v}</td>`).join('')}<td class="num">${p.vp}</td></tr>`).join('')}
       </table></div>
-      <div class="row"><button type="button" class="btn sub" data-home="1">タイトルへ</button><button type="button" class="btn" data-again="1">同じ設定でもう一度</button></div></div>`;
+      <div class="row"><button type="button" class="btn sub" data-home="1">${Net.role ? '部屋を出る' : 'タイトルへ'}</button>${Net.role === 'client' ? '' : `<button type="button" class="btn" data-again="1">${Net.role ? '同じメンバーでもう一度' : '同じ設定でもう一度'}</button>`}</div></div>`;
   }
   m.hidden = !h;
   if (h) m.innerHTML = h;
@@ -2059,7 +2561,8 @@ function rulesHTML(){
 }
 
 function fx(p, text, cls){
-  const el = document.querySelector(p.human ? '#mePanel' : `.pl[data-pid="${p.i}"]`);
+  if (Net.role === 'host') netBroadcast({ t:'fx', p:p.i, text, cls });
+  const el = document.querySelector(p === me() ? '#mePanel' : `.pl[data-pid="${p.i}"]`);
   if (!el) return;
   const r = el.getBoundingClientRect();
   if (!r.width) return;
@@ -2083,11 +2586,16 @@ document.addEventListener('click', e => {
   if (d.zoomclose){ UI.zoom = null; render(); return; }
   if (d.closerules){ UI.rules = false; render(); return; }
   if (t.id === 'btnRules2'){ UI.rules = true; render(); return; }
-  if (d.count){ UI.setup.count = +d.count; render(); return; }
-  if (d.char){ UI.setup.char = +d.char; render(); return; }
-  if (d.start){ UI.mode = 'wait'; startMatch(); return; }
-  if (d.again){ startMatch(); return; }
-  if (d.home){ gameId++; UI.mode = 'setup'; G = null; render(); return; }
+  if (d.online !== undefined){ UI.setup.online = d.online === '1'; Net.error = ''; render(); return; }
+  if (d.host){ netHost(); return; }
+  if (d.join){ netJoin(UI.setup.joinCode); return; }
+  if (d.leave){ netLeave(); render(); return; }
+  if (d.copy){ const u = inviteURL(); (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => { t.textContent = 'コピーした'; }, () => { const i = $('#netURL'); if (i){ i.focus(); i.select(); } }); return; }
+  if (d.count){ if (Net.role === 'client') return; UI.setup.count = +d.count; if (Net.role === 'host') netLobbyBroadcast(); render(); return; }
+  if (d.char){ UI.setup.char = +d.char; if (Net.role === 'client') send(Net.host, { t:'char', char:UI.setup.char }); if (Net.role === 'host') netLobbyBroadcast(); render(); return; }
+  if (d.start){ if (Net.role === 'host') netStartMatch(); else { UI.mode = 'wait'; startMatch(); } return; }
+  if (d.again){ if (Net.role === 'host') netStartMatch(); else startMatch(); return; }
+  if (d.home){ gameId++; if (Net.role) netLeave(); UI.mode = 'setup'; UI.resolve = null; G = null; render(); return; }
   if (d.ok && UI.resolve){ UI.resolve(true); return; }
   if (d.opt !== undefined && UI.resolve){ UI.resolve(UI.extra.options[+d.opt].value); return; }
   if (d.pick !== undefined && UI.resolve){ UI.resolve(G.players[+d.pick]); return; }
@@ -2112,7 +2620,7 @@ document.addEventListener('click', e => {
 document.addEventListener('click', e => {
   // 自分のパネル（button ではない）を対象に選ぶ
   const mp = e.target.closest('#mePanel');
-  if (mp && !e.target.closest('button')) onPlayer(0);
+  if (mp && !e.target.closest('button') && G) onPlayer(me().i);
 });
 window.addEventListener('resize', drawArrows);
 window.addEventListener('scroll', drawArrows, { passive:true });
@@ -2121,7 +2629,16 @@ $('#btnSpeed').addEventListener('click', e => {
   speed = speed === 1 ? 0.45 : speed === 0.45 ? 0.15 : 1;
   e.currentTarget.textContent = `速度：${speed === 1 ? '普通' : speed === 0.45 ? '速い' : '最速'}`;
 });
-$('#btnRestart').addEventListener('click', () => { gameId++; UI.mode = 'setup'; UI.rules = false; G = null; render(); });
+$('#btnRestart').addEventListener('click', () => { gameId++; if (Net.role) netLeave(); UI.mode = 'setup'; UI.rules = false; UI.resolve = null; G = null; render(); });
+document.addEventListener('input', e => {
+  if (e.target.id === 'netName'){ UI.setup.name = cleanName(e.target.value); store.set('ss-name', UI.setup.name); }
+  if (e.target.id === 'netCode'){ UI.setup.joinCode = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'netCode') netJoin(UI.setup.joinCode); });
+window.addEventListener('beforeunload', () => { if (Net.role === 'host') netBroadcast({ t:'bye' }); else if (Net.host) send(Net.host, { t:'bye' }); });
+// 招待URL（?room=コード）から開いたら、オンライン対戦の画面にする
+UI.setup.name = cleanName(store.get('ss-name') || '');
+{ const room = new URLSearchParams(location.search).get('room'); if (room){ UI.setup.online = true; UI.setup.joinCode = room.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); } }
 
 render();
 </script>

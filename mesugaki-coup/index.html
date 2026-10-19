@@ -138,6 +138,35 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .pcards{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .pcards .wrap{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:var(--dim)}
 
+/* ---------- action tiles (カードとアクションの対応) ---------- */
+.agroup{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+.agroup .gl{font-size:11px;color:var(--dim);letter-spacing:.08em}
+.atiles{display:flex;gap:10px;flex-wrap:wrap}
+.at{--rcol:var(--line2);width:156px;padding:0 0 6px;background:var(--panel2);border:2px solid var(--rcol);cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:3px;position:relative;font-family:var(--f);color:var(--ink)}
+.at .ah{background:var(--rcol);color:#fff;padding:4px 7px;font-size:14px;letter-spacing:.04em}
+.at .ar{font-size:11px;padding:2px 7px 0;color:var(--dim)}
+.at .ar b{color:var(--ink);font-weight:400}
+.at .ae{font-size:11px;padding:0 7px;line-height:1.35;color:var(--ink)}
+.at .ab{font-size:10px;padding:0 7px;color:var(--dim)}
+.at .ast{position:absolute;right:-2px;top:-10px;font-size:10px;padding:1px 6px;background:var(--green);color:#0b2a14}
+.at.bluff{border-style:dashed}
+.at.bluff .ah{background:transparent;color:var(--rcol);box-shadow:inset 0 0 0 1px var(--rcol)}
+.at.bluff .ast{background:#4a3a52;color:var(--dim)}
+.at.basic .ah{background:#3d2b4a;color:var(--ink)}
+.at:hover{filter:brightness(1.15)}
+.at:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.at:disabled{opacity:.3;cursor:not-allowed;filter:none}
+.at.linked,.rc.linked{outline:3px solid var(--gold);outline-offset:2px}
+.at.rec{outline:3px solid var(--gold);outline-offset:2px;animation:rec 1.2s ease-in-out infinite}
+.at.rec .ah::before{content:'👉 '}
+.rc.playable{cursor:pointer;box-shadow:0 0 0 2px var(--rcol,#ff5fa8) inset,0 0 0 3px var(--gold),0 2px 0 0 rgba(0,0,0,.4)}
+.rc.playable:hover{transform:translateY(-4px)}
+.rc .play{font-size:10px;color:#fff;background:var(--rcol,#ff5fa8);padding:2px 4px;text-align:center;margin:2px -5px -4px;letter-spacing:.04em}
+.rc.playable.rec{animation:rec 1.2s ease-in-out infinite}
+.rc .rl.act b{color:var(--rcol,#ff5fa8)}
+.claim{display:flex;gap:10px;align-items:center;margin:4px 0 8px}
+.claim .cl{font-size:11px;color:var(--dim);line-height:1.5}
+
 /* ---------- tutorial ---------- */
 .coach{display:flex;gap:10px;align-items:flex-start;background:#3a2550;border-left:4px solid var(--gold);padding:8px 12px;margin-bottom:10px;line-height:1.65;font-size:14px}
 .coach .who{flex:none;font-size:11px;color:var(--gold);letter-spacing:.1em;padding-top:3px}
@@ -519,7 +548,7 @@ function figureEl(ch, boro, scale, withLabel){
 /* =====================================================================
  *  ゲーム状態・進行
  * ===================================================================== */
-const S = { players:[], deck:[], turn:0, flags:{}, winner:null, log:[], speed:1, current:null, target:null, gameId:0 };
+const S = { players:[], deck:[], turn:0, flags:{}, winner:null, log:[], speed:1, current:null, target:null, gameId:0, playable:null };
 class GameReset extends Error {}
 const $ = s => document.querySelector(s);
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
@@ -559,7 +588,7 @@ function newGame(n, myChar, opts){
   }
   if(auto){ S.players[0].cpu=true; S.players[0].name=`${S.players[0].ch.name}（おまかせ）`; }
   S.deck=deck; S.turn=rnd(n); S.flags={examineMode:false}; S.winner=null; S.log=[]; S.current=null; S.target=null;
-  TUT.active=false; setHighlight(null);
+  TUT.active=false; setHighlight(null); S.playable=null;
   if(opts.tutorial) tutSetup();
   $('#modalEnd').classList.remove('show');
   render();
@@ -956,11 +985,34 @@ function roleCardEl(role, o={}){
   const d=document.createElement('div');
   d.className='rc'+(o.small?' sm':'')+(o.lost?' lost':'')+(o.faceUp?' faceup':'');
   d.style.setProperty('--rcol',R.color);
-  d.innerHTML=`<div class="rn">${R.name}</div><div class="rl">できる: <b>${R.action?ACTIONS[R.action].name:'—'}</b></div><div class="rl">ブロック: <b>${R.blocks.length?R.blocks.map(a=>ACTIONS[a].name).join('・'):'—'}</b></div><div class="ph">「${R.phrase}」</div>`;
+  d.dataset.role=role;
+  d.innerHTML=`<div class="rn">${R.name}</div><div class="rl act">できる: <b>${R.action?ACTIONS[R.action].name:'—'}</b></div><div class="rl">ブロック: <b>${R.blocks.length?R.blocks.map(a=>ACTIONS[a].name).join('・'):'—'}</b></div><div class="ph">「${R.phrase}」</div>`;
   if(o.faceUp){ const f=document.createElement('span'); f.className='fu'; f.textContent='表'; d.appendChild(f); }
   return d;
 }
 function cardBackEl(small){ const d=document.createElement('div'); d.className='rc back'+(small?' sm':''); d.innerHTML='♥<span>GAKI</span>'; return d; }
+function linkRole(role,on){ if(!role) return; document.querySelectorAll(`#meWrap .rc[data-role="${role}"]`).forEach(e=>e.classList.toggle('linked',on)); }
+function actionTileEl(id, p, cost){
+  const A=ACTIONS[id], b=document.createElement('button'); b.className='at'; b.dataset.act=id;
+  let state='';
+  if(A.role){ const R=ROLES[A.role]; b.style.setProperty('--rcol',R.color); const held=hasRole(p,A.role); if(!held) b.classList.add('bluff'); state=held?'✓ 持ってる':'ハッタリ'; b.onmouseenter=()=>linkRole(A.role,true); b.onmouseleave=()=>linkRole(A.role,false); }
+  else b.classList.add('basic');
+  const costTxt = id==='coup'?`${cost}♥払う`: id==='assassinate'?'3♥払う':'';
+  const effect = (id==='exchange'&&S.flags.examineMode) ? '相手の手札1枚を見て山札と交換させる' : A.desc.replace(/^\d♥を支払い、/,'');
+  let blockers=A.blockedBy||[]; if(id==='exchange') blockers=S.flags.examineMode?['osananajimi']:[];
+  const blk = blockers.length ? `は？：${blockers.map(r=>ROLES[r].name).join('・')}がブロック可` : (id==='coup'||id==='income'?'ブロック不可・チャレンジ不可':'ブロック不可');
+  b.innerHTML=`<div class="ah">${A.name}</div><div class="ar">${A.role?`<b>${ROLES[A.role].name}</b> のアクション`:'誰でも'}${costTxt?`・${costTxt}`:''}</div><div class="ae">${effect}</div><div class="ab">${blk}</div>${state?`<span class="ast">${state}</span>`:''}`;
+  return b;
+}
+function blockTileEl(o, c){
+  const b=document.createElement('button'); b.className='at';
+  if(o.kind==='trigger'){ b.classList.add('basic'); b.innerHTML=`<div class="ah">トリガーでブロック</div><div class="ar"><b>ダサすぎ返し</b></div><div class="ae">公開済みなのでチャレンジされない</div>`; return b; }
+  const R=ROLES[o.role]; b.style.setProperty('--rcol',R.color); b.dataset.act='block:'+o.role;
+  const held=hasRole(c,o.role); if(!held) b.classList.add('bluff');
+  b.onmouseenter=()=>linkRole(o.role,true); b.onmouseleave=()=>linkRole(o.role,false);
+  b.innerHTML=`<div class="ah">${R.name}でブロック</div><div class="ar">「${R.line}」</div><div class="ae">${held?'持っているので、チャレンジされても安心':'持っていないのでハッタリ。チャレンジされると影響力を失う'}</div><span class="ast">${held?'✓ 持ってる':'ハッタリ'}</span>`;
+  return b;
+}
 function triggerEl(t, mode, small){
   const d=document.createElement('div');
   d.className='tc'+(small?' sm':'')+(mode==='back'?' back':mode==='peek'?' peek':' on')+(t.card.id==='none'&&mode!=='back'?' none':'');
@@ -987,7 +1039,20 @@ function playerPanel(p, isMe){
   const cards=document.createElement('div'); cards.className='cards';
   const hl=document.createElement('div'); hl.className='lbl2'; hl.textContent=isMe?'手札（影響力）':'手札';
   const hand=document.createElement('div'); hand.className='hand';
-  for(const c of p.hand) hand.appendChild(isMe||c.faceUp ? roleCardEl(c.role,{small:!isMe, faceUp:c.faceUp}) : cardBackEl(true));
+  for(const c of p.hand){
+    const el = isMe||c.faceUp ? roleCardEl(c.role,{small:!isMe, faceUp:c.faceUp}) : cardBackEl(true);
+    if(isMe){
+      const act=ROLES[c.role].action;
+      el.onmouseenter=()=>{ if(act) document.querySelectorAll(`#prompt .at[data-act="${act}"]`).forEach(t=>t.classList.add('linked')); };
+      el.onmouseleave=()=>document.querySelectorAll('#prompt .at.linked').forEach(t=>t.classList.remove('linked'));
+      if(S.playable && act && S.playable.can(act)){
+        el.classList.add('playable'); if(TUT.restrict) el.classList.add('rec');
+        const pl=document.createElement('div'); pl.className='play'; pl.textContent='▶ このカードで使う'; el.appendChild(pl);
+        el.onclick=()=>S.playable.done(act);
+      }
+    }
+    hand.appendChild(el);
+  }
   for(const r of p.lost) hand.appendChild(roleCardEl(r,{small:!isMe, lost:true}));
   const tl=document.createElement('div'); tl.className='lbl2'; tl.textContent='トリガー（上 / 下）';
   const trigs=document.createElement('div'); trigs.className='trigs';
@@ -1026,7 +1091,7 @@ function prompt(build, kind){
     if(kind) tutTake(kind);
     const box=$('#prompt'); box.classList.remove('idle'); box.innerHTML='';
     if(TUT.text){ const c=document.createElement('div'); c.className='coach'; c.innerHTML=`<span class="who">ナビ</span><span>${TUT.text}</span><span class="step">${TUT.stepLabel||''}</span>`; box.appendChild(c); }
-    const done=v=>{ S.rejectPrompt=null; TUT.text=''; TUT.restrict=null; setHighlight(null); box.innerHTML=''; box.classList.add('idle'); resolve(v); };
+    const done=v=>{ S.rejectPrompt=null; TUT.text=''; TUT.restrict=null; setHighlight(null); box.innerHTML=''; box.classList.add('idle'); if(S.playable){ S.playable=null; render(); } resolve(v); };
     build(box, done);
   });
 }
@@ -1056,17 +1121,19 @@ function askCards(msg,cards,sub,extra,kind){
 async function humanChooseAction(p, forced){
   while(true){
     const cost=coupCost(p), others=othersOf(p);
-    const mk=(id,extra)=>{ const A=ACTIONS[id]; const roleTxt=A.role?`${rname(A.role)}${hasRole(p,A.role)?' ✓あり':'（ハッタリ）'}`:''; return {label:A.name, value:id, sub:[roleTxt, extra||A.desc].filter(Boolean).join(' / ')}; };
-    const opts=[];
-    if(forced) opts.push({...mk('coup',`${cost}♥支払い（10♥以上なので必須）`), primary:true});
-    else {
-      opts.push(mk('income'), mk('aid'));
-      opts.push({...mk('coup',`${cost}♥支払い`), disabled:p.hearts<cost, primary:p.hearts>=cost});
-      opts.push(mk('tax'), mk('steal'));
-      opts.push(mk('exchange', S.flags.examineMode?'相手の手札1枚を見て山札と交換させる':undefined));
-      opts.push({...mk('assassinate'), disabled:p.hearts<3});
-    }
-    const act=await askButtons('あなたの番です。アクションを選んでください', opts, `♥${p.hearts}　手札：${p.hand.map(c=>rname(c.role)).join('・')}`, 'action');
+    const act=await prompt((box,done)=>{
+      msgEl(box, forced?'10♥以上持っているので「ざぁ～こ♥」を撃たなければなりません':'あなたの番です。アクションを選んでください', `♥${p.hearts}　役職つきのアクションは手札のカードをクリックしても使えます`);
+      const canUse=id=>{ if(forced && id!=='coup') return false; if(id==='coup' && p.hearts<cost) return false; if(id==='assassinate' && p.hearts<3) return false; if(TUT.restrict && !TUT.restrict(id)) return false; return true; };
+      const groups=[{label:'誰でもできる', acts:['income','aid','coup']},{label:'ガキカードのアクション（持っていなくても宣言できる＝ハッタリ）', acts:['tax','steal','exchange','assassinate']}];
+      for(const g of groups){
+        const gd=document.createElement('div'); gd.className='agroup';
+        const gl=document.createElement('div'); gl.className='gl'; gl.textContent=g.label; gd.appendChild(gl);
+        const row=document.createElement('div'); row.className='atiles';
+        for(const id of g.acts){ const t=actionTileEl(id,p,cost); t.disabled=!canUse(id); if(TUT.restrict && canUse(id)) t.classList.add('rec'); t.onclick=()=>done(id); row.appendChild(t); }
+        gd.appendChild(row); box.appendChild(gd);
+      }
+      S.playable={can:canUse, done}; render();
+    }, 'action');
     const A=ACTIONS[act];
     if(!(A.target || (act==='exchange'&&S.flags.examineMode))) return {action:act};
     const cands=others.filter(q=>q.hand.length>0);
@@ -1079,16 +1146,26 @@ async function humanChallenge(c, claimant, role, what){
   const msg = what.kind==='action'
     ? `${claimant.name} が「${A.name}」（${rname(role)}を主張）${what.target?` → ${what.target===c?'あなた':what.target.name}`:''}`
     : `${claimant.name} が ${rname(role)} で「${A.name}」をブロック`;
-  return await askButtons(msg+'。チャレンジする？', [{label:'チャレンジ！', value:true, danger:true, sub:'外れたら自分が影響力を失う'}, {label:'見逃す', value:false, primary:true}], `あなたから見えている${rname(role)}：${knownCount(c,role)}/3枚`, 'challenge');
+  return await prompt((box,done)=>{
+    msgEl(box, msg+'。チャレンジする？');
+    const cl=document.createElement('div'); cl.className='claim';
+    cl.appendChild(roleCardEl(role,{small:true}));
+    const t=document.createElement('div'); t.className='cl'; t.innerHTML=`主張しているカード：<b>${rname(role)}</b><br>あなたから見えている${rname(role)}：${knownCount(c,role)}/3枚<br>持っていればあなたが、持っていなければ相手が影響力を失う`;
+    cl.appendChild(t); box.appendChild(cl);
+    buttonsEl(box, [{label:'チャレンジ！', value:true, danger:true, sub:'外れたら自分が影響力を失う'}, {label:'見逃す', value:false, primary:true}], done);
+  }, 'challenge');
 }
 async function humanBlock(c, actor, act, opts){
   const A=ACTIONS[act];
-  const buttons=opts.map(o=> o.kind==='trigger'
-    ? {label:'トリガー「ダサすぎ返し」でブロック', value:o, sub:'公開済みなのでチャレンジされない'}
-    : {label:`${rname(o.role)}でブロック`, value:o, sub:`「${ROLES[o.role].line}」${hasRole(c,o.role)?' ✓あり':'（ハッタリ）'}`});
-  buttons.push({label:'ブロックしない', value:null, primary:true});
   const tgt=(A.target||(act==='exchange'&&S.flags.examineMode))?' → あなた':'';
-  return await askButtons(`${actor.name} の「${A.name}」${tgt}。ブロックする？`, buttons, undefined, 'block');
+  return await prompt((box,done)=>{
+    msgEl(box, `${actor.name} の「${A.name}」${tgt}。ブロックする？`, 'ブロックに使うカードを選ぶか、見送ります');
+    const row=document.createElement('div'); row.className='atiles';
+    for(const o of opts){ const t=blockTileEl(o,c); const ok=!TUT.restrict||TUT.restrict(o); t.disabled=!ok; if(TUT.restrict&&ok) t.classList.add('rec'); t.onclick=()=>done(o); row.appendChild(t); }
+    box.appendChild(row);
+    const r=document.createElement('div'); r.style.marginTop='8px'; box.appendChild(r);
+    buttonsEl(r, [{label:'ブロックしない', value:null, primary:true}], done);
+  }, 'block');
 }
 function humanLoseCard(p, reason){ return askCards(`影響力を失います（${reason}）。失うカードを選んでください`, p.hand.map((c,i)=>({el:roleCardEl(c.role,{faceUp:c.faceUp}), value:i})), undefined, undefined, 'lose'); }
 function humanFlip(p){
@@ -1150,7 +1227,7 @@ function tutSetup(){
   TUT.beats=[
     {on:'start', hl:'#meWrap', text:'ようこそ、<b>メスガキ・クー</b>へ。下があなたのパネルです。<b>手札2枚＝ライフ2つ</b>、♥2からスタート。手札のガキカードが「役職」、左のメスガキカード（上半身／下半身）が服、その下に敷いた2枚が<b>トリガー</b>です。'},
     {on:'start', hl:'#opps', text:`上が相手の ${n}。相手の手札は裏向きで見えません。<b>相手の手札を2枚とも失わせたら勝ち</b>。手札を失うたびに服が1枚ボロになり、両方ボロで脱落です。`},
-    {on:'action', only:'tax', text:'あなたの番。手札に<b>メスガキ</b>があるので「<b>よわよわ～♥</b>」で3♥もらいましょう。役職つきのアクションは<b>持っていなくても宣言できます</b>（ハッタリ）。そのかわり相手から<b>チャレンジ</b>されることがあります。'},
+    {on:'action', only:'tax', text:'あなたの番。手札に<b>メスガキ</b>があるので「<b>よわよわ～♥</b>」で3♥もらいましょう（光っている手札のメスガキをクリックしてもOK）。カードの色とアクションの色は対応しています。役職つきのアクションは<b>持っていなくても宣言できます</b>（ハッタリ、破線のタイル）。そのかわり相手から<b>チャレンジ</b>されることがあります。'},
     {on:'cpuTurn', hl:'#opps', text:`3♥もらって5♥になりました。次は ${n} の番。相手の行動には<b>「は？」ブロック</b>と<b>チャレンジ！</b>で割り込めます。`},
     {on:'challenge', only:false, text:`${n} が<b>メスガキ</b>を主張して「よわよわ～♥」。怪しいですが、チャレンジを外すと<b>自分が影響力を失います</b>。見えているメスガキはあなたの1枚だけで、残り2枚を持っていてもおかしくない……今回は<b>見逃し</b>ましょう。`},
     {on:'action', only:'aid', text:'相手も5♥になりました。今度は「<b>よわ♥</b>」で2♥もらいましょう。誰でも使えますが、<b>メスガキを持っている人にブロックされる</b>ことがあります。'},

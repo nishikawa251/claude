@@ -138,6 +138,19 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .pcards{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .pcards .wrap{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:var(--dim)}
 
+/* ---------- tutorial ---------- */
+.coach{display:flex;gap:10px;align-items:flex-start;background:#3a2550;border-left:4px solid var(--gold);padding:8px 12px;margin-bottom:10px;line-height:1.65;font-size:14px}
+.coach .who{flex:none;font-size:11px;color:var(--gold);letter-spacing:.1em;padding-top:3px}
+.coach .step{margin-left:auto;flex:none;font-size:11px;color:var(--dim)}
+.coach b{color:var(--gold);font-weight:400}
+.btn.rec{box-shadow:0 -2px 0 0 var(--gold),0 2px 0 0 var(--gold),-2px 0 0 0 var(--gold),2px 0 0 0 var(--gold);animation:rec 1.2s ease-in-out infinite}
+.btn.rec::before{content:'👉 '}
+.rc.rec{outline:3px solid var(--gold);outline-offset:2px;animation:rec 1.2s ease-in-out infinite}
+.rc.dim{opacity:.35;pointer-events:none}
+.hl{outline:3px solid var(--gold);outline-offset:4px;animation:rec 1.2s ease-in-out infinite}
+@keyframes rec{0%,100%{filter:brightness(1)}50%{filter:brightness(1.25)}}
+@media (prefers-reduced-motion:reduce){.btn.rec,.rc.rec,.hl{animation:none}}
+
 /* ---------- me ---------- */
 .me{padding:10px 12px}
 .me .plbody{gap:14px;flex-wrap:wrap}
@@ -203,7 +216,7 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
     <p>クー(Coup)の基本ルールはそのまま。コインは♥、役職はメスガキたち。ライフを1失うたび、メスガキカードの上か下を裏返してボロ絵にし、その下に敷いていたトリガーカードが発動します。</p>
     <div class="row"><label>対戦人数</label><div id="npick" class="popts"></div></div>
     <div class="row"><label>あなたのキャラ</label><div id="chpick" class="chpick"></div></div>
-    <div class="row"><button class="btn primary" id="btnStart">はじめる</button><button class="btn" id="btnStartRules">ルールを読む</button></div>
+    <div class="row"><button class="btn primary" id="btnStart">はじめる</button><button class="btn" id="btnTutorial">チュートリアル</button><button class="btn" id="btnStartRules">ルールを読む</button></div>
   </div>
 </div>
 
@@ -528,7 +541,9 @@ const half = k => k==='top'?'上半身':'下半身';
 
 function log(text, cls){ S.log.push({text, cls:cls||''}); renderLog(); }
 
-function newGame(n, myChar, auto){
+function newGame(n, myChar, opts){
+  opts = opts===true ? {auto:true} : (opts||{});
+  const auto=opts.auto;
   S.gameId++;
   if(S.rejectPrompt){ S.rejectPrompt(new GameReset()); S.rejectPrompt=null; }
   const deck=[]; for(const r of ROLE_IDS) for(let k=0;k<3;k++) deck.push(r); shuffle(deck);
@@ -544,6 +559,8 @@ function newGame(n, myChar, auto){
   }
   if(auto){ S.players[0].cpu=true; S.players[0].name=`${S.players[0].ch.name}（おまかせ）`; }
   S.deck=deck; S.turn=rnd(n); S.flags={examineMode:false}; S.winner=null; S.log=[]; S.current=null; S.target=null;
+  TUT.active=false; setHighlight(null);
+  if(opts.tutorial) tutSetup();
   $('#modalEnd').classList.remove('show');
   render();
   runGame();
@@ -553,6 +570,7 @@ async function runGame(){
   const gid=S.gameId;
   try{
     log(`ゲーム開始！ ${S.players[S.turn].name} からスタート`, 'sys');
+    await tutHook('start');
     while(!S.winner){
       const p=S.players[S.turn];
       if(p.alive) await takeTurn(p);
@@ -574,7 +592,7 @@ async function takeTurn(p){
   S.current=p; S.target=null; render();
   const forced = p.hearts>=RULES.forcedCoupAt && !(RULES.win15LiftsForcedCoup && p.flags.win15);
   let choice;
-  if(p.cpu){ setIdle(`${p.name} の番…`); await wait(800); choice=cpuChooseAction(p, forced); }
+  if(p.cpu){ await tutHook('cpuTurn'); setIdle(`${p.name} の番…`); await wait(800); choice=cpuChooseAction(p, forced); }
   else choice=await humanChooseAction(p, forced);
   await performAction(p, choice.action, choice.target);
 }
@@ -805,8 +823,9 @@ async function endGame(){
   box.appendChild(figureEl(w.ch, w.boro, 3, false)).style.justifyContent='center';
   const big=document.createElement('div'); big.className='big'; big.textContent=`${w.name} の勝ち！`; box.appendChild(big);
   const sub=document.createElement('p'); sub.textContent = w.i===0 ? 'ざぁこ♡ 全員わからせ完了！' : (w.flags.win15&&w.hearts>=15 ? `${w.hearts}♥集めきった…` : 'わからされちゃった…'); box.appendChild(sub);
+  if(TUT.active){ const t=document.createElement('p'); t.innerHTML=TUT_END; box.appendChild(t); }
   const row=document.createElement('div'); row.className='close'; row.style.textAlign='center';
-  const b=document.createElement('button'); b.className='btn primary'; b.textContent='もう一度'; b.onclick=()=>{ $('#modalEnd').classList.remove('show'); openStart(); }; row.appendChild(b);
+  const b=document.createElement('button'); b.className='btn primary'; b.textContent=TUT.active?'本番をはじめる':'もう一度'; b.onclick=()=>{ $('#modalEnd').classList.remove('show'); openStart(); }; row.appendChild(b);
   const b2=document.createElement('button'); b2.className='btn'; b2.textContent='盤面を見る'; b2.onclick=()=>$('#modalEnd').classList.remove('show'); row.appendChild(b2);
   box.appendChild(row);
   await wait(600);
@@ -831,6 +850,7 @@ function cpuThreat(p, cands){
   return best;
 }
 function cpuChooseAction(p, forced){
+  const tv=tutCpu('action'); if(tv!==undefined) return typeof tv==='function'?tv(p):tv;
   const others=othersOf(p), cost=coupCost(p);
   const lives=p.hand.length;
   if(forced || p.hearts>=cost) return {action:'coup', target:cpuThreat(p,others)};
@@ -852,6 +872,7 @@ function cpuChooseAction(p, forced){
   return {action:'income'};
 }
 function cpuChallenge(c, claimant, role, what){
+  const tv=tutCpu('challenge'); if(tv!==undefined) return tv;
   if(knownCount(c, role)>=3) return true;
   let pr=0.12;
   pr += knownCount(c, role)*0.08;
@@ -868,6 +889,7 @@ function cpuChallenge(c, claimant, role, what){
   return chance(pr);
 }
 function cpuBlock(c, actor, act, opts){
+  const tv=tutCpu('block'); if(tv!==undefined) return tv;
   const trig=opts.find(o=>o.kind==='trigger'); if(trig) return trig;
   const have=opts.find(o=>o.kind==='role' && hasRole(c,o.role));
   if(have && chance(0.92)) return have;
@@ -881,6 +903,7 @@ function cpuBlock(c, actor, act, opts){
   return null;
 }
 function cpuLoseCard(p){
+  const tv=tutCpu('lose'); if(tv!==undefined) return typeof tv==='function'?tv(p):tv;
   let idx=0, bs=1e9;
   p.hand.forEach((c,i)=>{ const s=ROLES[c.role].value + (c.faceUp?-1:0) + (p.hand.filter(x=>x.role===c.role).length>1?-2:0); if(s<bs){ bs=s; idx=i; } });
   return idx;
@@ -901,6 +924,7 @@ function triggerValue(p, card){
   }
 }
 function cpuFlip(p){
+  const tv=tutCpu('flip'); if(tv!==undefined) return tv;
   if(!RULES.peekOwnTriggers) return pick(['top','bottom']);
   const a=triggerValue(p,p.triggers.top.card), b=triggerValue(p,p.triggers.bottom.card);
   if(a===b) return pick(['top','bottom']);
@@ -996,33 +1020,37 @@ function renderLog(){
 
 /* ---- プロンプト ---- */
 function setIdle(text){ const box=$('#prompt'); box.classList.add('idle'); box.innerHTML=''; const m=document.createElement('div'); m.className='pmsg'; m.textContent=text; box.appendChild(m); }
-function prompt(build){
+function prompt(build, kind){
   return new Promise((resolve,reject)=>{
     S.rejectPrompt=reject;
+    if(kind) tutTake(kind);
     const box=$('#prompt'); box.classList.remove('idle'); box.innerHTML='';
-    const done=v=>{ S.rejectPrompt=null; box.innerHTML=''; box.classList.add('idle'); resolve(v); };
+    if(TUT.text){ const c=document.createElement('div'); c.className='coach'; c.innerHTML=`<span class="who">ナビ</span><span>${TUT.text}</span><span class="step">${TUT.stepLabel||''}</span>`; box.appendChild(c); }
+    const done=v=>{ S.rejectPrompt=null; TUT.text=''; TUT.restrict=null; setHighlight(null); box.innerHTML=''; box.classList.add('idle'); resolve(v); };
     build(box, done);
   });
 }
-function msgEl(box,msg,sub){ const m=document.createElement('div'); m.className='pmsg'; m.textContent=msg; if(sub){ const s=document.createElement('small'); s.textContent=sub; m.appendChild(s); } box.appendChild(m); return m; }
+function msgEl(box,msg,sub){ if(!msg&&!sub) return null; const m=document.createElement('div'); m.className='pmsg'; m.textContent=msg; if(sub){ const s=document.createElement('small'); s.textContent=sub; m.appendChild(s); } box.appendChild(m); return m; }
 function buttonsEl(box,opts,done){
   const row=document.createElement('div'); row.className='popts';
   for(const o of opts){
     const b=document.createElement('button'); b.className='btn'+(o.primary?' primary':'')+(o.danger?' danger':''); b.textContent=o.label;
     if(o.sub){ const s=document.createElement('span'); s.className='sub'; s.textContent=o.sub; b.appendChild(s); }
-    b.disabled=!!o.disabled; b.onclick=()=>done(o.value); row.appendChild(b);
+    b.disabled=!!o.disabled; b.onclick=()=>done(o.value);
+    if(TUT.restrict){ if(TUT.restrict(o.value)) b.classList.add('rec'); else b.disabled=true; }
+    row.appendChild(b);
   }
   box.appendChild(row); return row;
 }
-function askButtons(msg,opts,sub){ return prompt((box,done)=>{ msgEl(box,msg,sub); buttonsEl(box,opts,done); }); }
-function askCards(msg,cards,sub,extra){
+function askButtons(msg,opts,sub,kind){ return prompt((box,done)=>{ msgEl(box,msg,sub); buttonsEl(box,opts,done); }, kind); }
+function askCards(msg,cards,sub,extra,kind){
   return prompt((box,done)=>{
     msgEl(box,msg,sub);
     const row=document.createElement('div'); row.className='pcards';
-    for(const c of cards){ c.el.classList.add('sel'); c.el.onclick=()=>done(c.value); row.appendChild(c.el); }
+    for(const c of cards){ c.el.classList.add('sel'); c.el.onclick=()=>done(c.value); if(TUT.restrict) c.el.classList.add(TUT.restrict(c.value)?'rec':'dim'); row.appendChild(c.el); }
     box.appendChild(row);
     if(extra) buttonsEl(box,extra,done);
-  });
+  }, kind);
 }
 
 async function humanChooseAction(p, forced){
@@ -1038,11 +1066,11 @@ async function humanChooseAction(p, forced){
       opts.push(mk('exchange', S.flags.examineMode?'相手の手札1枚を見て山札と交換させる':undefined));
       opts.push({...mk('assassinate'), disabled:p.hearts<3});
     }
-    const act=await askButtons('あなたの番です。アクションを選んでください', opts, `♥${p.hearts}　手札：${p.hand.map(c=>rname(c.role)).join('・')}`);
+    const act=await askButtons('あなたの番です。アクションを選んでください', opts, `♥${p.hearts}　手札：${p.hand.map(c=>rname(c.role)).join('・')}`, 'action');
     const A=ACTIONS[act];
     if(!(A.target || (act==='exchange'&&S.flags.examineMode))) return {action:act};
     const cands=others.filter(q=>q.hand.length>0);
-    const t=await askButtons(`「${A.name}」の相手を選んでください`, [...cands.map(q=>({label:q.name, value:q, sub:`♥${q.hearts} / 手札${q.hand.length}枚`})), {label:'もどる', value:null}]);
+    const t=await askButtons(`「${A.name}」の相手を選んでください`, [...cands.map(q=>({label:q.name, value:q, sub:`♥${q.hearts} / 手札${q.hand.length}枚`})), {label:'もどる', value:null}], undefined, 'target');
     if(t) return {action:act, target:t};
   }
 }
@@ -1051,7 +1079,7 @@ async function humanChallenge(c, claimant, role, what){
   const msg = what.kind==='action'
     ? `${claimant.name} が「${A.name}」（${rname(role)}を主張）${what.target?` → ${what.target===c?'あなた':what.target.name}`:''}`
     : `${claimant.name} が ${rname(role)} で「${A.name}」をブロック`;
-  return await askButtons(msg+'。チャレンジする？', [{label:'チャレンジ！', value:true, danger:true, sub:'外れたら自分が影響力を失う'}, {label:'見逃す', value:false, primary:true}], `あなたから見えている${rname(role)}：${knownCount(c,role)}/3枚`);
+  return await askButtons(msg+'。チャレンジする？', [{label:'チャレンジ！', value:true, danger:true, sub:'外れたら自分が影響力を失う'}, {label:'見逃す', value:false, primary:true}], `あなたから見えている${rname(role)}：${knownCount(c,role)}/3枚`, 'challenge');
 }
 async function humanBlock(c, actor, act, opts){
   const A=ACTIONS[act];
@@ -1060,12 +1088,12 @@ async function humanBlock(c, actor, act, opts){
     : {label:`${rname(o.role)}でブロック`, value:o, sub:`「${ROLES[o.role].line}」${hasRole(c,o.role)?' ✓あり':'（ハッタリ）'}`});
   buttons.push({label:'ブロックしない', value:null, primary:true});
   const tgt=(A.target||(act==='exchange'&&S.flags.examineMode))?' → あなた':'';
-  return await askButtons(`${actor.name} の「${A.name}」${tgt}。ブロックする？`, buttons);
+  return await askButtons(`${actor.name} の「${A.name}」${tgt}。ブロックする？`, buttons, undefined, 'block');
 }
-function humanLoseCard(p, reason){ return askCards(`影響力を失います（${reason}）。失うカードを選んでください`, p.hand.map((c,i)=>({el:roleCardEl(c.role,{faceUp:c.faceUp}), value:i}))); }
+function humanLoseCard(p, reason){ return askCards(`影響力を失います（${reason}）。失うカードを選んでください`, p.hand.map((c,i)=>({el:roleCardEl(c.role,{faceUp:c.faceUp}), value:i})), undefined, undefined, 'lose'); }
 function humanFlip(p){
   const opt=k=>{ const t=p.triggers[k]; return {label:`${half(k)}を脱ぐ`, value:k, sub:RULES.peekOwnTriggers?`トリガー：${t.card.name}`:'トリガー：？'}; };
-  return askButtons('どちらのメスガキカードを裏返しますか？（下に敷いたトリガーが発動）', [opt('top'),opt('bottom')]);
+  return askButtons('どちらのメスガキカードを裏返しますか？（下に敷いたトリガーが発動）', [opt('top'),opt('bottom')], undefined, 'flip');
 }
 function humanPickPlayer(p, cands, msg){ return askButtons(msg, cands.map(q=>({label:q.name, value:q, sub:`♥${q.hearts} / 手札${q.hand.length}枚`}))); }
 function humanPickCard(p, msg){ return askCards(msg, p.hand.map((c,i)=>({el:roleCardEl(c.role,{faceUp:c.faceUp}), value:i}))); }
@@ -1091,6 +1119,78 @@ function humanExchangeKeep(p, pool, n){
     const r=document.createElement('div'); r.className='popts'; r.appendChild(btn); box.appendChild(r);
     btn.onclick=()=>done([...sel]);
   });
+}
+
+/* =====================================================================
+ *  チュートリアル：台本どおりに進む1戦。ナビが毎手の意味を説明し、押す場所を絞る
+ * ===================================================================== */
+const TUT = { active:false, beats:[], i:0, cpu:{}, text:'', restrict:null, stepLabel:'' };
+const TUT_END = 'チュートリアル完了！ ここからは本番。ハッタリとチャレンジの読み合い、どのトリガーを切るかの駆け引きを楽しんでください。';
+
+function tutSetup(){
+  const me=S.players[0], cpu=S.players[1];
+  for(const p of S.players){ for(const c of p.hand) S.deck.push(c.role); p.hand=[]; }
+  const take=r=>{ const i=S.deck.indexOf(r); return S.deck.splice(i,1)[0]; };
+  me.hand=[{role:take('mesugaki'),faceUp:false},{role:take('kouhai'),faceUp:false}];
+  cpu.hand=[{role:take('succu'),faceUp:false},{role:take('osananajimi'),faceUp:false}];
+  shuffle(S.deck);
+  const T=id=>id==='none'?NO_TRIGGER:TRIGGERS.find(t=>t.id===id);
+  me.triggers={top:{card:T('t6'),revealed:false}, bottom:{card:T('t1'),revealed:false}};
+  cpu.triggers={top:{card:T('t8'),revealed:false}, bottom:{card:T('none'),revealed:false}};
+  S.turn=0;
+  TUT.active=true; TUT.i=0; TUT.text=''; TUT.restrict=null; TUT.stepLabel='';
+  TUT.cpu={
+    challenge:[false],
+    action:[{action:'tax'}, p=>({action:'assassinate', target:S.players[0]})],
+    block:[{kind:'role', role:'mesugaki'}],
+    lose:[p=>Math.max(0,p.hand.findIndex(c=>c.role==='osananajimi'))],
+    flip:['top'],
+  };
+  const n=cpu.name;
+  TUT.beats=[
+    {on:'start', hl:'#meWrap', text:'ようこそ、<b>メスガキ・クー</b>へ。下があなたのパネルです。<b>手札2枚＝ライフ2つ</b>、♥2からスタート。手札のガキカードが「役職」、左のメスガキカード（上半身／下半身）が服、その下に敷いた2枚が<b>トリガー</b>です。'},
+    {on:'start', hl:'#opps', text:`上が相手の ${n}。相手の手札は裏向きで見えません。<b>相手の手札を2枚とも失わせたら勝ち</b>。手札を失うたびに服が1枚ボロになり、両方ボロで脱落です。`},
+    {on:'action', only:'tax', text:'あなたの番。手札に<b>メスガキ</b>があるので「<b>よわよわ～♥</b>」で3♥もらいましょう。役職つきのアクションは<b>持っていなくても宣言できます</b>（ハッタリ）。そのかわり相手から<b>チャレンジ</b>されることがあります。'},
+    {on:'cpuTurn', hl:'#opps', text:`3♥もらって5♥になりました。次は ${n} の番。相手の行動には<b>「は？」ブロック</b>と<b>チャレンジ！</b>で割り込めます。`},
+    {on:'challenge', only:false, text:`${n} が<b>メスガキ</b>を主張して「よわよわ～♥」。怪しいですが、チャレンジを外すと<b>自分が影響力を失います</b>。見えているメスガキはあなたの1枚だけで、残り2枚を持っていてもおかしくない……今回は<b>見逃し</b>ましょう。`},
+    {on:'action', only:'aid', text:'相手も5♥になりました。今度は「<b>よわ♥</b>」で2♥もらいましょう。誰でも使えますが、<b>メスガキを持っている人にブロックされる</b>ことがあります。'},
+    {on:'challenge', only:true, text:`${n} がメスガキで「は？弱くないが？」とブロック。<b>ブロックにもチャレンジできます</b>。さっきもメスガキを主張していた……2回とも本当でしょうか？ ここは<b>チャレンジ！</b>`},
+    {on:'cpuTurn', hl:'#deckInfo', text:`チャレンジ成功！ ${n} はメスガキを持っていませんでした。<b>手札を1枚失い、上半身がボロ絵に</b>。その下のトリガー「<b>値上げ</b>」が発動して、あなたの「ざぁ～こ♥」は<b>8♥</b>必要になりました（左の盤面情報を見てください）。`},
+    {on:'challenge', only:false, text:`${n} が<b>サキュガキ</b>で「<b>まけちゃえ～♥</b>」（3♥払って暗殺）をあなたに。まずチャレンジするかどうか。相手の残り1枚がサキュガキかどうかは分からない……ここは<b>見逃し</b>ます。`},
+    {on:'block', only:null, text:'次にブロック。「まけちゃえ～♥」は<b>わからせおじさん</b>でブロックできますが、あなたは持っていません。ハッタリでブロックもできますが、チャレンジされたら痛い。今回は<b>ブロックしない</b>で、影響力を失う流れを体験しましょう。'},
+    {on:'lose', only:1, text:'影響力を失います。<b>失うカードは自分で選べます</b>。メスガキは「よわよわ～♥」で稼げる強いカードなので、<b>後輩ガキ</b>を捨てましょう。'},
+    {on:'flip', only:'top', text:'次に<b>上半身か下半身を脱ぎます</b>。下に敷いたトリガーが発動するので、どちらを脱ぐかは戦略です。上の「<b>みかじめ</b>」なら全員から1♥もらえて、ちょうど8♥になります。'},
+    {on:'action', only:'coup', text:'8♥たまりました。「<b>ざぁ～こ♥</b>」は♥を払うだけで<b>ブロックもチャレンジもされない</b>確実な一撃。相手は残り1枚なので、これで決まりです。<b>10♥以上持っていたら必ずざぁ～こ♥</b>を撃たされることも覚えておいてください。'},
+    {on:'target', only:v=>!!v&&v.cpu, text:'相手を選んで、わからせましょう。'},
+  ];
+}
+function tutCpu(kind){
+  if(!TUT.active) return undefined;
+  const q=TUT.cpu[kind];
+  if(q && q.length) return q.shift();
+  if(kind==='challenge') return false;
+  if(kind==='block') return null;
+  return undefined;
+}
+async function tutHook(kind){
+  if(!TUT.active) return;
+  while(TUT.i<TUT.beats.length && TUT.beats[TUT.i].on===kind && !('only' in TUT.beats[TUT.i])){
+    const b=TUT.beats[TUT.i++];
+    TUT.text=b.text; TUT.stepLabel=`${TUT.i}/${TUT.beats.length}`; setHighlight(b.hl);
+    await askButtons('', [{label:'次へ', value:true, primary:true}]);
+  }
+}
+function tutTake(kind){
+  if(!TUT.active) return;
+  const b=TUT.beats[TUT.i];
+  if(!b || b.on!==kind || !('only' in b)) return;
+  TUT.i++;
+  TUT.text=b.text; TUT.stepLabel=`${TUT.i}/${TUT.beats.length}`; setHighlight(b.hl);
+  TUT.restrict = typeof b.only==='function' ? b.only : v=>v===b.only;
+}
+function setHighlight(sel){
+  document.querySelectorAll('.hl').forEach(e=>e.classList.remove('hl'));
+  if(sel) document.querySelectorAll(sel).forEach(e=>e.classList.add('hl'));
 }
 
 /* =====================================================================
@@ -1153,7 +1253,8 @@ function init(){
   $('#btnLog').onclick=()=>{ renderLog(); $('#modalLog').classList.add('show'); };
   $('#btnSpeed').onclick=()=>{ S.speed=S.speed===1?0.35:1; $('#btnSpeed').textContent=`速度：${S.speed===1?'ふつう':'はやい'}`; };
   $('#btnNew').onclick=()=>openStart();
-  $('#btnStart').onclick=()=>{ $('#modalStart').classList.remove('show'); newGame(setup.n, setup.ch, setup.auto); };
+  $('#btnStart').onclick=()=>{ $('#modalStart').classList.remove('show'); newGame(setup.n, setup.ch, {auto:setup.auto}); };
+  $('#btnTutorial').onclick=()=>{ $('#modalStart').classList.remove('show'); newGame(2, setup.ch, {tutorial:true}); };
   openStart();
 }
 init();

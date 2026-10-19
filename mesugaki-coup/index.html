@@ -193,6 +193,22 @@ button{font:inherit;color:inherit}
 .claim{display:flex;gap:10px;align-items:center;margin:4px 0 8px}
 .claim .cl{font-size:11px;color:var(--dim);line-height:1.5}
 
+/* ---------- effects ---------- */
+.pl.shake{animation:shake .55s cubic-bezier(.36,.07,.19,.97) both}
+@keyframes shake{10%,90%{transform:translate(-2px,0)}20%,80%{transform:translate(4px,0) rotate(.4deg)}30%,50%,70%{transform:translate(-8px,1px) rotate(-.6deg)}40%,60%{transform:translate(8px,-1px) rotate(.6deg)}}
+.pl.hit::after{content:'';position:absolute;inset:0;background:rgba(255,45,122,.5);pointer-events:none;animation:flash .7s ease-out forwards;z-index:4}
+@keyframes flash{0%{opacity:1}100%{opacity:0}}
+.fxp{position:absolute;left:50%;top:50%;pointer-events:none;z-index:5;font-size:24px;color:var(--pink2);text-shadow:0 0 8px #fff;animation:burst .8s ease-out forwards}
+@keyframes burst{0%{transform:translate(-50%,-50%) scale(.5);opacity:1}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.5) rotate(var(--rot));opacity:0}}
+.rc.lost.just{animation:drop .6s ease-out}
+@keyframes drop{0%{transform:translateY(-22px) rotate(-10deg)}55%{transform:translateY(5px) rotate(4deg)}100%{transform:none}}
+.ccard.reveal{animation:reveal .8s ease-out}
+@keyframes reveal{0%{transform:rotateY(90deg);filter:brightness(2.2)}45%{transform:rotateY(0);filter:brightness(1.8)}100%{filter:none}}
+.tc.reveal{animation:glow 1s ease-out}
+@keyframes glow{0%{box-shadow:0 0 0 2px var(--gold) inset,0 0 28px var(--gold);transform:scale(1.08)}100%{transform:none}}
+.btn.sfx-off{color:var(--dim)}
+@media (prefers-reduced-motion:reduce){.pl.shake,.pl.hit::after,.fxp,.rc.lost.just,.ccard.reveal,.tc.reveal{animation:none}}
+
 /* ---------- tutorial ---------- */
 .coach{display:flex;gap:10px;align-items:flex-start;background:#3a2550;border-left:4px solid var(--gold);padding:8px 12px;margin-bottom:10px;line-height:1.65;font-size:14px}
 .coach .who{flex:none;font-size:11px;color:var(--gold);letter-spacing:.1em;padding-top:3px}
@@ -265,6 +281,7 @@ button{font:inherit;color:inherit}
       <button class="btn small" id="btnRules">ルール</button>
       <button class="btn small" id="btnLog">ログ</button>
       <button class="btn small" id="btnSpeed">速度：ふつう</button>
+      <button class="btn small" id="btnSound" aria-pressed="true">♪ 音：ON</button>
       <button class="btn small" id="btnNew">はじめから</button>
     </div>
   </header>
@@ -460,6 +477,7 @@ async function performAction(p, act, target){
   const A=ACTIONS[act];
   S.target=target||null;
   if(A.role) p.claims++;
+  SFX.play(act==='coup'?'boom':'pop');
   say(p, A.name);
   log(`${p.name}「${A.name}」${target?` → ${target.name}`:''}${A.role?`（${rname(A.role)}を主張）`:''}`, p.cpu?'':'me');
   render(); await wait(700);
@@ -483,10 +501,10 @@ async function performAction(p, act, target){
   if(target && !target.alive) return;
 
   switch(act){
-    case 'income': p.hearts+=1; log(`${p.name} は1♥獲得`); break;
-    case 'aid': p.hearts+=2; log(`${p.name} は2♥獲得`); break;
-    case 'tax': p.hearts+=3; log(`${p.name} は3♥獲得`); break;
-    case 'steal': { const n=Math.min(2,target.hearts); target.hearts-=n; p.hearts+=n; log(`${p.name} は ${target.name} から${n}♥奪った`); break; }
+    case 'income': p.hearts+=1; SFX.play('coin'); log(`${p.name} は1♥獲得`); break;
+    case 'aid': p.hearts+=2; SFX.play('coin'); log(`${p.name} は2♥獲得`); break;
+    case 'tax': p.hearts+=3; SFX.play('coin'); log(`${p.name} は3♥獲得`); break;
+    case 'steal': { const n=Math.min(2,target.hearts); target.hearts-=n; p.hearts+=n; SFX.play('coin'); log(`${p.name} は ${target.name} から${n}♥奪った`); break; }
     case 'exchange': if(S.flags.examineMode) await doExamine(p,target); else await doExchange(p); break;
     case 'assassinate': await loseInfluence(target, p, 'まけちゃえ～♥'); break;
   }
@@ -505,11 +523,13 @@ async function challengeWindow(claimant, role, what, candidates){
   return true;
 }
 async function resolveChallenge(claimant, challenger, role){
+  SFX.play('sting');
   say(challenger, 'チャレンジ！');
   log(`${challenger.name}「チャレンジ！」 ${claimant.name} の ${rname(role)} を疑う`, challenger.cpu?'':'me');
   render(); await wait(800);
   const idx=claimant.hand.findIndex(c=>c.role===role);
   if(idx>=0){
+    SFX.play('chime');
     say(claimant, ROLES[role].phrase);
     log(`${claimant.name} は ${rname(role)} を公開！「${ROLES[role].phrase}」 公開したカードは山札に戻し、1枚引き直す`);
     returnToDeck(role); claimant.hand[idx]=drawCard();
@@ -545,10 +565,12 @@ async function blockWindow(actor, act, target){
     else d=await humanBlock(c, actor, act, opts);
     if(!d) continue;
     if(d.kind==='trigger'){
+      SFX.play('buzz');
       say(c, 'は？ダサくないが？');
       log(`${c.name} はトリガー「ダサすぎ返し」で「${ACTIONS[act].name}」をブロック！（公開済みなのでチャレンジ不可）`, c.cpu?'':'me');
       render(); await wait(700); return true;
     }
+    SFX.play('buzz');
     say(c, ROLES[d.role].line);
     log(`${c.name}「${ROLES[d.role].line}」（${rname(d.role)} でブロック）`, c.cpu?'':'me');
     c.claims++;
@@ -568,9 +590,10 @@ async function loseInfluence(p, by, reason){
   let idx=0;
   if(p.hand.length>1) idx = p.cpu ? cpuLoseCard(p) : await humanLoseCard(p, reason);
   const [card]=p.hand.splice(idx,1); p.lost.push(card.role);
+  SFX.play('hit');
   say(p, '……っ！');
   log(`${p.name} は ${rname(card.role)} を失った（${reason}）`, 'hurt');
-  render(); await wait(700);
+  fxHit(p); await wait(850);
 
   const avail=['top','bottom'].filter(k=>!p.boro[k]);
   let k=avail[0];
@@ -578,9 +601,10 @@ async function loseInfluence(p, by, reason){
   p.boro[k]=true;
   const t=p.triggers[k]; t.revealed=true;
   log(`${p.name} の${half(k)}がボロボロに… トリガー「${t.card.name}」：${t.card.text}`, 'sys');
-  render(); await wait(900);
+  SFX.play('rip'); render(); fxFlip(p,k); await wait(700);
+  SFX.play(t.card.id==='none'?'dud':'sparkle'); await wait(500);
   await resolveTrigger(p, t.card, by);
-  if(p.hand.length===0){ p.alive=false; log(`${p.name} は脱落…`, 'hurt'); }
+  if(p.hand.length===0){ p.alive=false; SFX.play('down'); log(`${p.name} は脱落…`, 'hurt'); }
   render();
 }
 
@@ -674,6 +698,7 @@ async function doExamine(p, target){
 
 async function endGame(){
   const w=S.winner; S.current=null; S.target=null;
+  SFX.play(w.i===0?'fanfare':'down');
   log(`${w.name} の勝ち！`, 'sys');
   render(); setIdle('ゲーム終了');
   const box=$('#endBox');
@@ -816,7 +841,7 @@ function roleCardEl(role, o={}){
   d.className='rc'+(o.small?' sm':'')+(o.lost?' lost':'')+(o.faceUp?' faceup':'');
   d.style.setProperty('--rcol',R.color);
   d.dataset.role=role;
-  d.innerHTML=`<div class="rn">${R.name}</div><div class="rl act">できる: <b>${R.action?ACTIONS[R.action].name:'—'}</b></div><div class="rl">ブロック: <b>${R.blocks.length?R.blocks.map(a=>ACTIONS[a].name).join('・'):'—'}</b></div><div class="ph">「${R.phrase}」</div>`;
+  d.innerHTML=`<div class="rn">${R.name}</div><div class="rl act">できる: <b>${R.action?ACTIONS[R.action].name:'—'}</b></div><div class="rl">ブロック: <b>${R.blocks.length?R.blocks.map(a=>ACTIONS[a].name).join('・'):'—'}</b></div>`;
   if(o.faceUp){ const f=document.createElement('span'); f.className='fu'; f.textContent='表'; d.appendChild(f); }
   return d;
 }
@@ -1035,6 +1060,83 @@ function humanExchangeKeep(p, pool, n){
 }
 
 /* =====================================================================
+ *  効果：パネルのシェイク・フラッシュ・飛び散るハート、カードのめくり
+ * ===================================================================== */
+function panelOf(p){ return document.querySelector(`.pl[data-i="${p.i}"]`); }
+function fxHit(p){
+  const el=panelOf(p); if(!el) return;
+  el.classList.remove('shake','hit'); void el.offsetWidth; el.classList.add('shake','hit');
+  const lost=el.querySelectorAll('.rc.lost'); if(lost.length) lost[lost.length-1].classList.add('just');
+  const glyphs=['♥','💢','✦','♥','✧','♥'];
+  for(let i=0;i<10;i++){
+    const sp=document.createElement('span'); sp.className='fxp'; sp.textContent=glyphs[i%glyphs.length];
+    const a=Math.random()*Math.PI*2, r=70+Math.random()*90;
+    sp.style.setProperty('--dx',`${Math.cos(a)*r}px`); sp.style.setProperty('--dy',`${Math.sin(a)*r-30}px`); sp.style.setProperty('--rot',`${(Math.random()*120-60)}deg`);
+    sp.style.animationDelay=`${Math.random()*0.12}s`;
+    el.appendChild(sp); setTimeout(()=>sp.remove(), 1000);
+  }
+  setTimeout(()=>{ el.classList.remove('shake','hit'); }, 800);
+}
+function fxFlip(p,k){
+  const el=panelOf(p); if(!el) return;
+  const cards=el.querySelectorAll('.figure .ccard'); const c=cards[k==='top'?0:1]; if(c){ c.classList.add('reveal'); setTimeout(()=>c.classList.remove('reveal'), 900); }
+  const ts=el.querySelectorAll('.tc'); const t=ts[k==='top'?0:1]; if(t){ t.classList.add('reveal'); setTimeout(()=>t.classList.remove('reveal'), 1100); }
+}
+
+/* =====================================================================
+ *  SE：Web Audio で合成する8bit風の効果音（音声ファイルなし）
+ * ===================================================================== */
+const SFX = {
+  on:true, ctx:null, master:null,
+  init(){
+    if(!this.ctx){ try{ const AC=window.AudioContext||window.webkitAudioContext; this.ctx=new AC(); this.master=this.ctx.createGain(); this.master.gain.value=0.5; this.master.connect(this.ctx.destination); }catch(e){ this.ctx=null; } }
+    if(this.ctx && this.ctx.state==='suspended') this.ctx.resume().catch(()=>{});
+  },
+  load(){ try{ const v=localStorage.getItem('mesugaki-coup-sfx'); if(v!==null) this.on=v==='1'; }catch(e){} },
+  save(){ try{ localStorage.setItem('mesugaki-coup-sfx', this.on?'1':'0'); }catch(e){} },
+  updateButton(){ const b=$('#btnSound'); if(!b) return; b.textContent=this.on?'♪ 音：ON':'♪ 音：OFF'; b.classList.toggle('sfx-off',!this.on); b.setAttribute('aria-pressed', this.on?'true':'false'); },
+  tone(freq, dur, {type='square', gain=0.12, at=0, slide=null, decay=true}={}){
+    const c=this.ctx, t0=c.currentTime+at;
+    const o=c.createOscillator(), g=c.createGain();
+    o.type=type; o.frequency.setValueAtTime(freq,t0); if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(20,slide),t0+dur);
+    g.gain.setValueAtTime(gain,t0); if(decay) g.gain.exponentialRampToValueAtTime(0.001,t0+dur); else g.gain.setValueAtTime(0.001,t0+dur);
+    o.connect(g); g.connect(this.master); o.start(t0); o.stop(t0+dur+0.02);
+  },
+  noise(dur, {gain=0.2, at=0, lp=null, hp=null, sweep=null}={}){
+    const c=this.ctx, t0=c.currentTime+at;
+    const buf=c.createBuffer(1, Math.ceil(c.sampleRate*dur), c.sampleRate); const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+    const src=c.createBufferSource(); src.buffer=buf;
+    let node=src;
+    if(lp){ const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.setValueAtTime(lp,t0); if(sweep) f.frequency.exponentialRampToValueAtTime(sweep,t0+dur); node.connect(f); node=f; }
+    if(hp){ const f=c.createBiquadFilter(); f.type='highpass'; f.frequency.setValueAtTime(hp,t0); node.connect(f); node=f; }
+    const g=c.createGain(); g.gain.setValueAtTime(gain,t0); g.gain.exponentialRampToValueAtTime(0.001,t0+dur);
+    node.connect(g); g.connect(this.master); src.start(t0); src.stop(t0+dur+0.02);
+  },
+  play(name){
+    if(!this.on) return; this.init(); if(!this.ctx) return;
+    try{
+      switch(name){
+        case 'tick': this.tone(880,0.04,{gain:0.06}); break;
+        case 'pop': this.tone(523,0.07,{gain:0.1}); this.tone(784,0.09,{at:0.07,gain:0.1}); break;
+        case 'coin': this.tone(988,0.08,{gain:0.1}); this.tone(1319,0.22,{at:0.08,gain:0.1}); break;
+        case 'drain': this.tone(440,0.18,{slide:180,gain:0.1}); break;
+        case 'sting': this.tone(220,0.28,{type:'sawtooth',gain:0.09}); this.tone(233,0.28,{type:'sawtooth',gain:0.09}); this.tone(110,0.3,{type:'square',gain:0.06,at:0.05}); break;
+        case 'buzz': this.tone(110,0.22,{type:'square',gain:0.1}); this.tone(116,0.22,{type:'square',gain:0.08}); break;
+        case 'chime': this.tone(659,0.09,{type:'triangle',gain:0.12}); this.tone(784,0.09,{type:'triangle',gain:0.12,at:0.09}); this.tone(1047,0.3,{type:'triangle',gain:0.12,at:0.18}); break;
+        case 'hit': this.noise(0.28,{gain:0.3,lp:1800,sweep:200}); this.tone(90,0.3,{slide:35,gain:0.18}); break;
+        case 'rip': this.noise(0.32,{gain:0.22,hp:900,lp:6000,sweep:1200}); this.tone(1200,0.25,{type:'sawtooth',slide:300,gain:0.04}); break;
+        case 'sparkle': [1047,1319,1568,2093].forEach((f,i)=>this.tone(f,0.12,{type:'triangle',gain:0.09,at:i*0.07})); break;
+        case 'dud': this.tone(300,0.12,{gain:0.08}); this.tone(220,0.25,{gain:0.08,at:0.12,slide:160}); break;
+        case 'boom': this.noise(0.6,{gain:0.4,lp:900,sweep:60}); this.tone(55,0.6,{type:'sine',slide:25,gain:0.3}); break;
+        case 'fanfare': [[523,0.12,0],[659,0.12,0.12],[784,0.12,0.24],[1047,0.5,0.36],[784,0.12,0.6],[1047,0.7,0.72]].forEach(([f,d,a])=>this.tone(f,d,{type:'square',gain:0.1,at:a})); break;
+        case 'down': [392,330,262,196].forEach((f,i)=>this.tone(f,0.22,{type:'square',gain:0.09,at:i*0.16})); break;
+      }
+    }catch(e){}
+  }
+};
+
+/* =====================================================================
  *  チュートリアル：台本どおりに進む1戦。ナビが毎手の意味を説明し、押す場所を絞る
  * ===================================================================== */
 const TUT = { active:false, beats:[], i:0, cpu:{}, text:'', restrict:null, stepLabel:'' };
@@ -1167,6 +1269,10 @@ function init(){
   $('#btnLog').onclick=()=>{ renderLog(); $('#modalLog').classList.add('show'); };
   $('#btnSpeed').onclick=()=>{ S.speed=S.speed===1?0.35:1; $('#btnSpeed').textContent=`速度：${S.speed===1?'ふつう':'はやい'}`; };
   $('#btnNew').onclick=()=>openStart();
+  SFX.load(); SFX.updateButton();
+  $('#btnSound').onclick=()=>{ SFX.on=!SFX.on; SFX.save(); SFX.updateButton(); SFX.init(); if(SFX.on) SFX.play('coin'); };
+  document.addEventListener('pointerdown', ()=>SFX.init(), {passive:true});
+  $('#prompt').addEventListener('click', e=>{ if(e.target.closest('.btn,.at,.rc.sel,.tc.sel')) SFX.play('tick'); });
   $('#btnStart').onclick=()=>{ $('#modalStart').classList.remove('show'); newGame(setup.n, setup.ch, {auto:setup.auto}); };
   $('#btnTutorial').onclick=()=>{ $('#modalStart').classList.remove('show'); newGame(2, setup.ch, {tutorial:true}); };
   openStart();

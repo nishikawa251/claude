@@ -156,6 +156,11 @@ magic_board = card_board(magic_items)
 top = chars[0]
 byname = {r['key']: r for r in chars}
 tiers_of = lambda t: [r for r in chars if r['tier'] == t]
+hist_path = os.path.join(HERE, 'history.json')
+history = json.load(open(hist_path)) if os.path.exists(hist_path) else []
+history_html = ('<section>\n  <h2>過去の調査</h2>\n  <p>調整の前のレポート。新しい順。どれも別のページで開く。</p>\n  <ul class="plain">'
+  + ''.join(f'<li><a href="{esc(h["url"])}" target="_blank" rel="noopener">{esc(h["label"])}</a>{("　" + esc(h["desc"])) if h.get("desc") else ""}</li>' for h in history)
+  + '</ul>\n</section>') if history else ''
 prev_path = os.path.join(HERE, 'prev_summary.json')
 prev = json.load(open(prev_path)) if os.path.exists(prev_path) else None
 def win_in(key, counts):
@@ -304,7 +309,7 @@ tbody tr:hover td{{background:var(--band)}}
 .filters button{{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink2);border-radius:999px;padding:3px 12px;cursor:pointer}}
 .filters button[aria-pressed="true"]{{background:var(--accent);border-color:var(--accent);color:var(--surface)}}
 .note{{font-size:13px;color:var(--muted)}}
-ul.plain{{margin:0;padding-left:1.2em;color:var(--ink2);max-width:72ch}} ul.plain li{{margin-bottom:6px}}
+ul.plain{{margin:0;padding-left:1.2em;color:var(--ink2);max-width:72ch}} ul.plain a{{color:var(--accent);font-weight:700}} ul.plain li{{margin-bottom:6px}}
 #tip{{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:6px 10px;border-radius:8px;max-width:320px;line-height:1.5}}
 #zoom{{position:fixed;inset:0;z-index:60;background:rgba(10,6,12,.72);display:grid;place-items:center;padding:16px}}
 #zoom img{{max-height:86vh;max-width:100%;border-radius:12px;background:#fff}}
@@ -393,6 +398,7 @@ ul.plain{{margin:0;padding-left:1.2em;color:var(--ink2);max-width:72ch}} ul.plai
   </ul>
   <p class="note">集計日 {now}</p>
 </section>
+{history_html}
 </main>
 <div id="tip" hidden></div>
 <div id="zoom" hidden><img alt=""></div>

@@ -105,6 +105,8 @@ node sim/run.js 1000 /tmp/buff2.json sim/patches/buff2.json
 python3 sim/proposal.py sim/patches/buff2.json sim/result.json /tmp/buff2.json proposal.html
 ```
 
+過去のバランス調査（調整前のレポート）は、`sim/history.json` に一覧があり、`balance.html` の最後から開ける。各版のレポートは git の履歴（コミット `d7daf91`・`568a3be`・`2b3ca99`・`afefa62` の `balance.html`）にも残っている。
+
 ## 構成
 
 `index.html` 一枚です。主な関数：

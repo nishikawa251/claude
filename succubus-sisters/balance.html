@@ -100,7 +100,7 @@ tbody tr:hover td{background:var(--band)}
 .filters button{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink2);border-radius:999px;padding:3px 12px;cursor:pointer}
 .filters button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
 .note{font-size:13px;color:var(--muted)}
-ul.plain{margin:0;padding-left:1.2em;color:var(--ink2);max-width:72ch} ul.plain li{margin-bottom:6px}
+ul.plain{margin:0;padding-left:1.2em;color:var(--ink2);max-width:72ch} ul.plain a{color:var(--accent);font-weight:700} ul.plain li{margin-bottom:6px}
 #tip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:6px 10px;border-radius:8px;max-width:320px;line-height:1.5}
 #zoom{position:fixed;inset:0;z-index:60;background:rgba(10,6,12,.72);display:grid;place-items:center;padding:16px}
 #zoom img{max-height:86vh;max-width:100%;border-radius:12px;background:#fff}
@@ -191,7 +191,12 @@ ul.plain{margin:0;padding-left:1.2em;color:var(--ink2);max-width:72ch} ul.plain 
     <li>集計中に、昇天弓で倒された直後に《反撃》の相手がいなくなるとゲームが止まる不具合が見つかり、修正してから集計し直した。</li>
     <li>再集計：<code>node sim/run.js 1000</code> → <code>python3 sim/report.py</code>。CSV（sim/chars.csv・sim/cards.csv）も同時に出力する。</li>
   </ul>
-  <p class="note">集計日 2026-09-27</p>
+  <p class="note">集計日 2026-10-19</p>
+</section>
+<section>
+  <h2>過去の調査</h2>
+  <p>調整の前のレポート。新しい順。どれも別のページで開く。</p>
+  <ul class="plain"><li><a href="https://claude.ai/artifact/S74KeRm9knoh77PpxitZuW" target="_blank" rel="noopener">能力調整案 第3版（チアモ・ミヨミ）</a>　カード強化案を入れる前の最後の調査。♥・☆カードのTier表つき。</li><li><a href="https://claude.ai/artifact/54xpQaggkNeStvX3bnTrdA" target="_blank" rel="noopener">能力調整案 第2版（ミロク・ジャスイ・ボタン・ツバキ・クルル）</a></li><li><a href="https://claude.ai/artifact/T9W9rfa7WQwMEsZULpwqmA" target="_blank" rel="noopener">能力調整案 第1版（チアモ・カギコ・ボタン・クルル）</a>　3〜6人制と、堕天使CPUの供与を入れた最初の調整。</li><li><a href="https://claude.ai/artifact/BcLufjLGkGpmVsM4JpBRjy" target="_blank" rel="noopener">初版（調整前）</a>　もとのルール・能力、4〜8人で70,000戦。</li></ul>
 </section>
 </main>
 <div id="tip" hidden></div>

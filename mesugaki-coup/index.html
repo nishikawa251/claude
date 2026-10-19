@@ -527,7 +527,7 @@ const TRIGGERS = [
   { id:'t13', count:0, name:'山分け',        text:'自分より♥の多い全員から1♥ずつもらう' },
   { id:'t14', count:1, name:'値下げ',        text:'以後、自分の「ざぁ～こ♥」は5♥で撃てる', persistent:true },
   { id:'t15', count:1, name:'遺言',          text:'プライドが0になったときだけ発動。自分の♥をすべて好きな相手に渡す' },
-  { id:'t16', count:1, name:'着替え',        text:'プライドが0になったときだけ発動。山札から1枚引いて手札に加え、脱落を免れる' },
+  { id:'t16', count:1, name:'着替え',        text:'プライドが0になったときだけ発動。山札から1枚引いて手札に加え、脱落を免れる。ただし♥は0になる' },
 ];
 const NO_TRIGGER = { id:'none', name:'ハズレ', text:'効果なし' };
 
@@ -960,8 +960,9 @@ async function resolveTrigger(p, card, by){
       if(p.hand.length>0){ log(`${p.name} はまだプライドが残っているので「着替え」は不発`); return; }
       if(!S.deck.length){ log(`山札がないので「着替え」は不発`); return; }
       const c=drawCard(); p.hand.push(c); markFresh(c); SFX.play('chime');
+      const lost=p.hearts; p.hearts=0;
       say(p, 'まだ終わってないし♥');
-      log(`${p.name} は着替えて立ち直った！ 山札から1枚引いてプライド1で続行`, p.cpu?'sys':'me');
+      log(`${p.name} は着替えて立ち直った！ 山札から1枚引いてプライド1で続行${lost?`（♥${lost}はすべて失った）`:''}`, p.cpu?'sys':'me');
       return;
     }
     case 't13': {

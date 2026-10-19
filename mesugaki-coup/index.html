@@ -210,7 +210,8 @@ button{font:inherit;color:inherit}
 .setup .row label{color:var(--dim);font-size:13px;min-width:90px}
 .chpick{display:flex;gap:8px;flex-wrap:wrap}
 .chpick .ch{padding:6px;background:var(--panel2);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;box-shadow:0 0 0 2px var(--line) inset}
-.chpick .ch .figure{--cw:104px}
+.chpick .ch .figure{--cw:112px;flex-direction:column;gap:0}
+.endbox .figure{flex-direction:column;gap:0}
 .chpick .ch.on{box-shadow:0 0 0 2px var(--pink) inset;background:#3d2550}
 .endbox{text-align:center}
 .endbox .big{font-size:26px;color:var(--pink);margin:8px 0 4px;letter-spacing:.1em}
@@ -1113,7 +1114,7 @@ function openStart(){
   const np=$('#npick'); np.innerHTML='';
   for(const n of [2,3,4,5]){ const b=document.createElement('button'); b.className='btn'+(setup.n===n?' primary':''); b.textContent=`${n}人`; b.onclick=()=>{ setup.n=n; openStart(); }; np.appendChild(b); }
   const cp=$('#chpick'); cp.innerHTML='';
-  CHARS.forEach((ch,i)=>{ const d=document.createElement('div'); d.className='ch'+(setup.ch===i?' on':''); d.appendChild(figureEl(ch,{top:false,bottom:false},'sm',false,['top'])); const l=document.createElement('span'); l.textContent=`${ch.name}`; d.appendChild(l); d.onclick=()=>{ setup.ch=i; openStart(); }; cp.appendChild(d); });
+  CHARS.forEach((ch,i)=>{ const d=document.createElement('div'); d.className='ch'+(setup.ch===i?' on':''); d.appendChild(figureEl(ch,{top:false,bottom:false},'sm',false)); const l=document.createElement('span'); l.textContent=`${ch.name}`; d.appendChild(l); d.onclick=()=>{ setup.ch=i; openStart(); }; cp.appendChild(d); });
   let auto=$('#autoPick');
   if(!auto){ auto=document.createElement('label'); auto.id='autoPick'; auto.style.cssText='font-size:13px;color:var(--dim);display:flex;gap:6px;align-items:center'; auto.innerHTML='<input type="checkbox"> おまかせ（自分の手もCPUに任せて観戦）'; $('#btnStart').parentElement.appendChild(auto); auto.querySelector('input').onchange=e=>{ setup.auto=e.target.checked; }; }
   $('#modalStart').classList.add('show');

@@ -67,8 +67,8 @@ button{font:inherit;color:inherit}
   background:radial-gradient(ellipse at 50% 35%,#6c2f60 0,#4a1f45 45%,#30142d 100%);
   box-shadow:inset 0 0 0 12px #6b4a36,inset 0 0 0 16px #3a2419,inset 0 0 90px rgba(0,0,0,.55),0 26px 60px rgba(0,0,0,.6)}
 .felt::after{content:'';position:absolute;inset:26px;border-radius:50%;border:1px dashed rgba(255,150,200,.16)}
-.seats .pl{width:290px;position:relative}
-.seats .figure.md{--cw:120px}
+.seats .pl{width:364px;position:relative}
+.seats .figure.md{--cw:112px}
 .center{display:flex;flex-direction:column;gap:8px}
 .meseat{width:max-content;max-width:100%}
 .meseat .figure.lg{--cw:184px}
@@ -105,21 +105,22 @@ button{font:inherit;color:inherit}
 .lbl2{font-size:11px;color:var(--dim);margin-bottom:2px;letter-spacing:.05em}
 
 /* role card */
-.rc{width:84px;min-height:112px;padding:5px 5px 4px;background:#fff6fa;color:#3a1a2c;font-size:11px;line-height:1.25;display:flex;flex-direction:column;gap:3px;position:relative;
+.rc{width:164px;min-height:112px;padding:5px 6px 4px;background:#fff6fa;color:#3a1a2c;font-size:11.5px;line-height:1.3;display:flex;flex-direction:column;gap:4px;position:relative;
   box-shadow:0 0 0 2px var(--rcol,#ff5fa8) inset,0 2px 0 0 rgba(0,0,0,.4)}
-.rc .rn{font-size:12px;font-weight:400;color:#fff;background:var(--rcol,#ff5fa8);margin:-5px -5px 1px;padding:4px 5px 3px;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rc .rl{color:#6d4a5c}
+.rc .rn{font-size:13px;font-weight:400;color:#fff;background:var(--rcol,#ff5fa8);margin:-5px -6px 1px;padding:4px 6px 3px;letter-spacing:.04em;white-space:nowrap}
+.rc .rl{color:#6d4a5c;display:flex;justify-content:space-between;gap:6px;white-space:nowrap}
 .rc .rl b{font-weight:400;color:#3a1a2c}
 .rc .ph{margin-top:auto;font-size:10px;color:var(--rcol,#ff5fa8);border-top:1px dashed #e7cbd8;padding-top:3px}
 .rc.back{background:repeating-linear-gradient(45deg,#4c2a5e 0 6px,#3b1f4b 6px 12px);box-shadow:0 0 0 2px #7a4a8e inset,0 2px 0 0 rgba(0,0,0,.4);color:#d9b8e6;align-items:center;justify-content:center;font-size:18px}
 .rc.back span{font-size:10px;letter-spacing:.1em}
 .rc.lost{filter:grayscale(.9) brightness(.7)}
-.rc.lost::after{content:'✕';position:absolute;inset:0;display:grid;place-items:center;font-size:48px;color:#ff2d7a;opacity:.85}
+.rc.lost::after{content:'✕';position:absolute;inset:0;display:grid;place-items:center;font-size:48px;color:#ff2d7a;opacity:.75}
 .rc.faceup{box-shadow:0 0 0 2px var(--gold) inset,0 2px 0 0 rgba(0,0,0,.4)}
-.rc .fu{position:absolute;right:3px;top:22px;font-size:9px;background:var(--gold);color:#3a2a00;padding:1px 3px}
+.rc .fu{position:absolute;right:4px;top:4px;font-size:9px;background:var(--gold);color:#3a2a00;padding:1px 4px}
+.rc.faceup .rn{padding-right:28px}
 .rc.sel{cursor:pointer;transition:transform .12s}
 .rc.sel:hover{transform:translateY(-4px)}
-.rc.sm{width:64px;min-height:84px;font-size:10px;padding:4px}
+.rc.sm{width:100px;min-height:84px;font-size:10px;padding:4px}
 .rc.sm .rn{font-size:11px;margin:-4px -4px 1px;padding:3px 4px 2px}
 .rc.sm .ph{display:none}
 .rc.sm.back{font-size:14px}
@@ -186,7 +187,7 @@ button{font:inherit;color:inherit}
 .at.rec .ah::before{content:'👉 '}
 .rc.playable{cursor:pointer;box-shadow:0 0 0 2px var(--rcol,#ff5fa8) inset,0 0 0 3px var(--gold),0 2px 0 0 rgba(0,0,0,.4)}
 .rc.playable:hover{transform:translateY(-4px)}
-.rc .play{font-size:10px;color:#fff;background:var(--rcol,#ff5fa8);padding:2px 4px;text-align:center;margin:2px -5px -4px;letter-spacing:.04em}
+.rc .play{font-size:11px;color:#fff;background:var(--rcol,#ff5fa8);padding:3px 4px;text-align:center;margin:2px -6px -4px;letter-spacing:.04em}
 .rc.playable.rec{animation:rec 1.2s ease-in-out infinite}
 .rc .rl.act b{color:var(--rcol,#ff5fa8)}
 .claim{display:flex;gap:10px;align-items:center;margin:4px 0 8px}
@@ -243,12 +244,12 @@ button{font:inherit;color:inherit}
   .felt{display:none}
   .seat-top{display:contents}
   .seats .pl{width:auto}
-  .seats .figure.md{--cw:150px}
+  .seats .figure.md{--cw:110px}
   .center{max-width:none}
   .meseat{width:auto}
 }
 @media (max-width:640px){
-  .rc{width:72px;min-height:96px}
+  .rc{width:150px}
   .figure.lg{--cw:160px}
   .meseat .figure.lg{--cw:160px}
   .figure.xl{--cw:150px}

@@ -502,10 +502,10 @@ const RULES = {
   triggerDeal: 2,          // 開始時に配るトリガー枚数。2ならそのまま上下に仕込む（3以上なら選んで残りを山へ）
   attackerChoosesFlip: true, // プライドを失わせた側が、どちらを脱がせるか選ぶ
   collectorGoal: 9,        // ♥コレクターの勝利条件
-  punishCost: 6,           // おしおき返しの即時ざぁ～こ♥のコスト
+  punishCost: 5,           // おしおき返しの即時ざぁ～こ♥のコスト
   win15LiftsForcedCoup: true, // ♥コレクター所持者は10♥の強制ざぁ～こ♥を免除（目標を10♥より上にしたとき用）
   coupCost: 7,
-  dudCount: 2,             // ハズレ（効果なし）トリガーの枚数
+  dudCount: 0,             // ハズレ（効果なし）トリガーの枚数（0で使わない）
   coupCostTaxed: 8,
   forcedCoupAt: 10,
 };
@@ -518,15 +518,15 @@ const TRIGGERS = [
   { id:'t4',  count:0, name:'まるみえ',      text:'誰か一人の手札を表にする。効果で山札からカードを入れ替えた時点で、裏向きにして良い。' },
   { id:'t5',  count:1, name:'総入れ替え',    text:'自分以外の全員の手札をすべて山札に戻し、各プレイヤーは戻した分の枚数を引き手札にする' },
   { id:'t6',  count:2, name:'みかじめ',      text:'全員から1♥ずつもらう' },
-  { id:'t7',  count:2, name:'まわして',      text:'全員手札を1枚選び、右隣のプレイヤーに渡す。' },
+  { id:'t7',  count:1, name:'まわして',      text:'全員手札を1枚選び、右隣のプレイヤーに渡す。' },
   { id:'t8',  count:0, name:'値上げ',        text:'自分以外のプレイヤーは「ざぁ～こ♥」の使用条件が「8♥を支払う」になる', persistent:true },
   { id:'t9',  count:1, name:'♥コレクター',   text:`自分の勝利条件に「${RULES.collectorGoal}♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう`, persistent:true },
   { id:'t10', count:1, name:'ルール改変',    text:'「ダサすぎ♥」の効果を「相手の手札1枚を見て山札と交換させる。」に変える。以降は幼馴染ガキが「ダサすぎ♥」をブロック可能になる。', persistent:true },
-  { id:'t11', count:1, name:'みちづれのキス', text:'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）' },
+  { id:'t11', count:2, name:'みちづれのキス', text:'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）' },
   { id:'t12', count:2, name:'仕返し',        text:'自分を脱がせた相手から3♥奪う' },
   { id:'t13', count:0, name:'山分け',        text:'自分より♥の多い全員から1♥ずつもらう' },
   { id:'t14', count:1, name:'値下げ',        text:'以後、自分の「ざぁ～こ♥」は5♥で撃てる', persistent:true },
-  { id:'t15', count:1, name:'遺言',          text:'自分の♥をすべて好きな相手に渡す' },
+  { id:'t15', count:1, name:'遺言',          text:'プライドが0になったときだけ発動。自分の♥をすべて好きな相手に渡す' },
   { id:'t16', count:1, name:'着替え',        text:'プライドが0になったときだけ発動。山札から1枚引いて手札に加え、脱落を免れる' },
 ];
 const NO_TRIGGER = { id:'none', name:'ハズレ', text:'効果なし' };
@@ -948,6 +948,7 @@ async function resolveTrigger(p, card, by){
       return;
     }
     case 't15': {
+      if(p.hand.length>0){ log(`${p.name} はまだプライドが残っているので「遺言」は不発`); return; }
       const cands=othersOf(p).filter(q=>q.alive);
       if(!p.hearts || !cands.length){ log(`${p.name} は渡す♥がないので不発`); return; }
       const target = p.cpu ? cpuBequeath(p,cands,by) : await humanPickPlayer(p, cands, `遺言：${p.hearts}♥をすべて渡す相手を選んでください`);
@@ -1749,7 +1750,7 @@ function buildRules(){
   <ul class="rl-list">
     <li>各自、<b>ガキカード2枚</b>（＝ライフ2つ）と <b>2♥</b> を持つ。手札は自分だけ見る。</li>
     <li><b>メスガキカード</b> 上半身・下半身を並べる。表は普通の服、裏はボロ絵。</li>
-    <li><b>トリガーカード</b>を${RULES.triggerDeal}枚引き、${RULES.triggerDeal>2?'2枚を選んで上半身・下半身の横に敷く（残りは山へ）':'上半身・下半身の横に1枚ずつ敷く（ハズレも仕込むことになる）'}。自分のトリガーは自分だけ見てよい。</li>
+    <li><b>トリガーカード</b>を${RULES.triggerDeal}枚引き、${RULES.triggerDeal>2?'2枚を選んで上半身・下半身の横に敷く（残りは山へ）':'上半身・下半身の横に1枚ずつ敷く'+(RULES.dudCount>0?'（ハズレも仕込むことになる）':'')}。自分のトリガーは自分だけ見てよい。</li>
   </ul></div>
 
   <div class="rl-sec"><h3><span class="no">2</span>手番の流れ</h3>

@@ -8,19 +8,23 @@ pos_dark = sys.argv[4] if len(sys.argv) > 4 else '#f05a97'
 neg_dark = sys.argv[5] if len(sys.argv) > 5 else '#4aa3f0'
 d = json.load(open(src, encoding='utf-8'))
 
-EFF = {'みちづれのキス':'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）','仕返し':'自分を脱がせた相手から3♥奪う','山分け':'自分より♥の多い全員から1♥ずつもらう','値下げ':'以後、自分の「ざぁ～こ♥」は5♥で撃てる','おしおき返し':'6♥持っていたら即時払って「ざぁ～こ♥」を打つ','山札のぞき':'山札を見て1枚選び、手札と入れ替える','ダサすぎ返し':'これを持っていれば「ダサすぎ♥」をブロックできる','まるみえ':'誰か一人の手札を表にする','総入れ替え':'自分以外の全員の手札を山札に戻し、同じ枚数を引き直す','みかじめ':'全員から1♥ずつもらう','まわして':'全員手札を1枚選び、右隣に渡す','値上げ':'自分以外は「ざぁ～こ♥」が8♥になる','♥コレクター':'自分の勝利条件に「9♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう','遺言':'自分の♥をすべて好きな相手に渡す','着替え':'プライドが0になったときだけ発動。山札から1枚引いて脱落を免れる','ルール改変':'「ダサすぎ♥」を審問（相手の手札1枚を見て山札と交換させる）に変える','ハズレ':'効果なし'}
-MEMO = {"仕返し": "脱がせた相手から3♥取り返す。2枚入りで発動数が多く、両条件で最上位", "値下げ": "自分だけざぁ～こ♥が5♥になる。両条件で上位", "みちづれのキス": "脱がせた相手の手札を自分だけ見る。見た相手の主張を無駄に疑わなくなるぶん得をする", "みかじめ": "全員から1♥。人数が多いほど得で、3〜6人戦では上位", "総入れ替え": "全員の手札を引き直させる。4人戦では中立、3〜6人戦ではプラス", "♥コレクター": "9♥＋公開時の山分けで、10♥時代の最下位から中立〜ややプラスまで戻った。8♥にすると +8pt で強すぎる（下の試算）", "おしおき返し": "6♥に上げたら中立に落ち着いた。6♥持って脱がされる場面が少なく、発動しても不発が多い。5♥なら上位、4♥なら最上位（下の試算）", "山札のぞき": "手札の質を上げる。中立〜ややプラス", "ルール改変": "中立。全員に効くので自分の得にならない", "ダサすぎ返し": "中立。ダサすぎ♥を止める機会しだい", "まわして": "中立。全員が1枚ずつ渡すので自分の得にならない", "遺言": "脱落時は好きな相手に♥を遺せるキングメーカー札。ただし1枚目の脱ぎでめくれると、生きたまま自分の♥を全部手放すので損（4人戦 −2pt）。「脱落時のみ」にする手もある", "着替え": "プライドが0になる脱ぎでめくれたときだけ発動し、山札から1枚引いて生き残る。1枚目でめくれると不発なので発動後勝率はハズレ並みだが、所持時勝率は全カード中トップ（4人戦 34%）。実質3枚目のプライド", "まるみえ": "今回は0枚（山に入れていない）", "値上げ": "今回は0枚（外した）", "山分け": "今回は0枚（♥コレクターの公開時効果に統合）", "ハズレ": "基準。配られた2枚をそのまま仕込むので、ハズレも必ず場に出る"}
-CANDS = [["遺言を「脱落時のみ」に", "プライドが0になったときだけ、自分の♥をすべて好きな相手に渡す", "1枚目でめくれたときの自損をなくす。着替えと同じ条件にそろう"], ["道連れ", "自分を脱がせた相手はプライドを1つ失う", "脱落時に発動しても意味がある。強すぎるなら「相手が手札2枚のときだけ」"], ["おしおき返しを5♥に", "5♥持っていたら即時払って「ざぁ～こ♥」を打つ", "6♥だと中立。5♥なら上位に戻る（下の試算）"]]
+EFF = {'みちづれのキス':'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）','仕返し':'自分を脱がせた相手から3♥奪う','山分け':'自分より♥の多い全員から1♥ずつもらう','値下げ':'以後、自分の「ざぁ～こ♥」は5♥で撃てる','おしおき返し':'5♥持っていたら即時払って「ざぁ～こ♥」を打つ','山札のぞき':'山札を見て1枚選び、手札と入れ替える','ダサすぎ返し':'これを持っていれば「ダサすぎ♥」をブロックできる','まるみえ':'誰か一人の手札を表にする','総入れ替え':'自分以外の全員の手札を山札に戻し、同じ枚数を引き直す','みかじめ':'全員から1♥ずつもらう','まわして':'全員手札を1枚選び、右隣に渡す','値上げ':'自分以外は「ざぁ～こ♥」が8♥になる','♥コレクター':'自分の勝利条件に「9♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう','遺言':'プライドが0になったときだけ発動。自分の♥をすべて好きな相手に渡す','着替え':'プライドが0になったときだけ発動。山札から1枚引いて脱落を免れる','ルール改変':'「ダサすぎ♥」を審問（相手の手札1枚を見て山札と交換させる）に変える','ハズレ':'効果なし'}
+MEMO = {"みちづれのキス": "脱がせた相手の手札を自分だけ見る。見た相手の主張を無駄に疑わなくなるぶん得をする。2枚にしても両条件で最上位", "値下げ": "自分だけざぁ～こ♥が5♥になる。両条件でプラス", "仕返し": "脱がせた相手から3♥取り返す。両条件でプラス", "おしおき返し": "5♥で中立〜ややプラス。所持時勝率は平均より2ポイント高く、持っているだけで相手の攻撃を抑えている。4♥なら上位、6♥なら中立以下（下の試算）", "みかじめ": "全員から1♥。ほぼ中立", "山札のぞき": "手札の質を上げる。ほぼ中立", "ダサすぎ返し": "中立。ダサすぎ♥を止める機会しだい", "ルール改変": "中立。全員に効くので自分の得にならない", "♥コレクター": "9♥＋公開時の山分けで中立。8♥にすると +3pt 強い寄り、10♥だと −5pt で最下位（下の試算）", "まわして": "1枚に減らした。中立〜やや弱い。全員が1枚ずつ渡すので自分の得にならない", "総入れ替え": "やや弱い。全員に影響する効果で自分の得は安定しない", "遺言": "脱落時のみ発動のキングメーカー札。本人の勝率には効かないので、1枚目でめくれたときの不発と同じ −2pt 前後に出る", "着替え": "プライドが0になる脱ぎでめくれたときだけ発動し、山札から1枚引いて生き残る。1枚目でめくれると不発なので発動後勝率は低いが、所持時勝率は全カード中トップ（平均 +9pt）。実質3枚目のプライド", "まるみえ": "今回は0枚", "値上げ": "今回は0枚", "山分け": "今回は0枚（♥コレクターの公開時効果に統合）", "ハズレ": "今回は0枚"}
+CANDS = [["道連れ", "自分を脱がせた相手はプライドを1つ失う", "脱落時に発動しても意味がある。強すぎるなら「相手が手札2枚のときだけ」"], ["遺言に見返り", "プライドが0になったときだけ発動。自分の♥をすべて好きな相手に渡し、その相手は次の手番までチャレンジできない", "今の遺言は本人の得がゼロ。渡した相手に縛りを付けると駆け引きになる"]]
 def rows(key):
     return [{'id':r['id'],'name':r['name'],'eff':EFF[r['name']],'held':r['held'],'heldWin':r['heldWin'],'first':r['first'],'firstWin':r['firstWin'],'last':r['last'],'revive':r.get('revive',0),'reviveWin':r.get('reviveWin',0),'evalBy':'held' if r['name']=='着替え' else 'first','memo':MEMO[r['name']]} for r in d[key]['rows']]
-s4, s3, s0 = d['sim_4p_dud5'], d['sim_235_dud5'], d['sim_4p_dud0']
+s4, s3, s0 = d['sim_4p_dud5'], d['sim_235_dud5'], d.get('sim_4p_dud0')
+hasDud = bool(s4.get('hasDud', True))
+BASELBL = 'ハズレ比' if hasDud else '平均比'
+BASENAME = 'ハズレ' if hasDud else '全カード平均'
 DATA = {
   'conds': {
-    'p4': {'label':'4人戦','sub':'ハズレ2枚・10,000戦','games':s4['games'],'rows':rows('sim_4p_dud5')},
-    'p3456': {'label':'3〜6人戦','sub':'各3,000戦・ハズレ2枚・12,000戦','games':s3['games'],'rows':rows('sim_235_dud5')},
+    'p4': {'label':'4人戦','sub':('ハズレ2枚・' if hasDud else 'ハズレなし・')+'10,000戦','games':s4['games'],'rows':rows('sim_4p_dud5'),'base':s4.get('base'),'heldBase':s4.get('heldBase'),'avgLog':round(s4['avgLog'],1),'winnerLostLife':round(s4['winnerLostLife'],3),'lifeLoss':round(s4['lifeLoss'],2)},
+    'p3456': {'label':'3〜6人戦','sub':'各3,000戦・'+('ハズレ2枚・' if hasDud else 'ハズレなし・')+'12,000戦','games':s3['games'],'rows':rows('sim_235_dud5'),'base':s3.get('base'),'heldBase':s3.get('heldBase')},
   },
-  'dud': {'d5':{'label':'ハズレ2枚','games':s4['games'],'avgLog':round(s4['avgLog'],1),'winnerLostLife':round(s4['winnerLostLife'],3),'lifeLoss':round(s4['lifeLoss'],2)},
-          'd0':{'label':'ハズレ0枚','games':s0['games'],'avgLog':round(s0['avgLog'],1),'winnerLostLife':round(s0['winnerLostLife'],3),'lifeLoss':round(s0['lifeLoss'],2)}},
+  'hasDud': hasDud,
+  'dud': ({'d5':{'label':'ハズレ2枚','games':s4['games'],'avgLog':round(s4['avgLog'],1),'winnerLostLife':round(s4['winnerLostLife'],3),'lifeLoss':round(s4['lifeLoss'],2)},
+          'd0':{'label':'ハズレ0枚','games':s0['games'],'avgLog':round(s0['avgLog'],1),'winnerLostLife':round(s0['winnerLostLife'],3),'lifeLoss':round(s0['lifeLoss'],2)}} if s0 else None),
   'cands': [{'name':a,'eff':b,'aim':c} for a,b,c in CANDS],
   'thr': 0.02,
   'whatif': d.get('whatif', []),
@@ -141,9 +145,9 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
 </style>
 <main>
 <header>
-  <div class="eyebrow">CPU同士の自動対戦・2026-10-19 第4版・トリガー13種16枚＋ハズレ2枚／配られた2枚をそのまま仕込む／♥コレクター9♥＋公開時に山分け／おしおき返しは6♥／山分け・値上げを外し、遺言・着替えを追加／3〜6人</div>
+  <div class="eyebrow">CPU同士の自動対戦・2026-10-19 第5版・トリガー13種16枚・ハズレなし／配られた2枚をそのまま仕込む／♥コレクター9♥＋公開時に山分け／おしおき返しは5♥／遺言・着替えは脱落時のみ／3〜6人</div>
   <h1><span class="nb">メスガキ・クー</span> <span class="nb">トリガー分析</span></h1>
-  <p class="lede">トリガーカード13種（計16枚）＋ハズレ2枚を、どれが持ち主を勝たせているかで並べた。指標は「1枚目の脱ぎで発動したあとに勝った割合」。プライドを1つ失った状態からの勝率なので、ハズレ（何も起きない）との差で強さを見る。</p>
+  <p class="lede">トリガーカード13種（計16枚）を、どれが持ち主を勝たせているかで並べた。指標は「1枚目の脱ぎで発動したあとに勝った割合」。プライドを1つ失った状態からの勝率なので、BASENAMEとの差で強さを見る。DUDNOTE</p>
   <div class="total" id="total"></div>
 </header>
 
@@ -165,7 +169,7 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
 
 <section>
   <h2>ハズレ比 <small id="barsub"></small></h2>
-  <p>発動後勝率からハズレの発動後勝率を引いた差。右（ピンク）が持ち主の得、左（青）が損。±2ポイントは誤差の範囲。着替えだけは脱落時にしか効かないので、所持時勝率の差（◆）で見る。</p>
+  <p>発動後勝率からBASENAMEの発動後勝率を引いた差。右（ピンク）が持ち主の得、左（青）が損。±2ポイントは誤差の範囲。着替えだけは脱落時にしか効かないので、所持時勝率の差（◆）で見る。</p>
   <div class="bars" id="bars"></div>
 </section>
 
@@ -174,7 +178,7 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
   <div id="out"></div>
 </section>
 
-<section>
+<section id="dudsec">
   <h2>ハズレ2枚と0枚の比較 <small>4人戦・各10,000戦</small></h2>
   <div class="tbl"><table id="dudtbl"></table></div>
   <p>2枚配りになってハズレは必ず仕込まれるようになったが、2枚でも0枚でもゲームの長さ・逆転の起きやすさ・被弾回数は変わらない。ハズレはバランスには効かず、「脱いだのに何も起きない」場面を1割ほど混ぜるための札。</p>
@@ -191,13 +195,13 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
   <h2>読み方</h2>
   <ul class="plain">
     <li>所持時勝率：そのカードを仕込んでいたプレイヤーの勝率。発動しなかった場合も含む。4人戦の平均は25%、3〜6人戦の平均は約22%。</li>
-    <li>発動後勝率：1枚目の脱ぎでそのカードが発動したあと、そのプレイヤーが勝った割合。ハズレ比はこの値とハズレの差で、判定は±2ポイントを境にしている。</li>
+    <li>発動後勝率：1枚目の脱ぎでそのカードが発動したあと、そのプレイヤーが勝った割合。BASELBLはこの値とBASENAMEの差で、判定は±2ポイントを境にしている。</li>
     <li>脱落時発動率：発動のうち、2枚目の脱ぎ（脱落）で発動した割合。着替え以外は本人にほぼ意味がない発動。</li>
     <li>着替えは発動後勝率ではなく所持時勝率のハズレ比で判定している（復活回数と復活後の勝率はカードに併記）。</li>
-    <li>1枚物は約2,000回、2枚物とハズレは約4,200回の発動。1枚物のハズレ比は±2ポイント程度の揺れがあるので、4人戦と3〜6人戦の両方で同じ向きに出ているかを見る。</li>
+    <li>1枚物は約2,500回、2枚物は約5,000回の発動。1枚物のBASELBLは±2ポイント程度の揺れがあるので、4人戦と3〜6人戦の両方で同じ向きに出ているかを見る。</li>
     <li>CPUは♥コレクターを持っていて目標まで3♥以内なら、ざぁ～こ♥より先に♥を集めて勝ちに行く。周りのCPUも目標が近い所持者を優先して狙う。</li>
   </ul>
-  <p class="note">作成日 2026-10-19（第4版）　・　元データ：mesugaki-coup tools/sim.js（ヘッドレス自動対戦）</p>
+  <p class="note">作成日 2026-10-19（第5版）　・　元データ：mesugaki-coup tools/sim.js（ヘッドレス自動対戦）</p>
 </section>
 </main>
 <script>
@@ -210,16 +214,17 @@ const fmt=n=>n.toLocaleString('ja-JP');
 const state={cond:'p4',tier:'all',q:'',sort:'delta',view:'cards'};
 function compute(cond){
   const rows=DATA.conds[cond].rows.map(r=>({...r}));
-  const dud=rows.find(r=>r.id==='none');
-  const base=dud.firstWin/dud.first;
-  const hbase=dud.heldWin/dud.held;
+  const dud=rows.find(r=>r.id==='none'); const C=DATA.conds[cond];
+  const base=dud?dud.firstWin/dud.first:C.base;
+  const hbase=dud?dud.heldWin/dud.held:C.heldBase;
+  rows.base=base; rows.hbase=hbase;
   for(const r of rows){ r.heldp=r.heldWin/r.held; r.firstp=r.firstWin/r.first; r.delta=r.firstp-base; r.heldDelta=r.heldp-hbase; r.score=r.evalBy==='held'?r.heldDelta:r.delta; r.lastRate=r.last/(r.first+r.last); r.revivep=r.revive?r.reviveWin/r.revive:0; r.tier=r.id==='none'?'none':(r.score>=DATA.thr?'強い':(r.score<=-DATA.thr?'弱い':'中立')); }
   return rows;
 }
 const tierCls={'強い':'tS','中立':'tN','弱い':'tW','none':'tA'};
 const tierLabel=t=>t==='none'?'基準':t;
 function renderTotal(){
-  const c4=DATA.conds.p4, c3=DATA.conds.p3456, d=DATA.dud.d5;
+  const c4=DATA.conds.p4, c3=DATA.conds.p3456, d=c4;
   $('#total').innerHTML=`<span><b>${fmt(c4.games)}</b>4人戦</span><span><b>${fmt(c3.games)}</b>3〜6人戦</span><span><b>${d.lifeLoss}回</b>1ゲームの被弾</span><span><b>${pct(d.winnerLostLife,0)}</b>勝者が途中で被弾</span><span><b>${d.avgLog}行</b>平均ログ</span>`;
 }
 function renderMix(){
@@ -232,7 +237,7 @@ function renderMix(){
   const lastAvg=r4.reduce((a,r)=>a+r.last,0)/r4.reduce((a,r)=>a+r.first+r.last,0);
   const items=[
     ['強い', top4.join('・'), `4人戦でハズレ比 +${(DATA.thr*100).toFixed(0)}pt 以上で、3〜6人戦でもプラスのカード。`],
-    ['弱い', weak.join('・')||'なし', weak.length?'両条件でマイナスのカード。':'両条件でマイナスになるカードはなくなった。♥コレクターは9♥＋山分けで中立に戻った。'],
+    ['弱い', weak.join('・')||'なし', weak.length?'両条件でマイナスのカード。':'両条件で −2pt を下回るカードはない。遺言は脱落時のみなので本人の得はなく、不発相当の −2pt 前後。'],
     ['空撃ち', pct(lastAvg,0), '発動のうち脱落時（2枚目の脱ぎ）に起きた割合。本人には意味のない発動が半分近くある。'],
     ['効果の幅', `${spct(Math.max(...r4.map(r=>r.score)))} 〜 ${spct(Math.min(...r4.map(r=>r.score)))}`, 'トリガーは負けかけた側に起きるので、どれも勝敗を覆すほどの力はない。'],
   ];
@@ -250,11 +255,11 @@ function renderBars(rows){
   $('#barsub').textContent=`${c.label}・${c.sub}`;
   const list=rows.filter(r=>r.id!=='none').sort((a,b)=>b.score-a.score);
   const max=Math.max(...list.map(r=>Math.abs(r.score)), 0.01);
-  const dud=rows.find(r=>r.id==='none');
-  $('#bars').innerHTML=`<div class="barhead"><span>カード</span><span class="mid">ハズレ（発動後勝率 ${pct(dud.firstp)}）を0とした差</span><span class="r">ハズレ比</span></div>`+list.map(r=>{
+  const dud={firstp:rows.base, heldp:rows.hbase};
+  $('#bars').innerHTML=`<div class="barhead"><span>カード</span><span class="mid">BASENAME（発動後勝率 ${pct(dud.firstp)}）を0とした差</span><span class="r">BASELBL</span></div>`+list.map(r=>{
     const v=r.score; const w=Math.abs(v)/max*50; const zero=Math.abs(v)<0.001; const held=r.evalBy==='held';
     const style=v>=0?`left:50%;width:${w}%`:`right:50%;width:${w}%`;
-    const title=held?`${r.name}：所持時勝率 ${pct(r.heldp)}（ハズレ ${pct(dud.heldp)}）、復活 ${fmt(r.revive)}回`:`${r.name}：発動後勝率 ${pct(r.firstp)}（ハズレ ${pct(dud.firstp)}）、発動 ${fmt(r.first)}回`;
+    const title=held?`${r.name}：所持時勝率 ${pct(r.heldp)}（BASENAME ${pct(dud.heldp)}）、復活 ${fmt(r.revive)}回`:`${r.name}：発動後勝率 ${pct(r.firstp)}（BASENAME ${pct(dud.firstp)}）、発動 ${fmt(r.first)}回`;
     return `<div class="bar" title="${esc(title)}"><span class="bn">${esc(r.name)}${held?' ◆':''}</span><span class="bt"><span class="bf ${v<0?'neg':''} ${zero?'zero':''}" style="${style}"></span></span><span class="bv">${spct(v)} <small>${pct(held?r.heldp:r.firstp)}</small></span></div>`;
   }).join('');
 }
@@ -285,7 +290,7 @@ function renderCards(rows){
   $('#out').innerHTML=list.length? (state.view==='table'?table(list):`<div class="grid">${list.map(card).join('')}</div>`) : '<div class="empty">該当するカードがない</div>';
 }
 function renderDud(){
-  const d=DATA.dud;
+  const d=DATA.dud; if(!d){ $('#dudsec').hidden=true; return; }
   $('#dudtbl').innerHTML=`<thead><tr><th>条件</th><th class="n">ゲーム数</th><th class="n">平均ログ行数</th><th class="n">勝者が途中で被弾していた率</th><th class="n">1ゲームの被弾回数</th></tr></thead><tbody>`+['d5','d0'].map(k=>`<tr><td class="nm">${esc(d[k].label)}</td><td class="n">${fmt(d[k].games)}</td><td class="n">${d[k].avgLog}</td><td class="n">${pct(d[k].winnerLostLife)}</td><td class="n">${d[k].lifeLoss}</td></tr>`).join('')+'</tbody>';
 }
 function renderWhatif(){
@@ -306,7 +311,7 @@ $('#q').oninput=e=>{ state.q=e.target.value.trim(); renderAll(); };
 renderTotal(); renderMix(); renderDud(); renderWhatif(); renderCands(); renderAll();
 </script>
 '''
-page = page.replace('DATAJSON', json.dumps(DATA, ensure_ascii=False)).replace('POSDARK', pos_dark).replace('NEGDARK', neg_dark)
+page = page.replace('ハズレ比','BASELBL').replace('DUDNOTE', '' if hasDud else '不発（着替え・遺言が1枚目でめくれたとき）は −2ポイント前後に出るので、それが「何も起きない」の目安。').replace('BASELBL', BASELBL).replace('BASENAME', BASENAME).replace('DATAJSON', json.dumps(DATA, ensure_ascii=False)).replace('POSDARK', pos_dark).replace('NEGDARK', neg_dark)
 open(out_art, 'w', encoding='utf-8').write(page)
 open(out_repo, 'w', encoding='utf-8').write('<!doctype html>\n<html lang="ja">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n</head>\n<body>\n' + page + '</body>\n</html>\n')
 print('written', len(page))

@@ -55,7 +55,17 @@ button{font:inherit;color:inherit}
 .btn.primary .sub{color:#5a1b36}
 
 /* ---------- players ---------- */
-.opps{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:10px}
+/* 円卓：中央にフェルト、相手は上の弧、あなたは手前 */
+.table{position:relative;min-height:760px}
+.felt{position:absolute;left:50%;top:44%;width:80%;height:70%;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(ellipse at 50% 35%,#6c2f60 0,#4a1f45 45%,#30142d 100%);
+  box-shadow:inset 0 0 0 12px #6b4a36,inset 0 0 0 16px #3a2419,inset 0 0 90px rgba(0,0,0,.55),0 26px 60px rgba(0,0,0,.6)}
+.felt::after{content:'';position:absolute;inset:26px;border-radius:50%;border:1px dashed rgba(255,150,200,.16)}
+.seats .pl{position:absolute;width:290px;transform:translate(-50%,-50%);z-index:2}
+.seats .figure.md{--cw:120px}
+.center{position:absolute;left:50%;top:43%;transform:translate(-50%,-50%);width:400px;display:flex;flex-direction:column;gap:8px;z-index:1}
+.meseat{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:max-content;max-width:100%;z-index:3}
+.meseat .figure.lg{--cw:200px}
 .pl{position:relative;padding:8px 10px 10px;--c:var(--line2);transition:opacity .3s}
 .pl.cur{--c:var(--pink)}
 .pl.dead{opacity:.45}
@@ -66,8 +76,7 @@ button{font:inherit;color:inherit}
 .hearts{color:var(--heart);font-size:15px;white-space:nowrap}
 .hearts b{color:var(--ink);font-weight:400;font-size:17px;margin-left:2px}
 .plbody{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
-.pl:not(.me) .plbody{flex-direction:column}
-.figure{display:flex;flex-direction:row;gap:4px;flex:none;align-items:flex-start;flex-wrap:wrap;--cw:150px}
+.figure{display:flex;flex-direction:column;gap:2px;flex:none;align-items:flex-start;--cw:150px}
 .figure.sm{--cw:112px}
 .figure.md{--cw:150px}
 .figure.lg{--cw:224px}
@@ -124,10 +133,10 @@ button{font:inherit;color:inherit}
 .bubble.show{opacity:1;transform:translateY(0)}
 
 /* ---------- middle ---------- */
-.mid{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:stretch}
-.deck{padding:8px 10px;font-size:12px;color:var(--dim);line-height:1.6}
+.deck{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;font-size:12px;color:var(--dim)}
+.deck span{background:rgba(10,4,14,.55);padding:3px 9px}
 .deck b{color:var(--ink);font-weight:400}
-.minilog{padding:8px 12px;font-size:13px;line-height:1.55;max-height:150px;overflow:auto;color:var(--dim)}
+.minilog{padding:8px 12px;font-size:13px;line-height:1.55;max-height:150px;overflow:auto;color:var(--dim);background:rgba(22,10,26,.9)}
 .minilog div{padding:1px 0;border-bottom:1px dotted #3a2a44}
 .minilog div:last-child{color:var(--ink);border:none}
 .minilog .me{color:var(--pink)}
@@ -217,11 +226,20 @@ button{font:inherit;color:inherit}
 .endbox .big{font-size:26px;color:var(--pink);margin:8px 0 4px;letter-spacing:.1em}
 .endbox .figure{align-items:center;margin:0 auto}
 
+@media (max-width:960px){
+  .table{min-height:0;display:flex;flex-direction:column;gap:10px}
+  .felt{display:none}
+  .seats{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
+  .seats .pl{position:static;transform:none;width:auto;left:auto!important;top:auto!important}
+  .seats .figure.md{--cw:150px}
+  .center{position:static;transform:none;width:auto}
+  .meseat{position:static;transform:none;width:auto}
+  .prompt{position:sticky;bottom:0;z-index:6;max-height:52vh;overflow:auto}
+}
 @media (max-width:640px){
-  .mid{grid-template-columns:1fr}
-  .deck{display:flex;gap:14px;flex-wrap:wrap}
   .rc{width:72px;min-height:96px}
   .figure.lg{--cw:160px}
+  .meseat .figure.lg{--cw:160px}
   .figure.xl{--cw:150px}
   .opps{grid-template-columns:1fr}
 }
@@ -238,13 +256,16 @@ button{font:inherit;color:inherit}
       <button class="btn small" id="btnNew">はじめから</button>
     </div>
   </header>
-  <section id="opps" class="opps"></section>
-  <section class="mid">
-    <div id="deckInfo" class="deck pxbox"></div>
-    <div id="miniLog" class="minilog pxbox"></div>
+  <section id="table" class="table">
+    <div class="felt"></div>
+    <div id="opps" class="seats"></div>
+    <div class="center">
+      <div id="deckInfo" class="deck"></div>
+      <div id="miniLog" class="minilog pxbox"></div>
+    </div>
+    <div id="meWrap" class="meseat"></div>
   </section>
   <section id="prompt" class="prompt pxbox idle"></section>
-  <section id="meWrap"></section>
 </div>
 
 <div id="modalStart" class="modal">
@@ -864,14 +885,17 @@ function playerPanel(p, isMe){
 }
 function say(p, text){ p.bubble={text, until:Date.now()+2200}; render(); setTimeout(()=>{ if(p.bubble&&Date.now()>=p.bubble.until) render(); }, 2300); }
 
+// 相手の席（テーブル内の位置%）。人数ごとに上の弧へ並べる
+const SEATS={1:[[50,16]],2:[[27,18],[73,18]],3:[[13,36],[50,14],[87,36]],4:[[12,40],[30,14],[70,14],[88,40]]};
 function render(){
   const opps=$('#opps'); opps.innerHTML='';
-  for(const p of S.players) if(p.i!==0) opps.appendChild(playerPanel(p,false));
+  const others=S.players.filter(p=>p.i!==0);
+  others.forEach((p,k)=>{ const el=playerPanel(p,false); const pos=(SEATS[others.length]||SEATS[4])[k]; if(pos){ el.style.left=pos[0]+'%'; el.style.top=pos[1]+'%'; } opps.appendChild(el); });
   const me=$('#meWrap'); me.innerHTML=''; if(S.players[0]) me.appendChild(playerPanel(S.players[0],true));
   const info=$('#deckInfo');
   if(S.players.length){
     const cur=S.current?S.current.name:'—';
-    info.innerHTML=`<div>山札 <b>${S.deck.length}</b>枚</div><div>手番 <b>${cur}</b></div><div>ざぁ～こ♥ <b>${S.players[0]?coupCost(S.players[0]):7}♥</b></div><div>ダサすぎ♥ <b>${S.flags.examineMode?'改変中':'通常'}</b></div>`;
+    info.innerHTML=`<span>山札 <b>${S.deck.length}</b>枚</span><span>手番 <b>${cur}</b></span><span>ざぁ～こ♥ <b>${S.players[0]?coupCost(S.players[0]):7}♥</b></span><span>ダサすぎ♥ <b>${S.flags.examineMode?'改変中':'通常'}</b></span>`;
   }
 }
 function renderLog(){

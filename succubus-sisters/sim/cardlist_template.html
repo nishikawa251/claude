@@ -75,6 +75,8 @@ select{font:inherit;font-size:13px;color:var(--ink);background:var(--surface);bo
 .qty{margin-left:auto;font-weight:700;color:var(--ink2)}
 .cardlink{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:zoom-in;text-align:left}
 .cc-name{margin:0;font-size:17px;line-height:1.35;font-weight:700;overflow-wrap:anywhere}
+.art{display:block;width:100%;aspect-ratio:3/2;max-width:100%;border-radius:8px;image-rendering:pixelated;border:1px solid var(--line)}
+.artlab{font-size:11px;color:var(--muted)}
 .stats{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;font-variant-numeric:tabular-nums}
 .elb{display:inline-block;font-size:11px;font-weight:700;color:var(--c);border:1.5px solid var(--c);border-radius:5px;padding:0 5px;line-height:1.5}
 .num{display:inline-flex;align-items:baseline;gap:3px;font-size:12px;color:var(--muted)}
@@ -169,7 +171,7 @@ const EL = { none:'無', fire:'火', water:'水', thunder:'雷' };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 const $ = s => document.querySelector(s);
 const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch {} } };
-const F = { kind:new Set(), el:new Set(), trig:new Set(), heart:false, changed:false, q:'', sort:'id', view:store.get('cl-view') || 'cards' };
+const F = { kind:new Set(), el:new Set(), trig:new Set(), heart:false, changed:false, art:false, q:'', sort:'id', view:store.get('cl-view') || 'cards' };
 
 /* 合計と構成 */
 $('#total').innerHTML = [
@@ -188,7 +190,7 @@ function chips(id, key, items){
 chips('#fKind', 'kind', KIND_ORDER.map(k => [k, KIND[k]]));
 chips('#fEl', 'el', Object.keys(EL).map(e => [e, `<span class="dot el-${e}" style="background:var(--c)"></span>${EL[e]}`]));
 chips('#fTrig', 'trig', 'ABCDE'.split('').map(t => [t, t]));
-chips('#fMore', 'flag', [['heart', '♥両面カード'], ['changed', '強化案で変更']]);
+chips('#fMore', 'flag', [['heart', '♥両面カード'], ['changed', '強化案で変更'], ['art', 'ドット絵あり']]);
 document.addEventListener('click', e => {
   const b = e.target.closest('.chip');
   if (b){
@@ -233,6 +235,7 @@ function cardHTML(d){
   return `<article class="cc el-${t.el}">
     <div class="cc-top"><span class="marks">${esc(t.marks.join(''))}</span><span class="trig" title="トリガー">${esc(d.trig || '–')}</span><span>${esc(d.exp)}</span><span class="qty">${d.copies > 1 ? `${d.copies}枚中${d.copy}枚目` : '1枚だけ'}</span></div>
     <h3 class="cc-name"><button type="button" class="cardlink" data-i="${i}">${esc(t.name)}</button></h3>
+    ${d.art ? `<img class="art" src="${d.art}" alt="${esc(t.name)}のドット絵（試作）" loading="lazy"><span class="artlab">ドット絵の試作</span>` : ''}
     ${statsHTML(t)}
     ${t.text ? `<p class="txt">${esc(t.text)}</p>` : ''}
     ${h ? `<div class="heart el-${h.el}"><span class="hname">♥ ${esc(h.name)}</span>${statsHTML(h)}${h.text ? `<p class="txt">${esc(h.text)}</p>` : ''}</div>` : ''}
@@ -254,6 +257,7 @@ function match(d){
   if (F.trig.size && !F.trig.has(d.trig)) return false;
   if (F.heart && !d.heart) return false;
   if (F.changed && !d.changes.length) return false;
+  if (F.art && !d.art) return false;
   if (F.q){
     const hay = [d.top.name, d.top.text, d.heart && d.heart.name, d.heart && d.heart.text, d.ids.join(' ')].join(' ');
     if (!F.q.split(/\s+/).every(w => hay.includes(w))) return false;

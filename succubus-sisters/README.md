@@ -109,7 +109,7 @@ python3 sim/proposal.py sim/patches/buff2.json sim/result.json /tmp/buff2.json p
 
 ## カードリスト
 
-`cardlist.html` は全120枚の一覧。種類・属性・トリガー・名前や効果で絞り込め、カードで見る／表で見るを切り替えられる。強化案で変えたカードには変更前の値を並べ、最新のバランス調査の評価（Tier）も載せている。カードを変えたら `python3 sim/cardlist.py` で作り直す（中身は `index.html` の CARD_TSV、評価は `sim/cards.csv` から読む）。
+`cardlist.html` は全120枚の一覧。2枚以上あるカードも1枚ずつ並べ、種類・属性・トリガー・名前や効果で絞り込め、カードで見る／表で見るを切り替えられる。強化案で変えたカードには変更前の値を並べ、最新のバランス調査の評価（Tier）も載せている。カードを変えたら `python3 sim/cardlist.py` で作り直す（中身は `index.html` の CARD_TSV、評価は `sim/cards.csv` から読む）。
 
 ## 構成
 

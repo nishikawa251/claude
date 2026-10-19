@@ -77,13 +77,15 @@ for cid in sorted(now):
     key = json.dumps([c['top'], c['heart'], c['trig'], c['exp']], ensure_ascii=False, sort_keys=True)
     g = groups.setdefault(key, {**c, 'ids': [], 'kind': kind_of(c['top'])})
     g['ids'].append(cid)
+# 同じカードが2枚以上あるときも、1枚ずつ並べる（何枚中の何枚目かを添える）
 data = []
 for g in groups.values():
-    ch = changes(g['ids'][0])
     t = tiers.get(g['top']['name'])
     h = tiers.get(g['heart']['name']) if g['heart'] else None
-    data.append({'ids': g['ids'], 'exp': g['exp'], 'trig': g['trig'], 'kind': g['kind'], 'top': g['top'], 'heart': g['heart'],
-                 'changes': ch, 'tier': t, 'htier': h})
+    for k, cid in enumerate(g['ids']):
+        data.append({'ids': [cid], 'copy': k + 1, 'copies': len(g['ids']), 'exp': g['exp'], 'trig': g['trig'], 'kind': g['kind'],
+                     'top': g['top'], 'heart': g['heart'], 'changes': changes(cid), 'tier': t, 'htier': h})
+data.sort(key=lambda d: d['ids'][0])
 
 total = len(now)
 counts = {
@@ -92,7 +94,7 @@ counts = {
     'trig': {t: sum(len(d['ids']) for d in data if d['trig'] == t) for t in 'ABCDE'},
     'heart': sum(len(d['ids']) for d in data if d['heart']),
     'changed': sum(len(d['ids']) for d in data if d['changes']),
-    'groups': len(data),
+    'groups': len(groups),
 }
 images = sorted({f'img/cards/{d["ids"][0]:03d}.jpg' for d in data})
 
@@ -104,4 +106,4 @@ page = (tpl.replace('__DATA__', json.dumps(data, ensure_ascii=False).replace('</
            .replace('__DATE__', datetime.date.today().isoformat()))
 open(os.path.join(ROOT, 'cardlist.html'), 'w', encoding='utf-8').write(page)
 json.dump(images, open(os.path.join(HERE, 'cardlist_images.json'), 'w'), indent=0)
-print('cards', total, 'groups', len(data), 'changed', counts['changed'], 'images', len(images))
+print('cards', total, 'entries', len(data), 'groups', len(groups), 'changed', counts['changed'], 'images', len(images))

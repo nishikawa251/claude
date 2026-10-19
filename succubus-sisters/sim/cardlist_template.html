@@ -124,7 +124,7 @@ ul.plain a{color:var(--accent);font-weight:700}
 <header>
   <div class="eyebrow">260717基本ルール・120枚Ver ＋ カード強化案・回復は自分にだけ</div>
   <h1><span class="nb">サキュバスシスターズ</span> <span class="nb">カードリスト</span></h1>
-  <p class="lede">いまゲームで使っている全カード。同じ中身のカードは1枚にまとめ、枚数とIDを添えた。強化案で変えたところには印をつけ、変更前の値も並べている。カード名をタップすると実物カードを表示する。</p>
+  <p class="lede">いまゲームで使っている全カード。同じカードが2枚以上あるものも1枚ずつ並べ、何枚中の何枚目かを添えた。強化案で変えたところには印をつけ、変更前の値も並べている。カード名をタップすると実物カードを表示する。</p>
   <div class="total" id="total"></div>
 </header>
 
@@ -173,7 +173,7 @@ const F = { kind:new Set(), el:new Set(), trig:new Set(), heart:false, changed:f
 
 /* 合計と構成 */
 $('#total').innerHTML = [
-  [TOTAL + '枚', 'カード'], [COUNTS.groups + '種', '中身ちがい'], [COUNTS.heart + '枚', '♥両面カード'], [COUNTS.changed + '枚', '強化案で変更'],
+  [TOTAL + '枚', 'カード'], [COUNTS.groups + '種類', '同じカードをまとめると'], [COUNTS.heart + '枚', '♥両面カード'], [COUNTS.changed + '枚', '強化案で変更'],
 ].map(([b, s]) => `<span><b>${b}</b>${s}</span>`).join('');
 const mixBox = (title, items) => `<div class="mixbox"><h3>${title}</h3><div class="mixrow">${items.map(([l, n]) => `<span>${l}<b>${n}</b></span>`).join('')}</div></div>`;
 $('#mix').innerHTML =
@@ -231,19 +231,19 @@ function cardHTML(d){
   const i = DATA.indexOf(d), t = d.top, h = d.heart;
   const ch = d.changes.length ? `<ul class="chlist" aria-label="強化案での変更">${d.changes.map(c => `<li>${c.side === 'heart' ? '♥面 ' : ''}${esc(c.field)}：<s>${esc(c.from)}</s> → <b>${esc(c.to)}</b></li>`).join('')}</ul>` : '';
   return `<article class="cc el-${t.el}">
-    <div class="cc-top"><span class="marks">${esc(t.marks.join(''))}</span><span class="trig" title="トリガー">${esc(d.trig || '–')}</span><span>${esc(d.exp)}</span><span class="qty">×${d.ids.length}</span></div>
+    <div class="cc-top"><span class="marks">${esc(t.marks.join(''))}</span><span class="trig" title="トリガー">${esc(d.trig || '–')}</span><span>${esc(d.exp)}</span><span class="qty">${d.copies > 1 ? `${d.copies}枚中${d.copy}枚目` : '1枚だけ'}</span></div>
     <h3 class="cc-name"><button type="button" class="cardlink" data-i="${i}">${esc(t.name)}</button></h3>
     ${statsHTML(t)}
     ${t.text ? `<p class="txt">${esc(t.text)}</p>` : ''}
     ${h ? `<div class="heart el-${h.el}"><span class="hname">♥ ${esc(h.name)}</span>${statsHTML(h)}${h.text ? `<p class="txt">${esc(h.text)}</p>` : ''}</div>` : ''}
     ${ch}
-    <div class="foot">${d.tier ? `評価 ${tierChip(d.tier)}` : ''}${d.htier ? `<span>♥面 ${tierChip(d.htier)}</span>` : ''}<span>ID ${d.ids.join(' ')}</span>${d.changes.length ? '<span class="chg">変更あり</span>' : ''}</div>
+    <div class="foot">${d.tier ? `評価 ${tierChip(d.tier)}` : ''}${d.htier ? `<span>♥面 ${tierChip(d.htier)}</span>` : ''}<span>ID ${d.ids[0]}</span>${d.changes.length ? '<span class="chg">変更あり</span>' : ''}</div>
   </article>`;
 }
 function rowHTML(d){
   const t = d.top, h = d.heart, i = DATA.indexOf(d);
-  return `<tr><td class="n">${d.ids.join(' ')}</td><td class="nm"><button type="button" class="cardlink" data-i="${i}">${esc(t.name)}</button>${d.changes.length ? ' <span class="chg">変更</span>' : ''}</td>
-    <td>${esc(t.marks.join(''))}</td><td class="n">${d.ids.length}</td><td><span class="elb el-${t.el}">${EL[t.el]}</span></td>
+  return `<tr><td class="n">${d.ids[0]}</td><td class="nm"><button type="button" class="cardlink" data-i="${i}">${esc(t.name)}</button>${d.changes.length ? ' <span class="chg">変更</span>' : ''}</td>
+    <td>${esc(t.marks.join(''))}</td><td class="n">${d.copies > 1 ? `${d.copy}/${d.copies}` : '–'}</td><td><span class="elb el-${t.el}">${EL[t.el]}</span></td>
     <td class="n">${t.atk ?? '–'}</td><td class="n">${t.def ?? '–'}</td><td>${esc(rangeText(t.range))}</td><td>${esc(costText(t.cost) || '–')}</td><td class="n">${esc(d.trig || '–')}</td>
     <td class="tx">${esc(t.text || '–')}</td><td class="hx">${h ? `<b style="color:var(--heart)">♥ ${esc(h.name)}</b><br>${h.atk !== null ? '攻撃' + h.atk + '　' : ''}${h.def !== null ? '防御' + h.def + '　' : ''}${esc(h.text || '')}` : '–'}</td>
     <td>${tierChip(d.tier)}</td></tr>`;
@@ -270,18 +270,18 @@ const SORTS = {
 function draw(){
   const list = DATA.filter(match).sort(SORTS[F.sort]);
   const n = list.reduce((s, d) => s + d.ids.length, 0);
-  $('#shown').textContent = `${n}枚（${list.length}種）を表示`;
+  $('#shown').textContent = `${n}枚を表示`;
   let h = '';
   if (!list.length) h = '<p class="empty">条件に合うカードがない。絞り込みを外してみてほしい。</p>';
   else if (F.view === 'table'){
-    h = `<div class="tbl"><table><thead><tr><th>ID</th><th>カード</th><th>種類</th><th class="n">枚</th><th>属性</th><th class="n">攻撃</th><th class="n">防御</th><th>範囲</th><th>コスト</th><th>トリガー</th><th>効果</th><th>♥面</th><th>評価</th></tr></thead><tbody>${list.map(rowHTML).join('')}</tbody></table></div>`;
+    h = `<div class="tbl"><table><thead><tr><th>ID</th><th>カード</th><th>種類</th><th>同じカード</th><th>属性</th><th class="n">攻撃</th><th class="n">防御</th><th>範囲</th><th>コスト</th><th>トリガー</th><th>効果</th><th>♥面</th><th>評価</th></tr></thead><tbody>${list.map(rowHTML).join('')}</tbody></table></div>`;
   } else {
     // 種類ごとに見出しを立てる
     h = KIND_ORDER.map(k => {
       const g = list.filter(d => d.kind === k);
       if (!g.length) return '';
       const cnt = g.reduce((s, d) => s + d.ids.length, 0);
-      return `<section><h2>${KIND[k]}<small>${cnt}枚・${g.length}種</small></h2><div class="grid">${g.map(cardHTML).join('')}</div></section>`;
+      return `<section><h2>${KIND[k]}<small>${cnt}枚</small></h2><div class="grid">${g.map(cardHTML).join('')}</div></section>`;
     }).join('');
   }
   $('#out').innerHTML = h;

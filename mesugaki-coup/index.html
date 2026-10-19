@@ -303,7 +303,7 @@ button{font:inherit;color:inherit}
     <p>クー(Coup)の基本ルールはそのまま。コインは♥、役職はメスガキたち。ライフを1失うたび、メスガキカードの上か下を裏返してボロ絵にし、その下に敷いていたトリガーカードが発動します。</p>
     <div class="row"><label>対戦人数</label><div id="npick" class="popts"></div></div>
     <div class="row"><label>あなたのキャラ</label><div id="chpick" class="chpick"></div></div>
-    <div class="row"><button class="btn primary" id="btnStart">はじめる</button><button class="btn" id="btnTutorial">チュートリアル</button><button class="btn" id="btnStartRules">ルールを読む</button></div>
+    <div class="row"><button class="btn primary" id="btnStart">はじめる</button><button class="btn" id="btnTutorial">チュートリアル</button><button class="btn" id="btnStartRules">ルールを読む</button><button class="btn" id="btnSound2" aria-pressed="true">♪ 音：ON</button></div>
   </div>
 </div>
 
@@ -1094,7 +1094,7 @@ const SFX = {
   },
   load(){ try{ const v=localStorage.getItem('mesugaki-coup-sfx'); if(v!==null) this.on=v==='1'; }catch(e){} },
   save(){ try{ localStorage.setItem('mesugaki-coup-sfx', this.on?'1':'0'); }catch(e){} },
-  updateButton(){ const b=$('#btnSound'); if(!b) return; b.textContent=this.on?'♪ 音：ON':'♪ 音：OFF'; b.classList.toggle('sfx-off',!this.on); b.setAttribute('aria-pressed', this.on?'true':'false'); },
+  updateButton(){ for(const b of document.querySelectorAll('#btnSound,#btnSound2')){ b.textContent=this.on?'♪ 音：ON':'♪ 音：OFF'; b.classList.toggle('sfx-off',!this.on); b.setAttribute('aria-pressed', this.on?'true':'false'); } },
   tone(freq, dur, {type='square', gain=0.12, at=0, slide=null, decay=true}={}){
     const c=this.ctx, t0=c.currentTime+at;
     const o=c.createOscillator(), g=c.createGain();
@@ -1270,7 +1270,8 @@ function init(){
   $('#btnSpeed').onclick=()=>{ S.speed=S.speed===1?0.35:1; $('#btnSpeed').textContent=`速度：${S.speed===1?'ふつう':'はやい'}`; };
   $('#btnNew').onclick=()=>openStart();
   SFX.load(); SFX.updateButton();
-  $('#btnSound').onclick=()=>{ SFX.on=!SFX.on; SFX.save(); SFX.updateButton(); SFX.init(); if(SFX.on) SFX.play('coin'); };
+  const toggleSound=()=>{ SFX.on=!SFX.on; SFX.save(); SFX.updateButton(); SFX.init(); if(SFX.on) SFX.play('coin'); };
+  $('#btnSound').onclick=toggleSound; $('#btnSound2').onclick=toggleSound;
   document.addEventListener('pointerdown', ()=>SFX.init(), {passive:true});
   $('#prompt').addEventListener('click', e=>{ if(e.target.closest('.btn,.at,.rc.sel,.tc.sel')) SFX.play('tick'); });
   $('#btnStart').onclick=()=>{ $('#modalStart').classList.remove('show'); newGame(setup.n, setup.ch, {auto:setup.auto}); };

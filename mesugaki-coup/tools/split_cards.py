@@ -18,9 +18,9 @@ ALIAS = {'grimaroe': 'grimaloe'}
 
 # 腰の高さ（人物範囲の上端=0, 下端=1）。ここがカードの境目に来るように配置する
 WAIST = {'aqua': 0.46, 'asagi': 0.44, 'emera': 0.45, 'grimaloe': 0.46, 'momoko': 0.47, 'oren': 0.48,
-         'papuru': 0.50, 'sepia': 0.45, 'shiro': 0.47, 'tsugaru': 0.47, 'urushi': 0.50, 'pin': 0.43}
+         'papuru': 0.50, 'sepia': 0.45, 'shiro': 0.47, 'tsugaru': 0.47, 'urushi': 0.50, 'pin': 0.43, 'kuro': 0.40}
 # ボロ絵（クロップ後の高さに対する腰の位置）
-BORO_WAIST = {'oren': 0.53, 'tsugaru': 0.53, 'sepia': 0.48, 'shiro': 0.52}
+BORO_WAIST = {'oren': 0.53, 'tsugaru': 0.53, 'sepia': 0.48, 'shiro': 0.52, 'kuro': 0.58}
 
 
 def key_of(fn):

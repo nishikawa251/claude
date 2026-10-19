@@ -78,6 +78,9 @@ button{font:inherit;color:inherit}
 .pl.cur{--c:var(--pink)}
 .pl.dead{opacity:.45}
 .pl.target{--c:var(--gold)}
+.pl.pickable{cursor:pointer;--c:var(--gold);box-shadow:0 -3px 0 0 var(--c),0 3px 0 0 var(--c),-3px 0 0 0 var(--c),3px 0 0 0 var(--c),0 0 24px rgba(255,209,102,.35)}
+.pl.pickable:hover{filter:brightness(1.12)}
+.pl.pickable::after{content:'クリックで選ぶ';position:absolute;right:10px;bottom:6px;font-size:11px;color:var(--gold);letter-spacing:.05em}
 .plhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
 .plhead .nm{letter-spacing:.08em}
 .plhead .nm .tag{font-size:11px;color:var(--dim);margin-left:6px}
@@ -257,6 +260,41 @@ button{font:inherit;color:inherit}
 .cut .fxp{font-size:32px}
 @media (prefers-reduced-motion:reduce){.flipper{transition:none}.cut,.cut.out,.cut .rays,.cutwho,.cutlabel,.cutcard,.cuthint{animation:none}}
 
+/* ---------- action arrows & banner ---------- */
+.arrows{position:absolute;left:0;top:0;pointer-events:none;z-index:4;overflow:visible}
+.arrows .main{fill:none;stroke:var(--pink);stroke-width:4;stroke-linecap:round;stroke-dasharray:12 8;animation:dash .9s linear infinite;filter:drop-shadow(0 0 6px rgba(255,95,168,.8))}
+.arrows .sub{fill:none;stroke-width:3;stroke-linecap:round;stroke-dasharray:6 6;animation:dash .9s linear infinite}
+.arrows .sub.chal{stroke:var(--gold);filter:drop-shadow(0 0 5px rgba(255,209,102,.8))}
+.arrows .sub.blk{stroke:#ff8da8;filter:drop-shadow(0 0 5px rgba(255,141,168,.8))}
+@keyframes dash{to{stroke-dashoffset:-20}}
+.arrows .lbl rect{fill:#2a0b18;stroke:var(--pink);stroke-width:2}
+.arrows .lbl text{fill:#fff;font-family:var(--f);font-size:15px;dominant-baseline:middle;text-anchor:middle}
+.arrows .lbl.chal rect{fill:#3a2a00;stroke:var(--gold)} .arrows .lbl.chal text{fill:var(--gold)}
+.arrows .lbl.blk rect{fill:#3a0f1c;stroke:#ff8da8} .arrows .lbl.blk text{fill:#ff8da8}
+.abanner{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:14px;padding:6px 10px;background:rgba(10,4,14,.65);box-shadow:0 0 0 2px var(--pink) inset;line-height:1.4}
+.abanner .an{color:var(--pink);font-size:16px}
+.abanner .arr{color:var(--dim)}
+.abanner .tag{padding:1px 8px;font-size:12px}
+.abanner .tag.chal{background:var(--gold);color:#3a2a00}
+.abanner .tag.blk{background:#ff8da8;color:#3a0f1c}
+@media (max-width:960px){ .arrows{display:none} }
+@media (prefers-reduced-motion:reduce){ .arrows .main,.arrows .sub{animation:none} }
+
+/* ---------- coup cut-in ---------- */
+.cutin{position:fixed;inset:0;z-index:45;cursor:pointer;overflow:hidden;animation:cutin .2s ease-out;background:rgba(10,4,14,.35)}
+.cutin.out{animation:cutout .3s ease-in forwards}
+.ci-band{position:absolute;left:-10%;right:-10%;top:28%;height:44%;background:linear-gradient(90deg,#ff2d7a,#ff5fa8 50%,#ff2d7a);transform:skewY(-6deg) translateX(-100%);animation:bandin .35s cubic-bezier(.2,.9,.3,1) forwards;box-shadow:0 0 60px rgba(255,45,122,.6)}
+@keyframes bandin{to{transform:skewY(-6deg) translateX(0)}}
+.ci-lines{position:absolute;inset:0;background:repeating-linear-gradient(100deg,rgba(255,255,255,.14) 0 2px,transparent 2px 16px);animation:linesmove .35s linear infinite;pointer-events:none}
+@keyframes linesmove{to{background-position:64px 0}}
+.ci-img{position:absolute;left:8%;top:50%;width:min(420px,42vw);height:auto;transform:translate(-140%,-50%) rotate(-4deg);animation:imgin .45s cubic-bezier(.2,1.2,.3,1) .08s forwards;filter:drop-shadow(0 12px 30px rgba(0,0,0,.6));border:4px solid #fff;background:#fff}
+@keyframes imgin{to{transform:translate(0,-50%) rotate(-4deg)}}
+.ci-text{position:absolute;right:6%;top:50%;transform:translateY(-50%);text-align:right;color:#fff;max-width:50%}
+.ci-main{font-size:clamp(44px,9vw,110px);line-height:1.05;letter-spacing:.06em;text-shadow:0 5px 0 #8a1c4c,0 0 30px rgba(255,255,255,.55);animation:slam .45s cubic-bezier(.2,1.6,.4,1) .2s both}
+.ci-sub{font-size:clamp(15px,2.6vw,26px);letter-spacing:.2em;margin-top:8px;color:#ffe4f0;animation:rise .4s ease-out .45s both}
+@media (max-width:640px){ .ci-img{width:46vw;left:3%} .ci-text{right:3%} }
+@media (prefers-reduced-motion:reduce){ .cutin,.cutin.out,.ci-band,.ci-lines,.ci-img,.ci-main,.ci-sub{animation:none} .ci-band{transform:skewY(-6deg)} .ci-img{transform:translate(0,-50%)} }
+
 /* ---------- tutorial ---------- */
 .coach{display:flex;gap:10px;align-items:flex-start;background:#3a2550;border-left:4px solid var(--gold);padding:8px 12px;margin-bottom:10px;line-height:1.65;font-size:14px}
 .coach .who{flex:none;font-size:11px;color:var(--gold);letter-spacing:.1em;padding-top:3px}
@@ -285,6 +323,36 @@ button{font:inherit;color:inherit}
 .mbox th,.mbox td{border:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top;line-height:1.4}
 .mbox th{background:var(--panel2);font-weight:400;color:var(--dim)}
 .mbox .close{margin-top:14px;text-align:right}
+.mbox.rules{max-width:960px}
+.rl-lede{font-size:15px;color:var(--ink);line-height:1.7;margin:4px 0 6px}
+.rl-sec{margin-top:18px}
+.rl-sec h3{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--ink);margin:0 0 8px;flex-wrap:wrap}
+.rl-sec h3 .no{display:inline-grid;place-items:center;width:26px;height:26px;background:var(--pink);color:#2a0b18;font-size:14px}
+.rl-sec h3 small{font-size:12px;color:var(--dim);font-weight:400}
+.rl-list{margin:0;padding-left:1.3em;line-height:1.7;font-size:14px;color:var(--ink)}
+.rl-list li{margin:2px 0}
+.rl-flow{display:flex;gap:6px;align-items:stretch;flex-wrap:wrap}
+.rl-step{flex:1 1 200px;background:var(--panel2);padding:10px 12px;box-shadow:0 0 0 2px var(--line) inset;font-size:14px;line-height:1.5}
+.rl-step b{display:block;color:var(--gold);font-size:12px;letter-spacing:.1em;margin-bottom:2px}
+.rl-step small{display:block;color:var(--dim);font-size:12px;margin-top:4px}
+.rl-arrow{display:grid;place-items:center;color:var(--dim);font-size:18px;padding:0 2px}
+.rl-tiles{display:flex;gap:10px;flex-wrap:wrap}
+.rl-tiles .at{cursor:default;width:172px}
+.rl-tiles .at:hover{filter:none}
+.rl-roles{display:flex;gap:10px;flex-wrap:wrap}
+.rl-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px}
+.rl-box{padding:10px 12px;font-size:14px;line-height:1.55;background:var(--panel2);box-shadow:0 0 0 2px var(--line) inset}
+.rl-box b{display:block;margin-bottom:2px}
+.rl-box.ok b:first-child{color:var(--green)} .rl-box.ng b:first-child{color:#ff8da8}
+.rl-box b+b,.rl-box p b{display:inline}
+.rl-ol{margin:0;padding-left:1.4em;font-size:14px;line-height:1.7;color:var(--ink)}
+.rl-ol li{margin:3px 0}
+.rl-trig{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.rl-trig .tc{width:auto;min-height:70px}
+.rl-note{font-size:13px;color:var(--dim);line-height:1.6;margin:6px 0 0}
+.rl-strip{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.rl-strip .figure{--cw:120px}
+@media (max-width:640px){ .rl-arrow{display:none} }
 .fulllog{font-size:13px;line-height:1.6;color:var(--dim)}
 .fulllog div{border-bottom:1px dotted #3a2a44;padding:2px 0}
 .fulllog .me{color:var(--pink)}
@@ -335,8 +403,10 @@ button{font:inherit;color:inherit}
   </header>
   <section id="table" class="table">
     <div class="felt"></div>
+    <svg id="arrows" class="arrows" aria-hidden="true"></svg>
     <div id="opps" class="seats"></div>
     <div class="center">
+      <div id="actionBanner" class="abanner" hidden></div>
       <div id="deckInfo" class="deck"></div>
       <div id="miniLog" class="minilog pxbox"></div>
     </div>
@@ -355,7 +425,7 @@ button{font:inherit;color:inherit}
   </div>
 </div>
 
-<div id="modalRules" class="modal"><div class="mbox pxbox" id="rulesBox"></div></div>
+<div id="modalRules" class="modal"><div class="mbox pxbox rules" id="rulesBox"></div></div>
 <div id="modalLog" class="modal"><div class="mbox pxbox"><h2>ログ</h2><div id="fullLog" class="fulllog"></div><div class="close"><button class="btn" data-close>閉じる</button></div></div></div>
 <div id="modalEnd" class="modal"><div class="mbox pxbox endbox" id="endBox"></div></div>
 
@@ -385,7 +455,7 @@ const ACTIONS = {
 };
 
 const TRIGGERS = [
-  { id:'t1',  name:'おしおき返し',  text:'5♥持っていたら即時払って「ざぁ～こ♥」を打つ' },
+  { id:'t1',  name:'おしおき返し',  text:'3♥持っていたら即時払って「ざぁ～こ♥」を打つ' },
   { id:'t2',  name:'山札のぞき',    text:'山札を見て1枚選び、手札と入れ替える' },
   { id:'t3',  name:'ダサすぎ返し',  text:'これを持っていれば「ダサすぎ♥」をブロックできる', persistent:true },
   { id:'t4',  name:'まるみえ',      text:'誰か一人の手札を表にする。効果で山札からカードを入れ替えた時点で、裏向きにして良い。' },
@@ -395,6 +465,10 @@ const TRIGGERS = [
   { id:'t8',  name:'値上げ',        text:'自分以外のプレイヤーは「ざぁ～こ♥」の使用条件が「8♥を支払う」になる', persistent:true },
   { id:'t9',  name:'♥コレクター',   text:'自分の勝利条件に「12♥集める」を追加する', persistent:true },
   { id:'t10', name:'ルール改変',    text:'「ダサすぎ♥」の効果を「相手の手札1枚を見て山札と交換させる。」に変える。以降は幼馴染ガキが「ダサすぎ♥」をブロック可能になる。', persistent:true },
+  { id:'t11', name:'みちづれのキス', text:'自分を脱がせた相手の手札を1枚表にする' },
+  { id:'t12', name:'仕返し',        text:'自分を脱がせた相手から3♥奪う' },
+  { id:'t13', name:'山分け',        text:'自分より♥の多い全員から1♥ずつもらう' },
+  { id:'t14', name:'値下げ',        text:'以後、自分の「ざぁ～こ♥」は5♥で撃てる', persistent:true },
 ];
 const NO_TRIGGER = { id:'none', name:'ハズレ', text:'効果なし' };
 
@@ -406,7 +480,7 @@ const RULES = {
   collectorGoal: 12,       // ♥コレクターの勝利条件
   win15LiftsForcedCoup: true, // ♥コレクター所持者は10♥の強制ざぁ～こ♥を免除（でないと届かない）
   coupCost: 7,
-  dudCount: 5,             // ハズレ（効果なし）トリガーの枚数
+  dudCount: 2,             // ハズレ（効果なし）トリガーの枚数
   coupCostTaxed: 8,
   forcedCoupAt: 10,
 };
@@ -447,7 +521,7 @@ function preloadImages(){ for(const ch of CHARS) for(const h of ['top','bottom']
 /* =====================================================================
  *  ゲーム状態・進行
  * ===================================================================== */
-const S = { players:[], deck:[], turn:0, flags:{}, winner:null, log:[], speed:1, current:null, target:null, gameId:0, playable:null, headless:false };
+const S = { players:[], deck:[], turn:0, flags:{}, winner:null, log:[], speed:1, current:null, target:null, gameId:0, playable:null, targetable:null, headless:false };
 class GameReset extends Error {}
 const $ = s => document.querySelector(s);
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
@@ -460,7 +534,7 @@ const chance = p => Math.random()<p;
 const alive = () => S.players.filter(p=>p.alive);
 const othersOf = p => S.players.filter(q=>q.alive && q!==p);
 function orderFrom(p){ const n=S.players.length, out=[]; for(let k=1;k<n;k++){ const q=S.players[(p.i+k)%n]; if(q.alive) out.push(q); } return out; }
-function coupCost(p){ return S.players.some(q=>q!==p && q.alive && q.flags.coupTax) ? RULES.coupCostTaxed : RULES.coupCost; }
+function coupCost(p){ const taxed=S.players.some(q=>q!==p && q.alive && q.flags.coupTax); return RULES.coupCost + (taxed?RULES.coupCostTaxed-RULES.coupCost:0) - (p.flags.coupDiscount?2:0); }
 const hasRole = (p,r) => p.hand.some(c=>c.role===r);
 function drawCard(){ return { role:S.deck.pop(), faceUp:false }; }
 function returnToDeck(role){ S.deck.push(role); shuffle(S.deck); }
@@ -490,9 +564,9 @@ function newGame(n, myChar, opts){
   S.tdeck=tdeck; S.setupDone=false;
   if(auto){ S.players[0].cpu=true; S.players[0].name=`${S.players[0].ch.name}（おまかせ）`; }
   S.deck=deck; S.turn=rnd(n); S.flags={examineMode:false}; S.winner=null; S.log=[]; S.current=null; S.target=null; S.acts=[]; S.deaths=0;
-  TUT.active=false; S.playable=null;
+  TUT.active=false; S.playable=null; S.targetable=null; S.action=null;
   if(opts.tutorial) tutSetup();
-  if(!S.headless){ setHighlight(null); document.querySelectorAll('#cut').forEach(e=>e.remove()); $('#modalEnd').classList.remove('show'); render(); }
+  if(!S.headless){ setHighlight(null); document.querySelectorAll('#cut,.cutin').forEach(e=>e.remove()); $('#modalEnd').classList.remove('show'); render(); }
   return runGame();
 }
 
@@ -536,6 +610,11 @@ async function takeTurn(p){
 }
 
 async function performAction(p, act, target){
+  setAction({actor:p, act, target, phase:'declare'});
+  try{ await performActionInner(p, act, target); }
+  finally{ setAction(null); }
+}
+async function performActionInner(p, act, target){
   const A=ACTIONS[act];
   S.target=target||null;
   if(A.role) p.claims++;
@@ -546,6 +625,7 @@ async function performAction(p, act, target){
 
   if(act==='coup'){
     const cost=coupCost(p); p.hearts-=cost; render();
+    await cutin(p, target);
     await loseInfluence(target, p, 'ざぁ～こ♥');
     return;
   }
@@ -608,7 +688,13 @@ async function challengeWindow(claimant, role, what, candidates){
     let ch;
     if(c.cpu){ await wait(350); ch=cpuChallenge(c, claimant, role, what); }
     else ch=await humanChallenge(c, claimant, role, what);
-    if(ch) return await resolveChallenge(claimant, c, role);
+    if(ch){
+      const prev=S.action&&S.action.phase;
+      if(S.action){ S.action.phase = what.kind==='block'?'blockchallenge':'challenge'; S.action.challenger=c; renderAction(); }
+      const r=await resolveChallenge(claimant, c, role);
+      if(S.action){ S.action.phase = what.kind==='block'?'block':'declare'; S.action.challenger=null; renderAction(); }
+      return r;
+    }
   }
   return true;
 }
@@ -652,15 +738,17 @@ async function blockWindow(actor, act, target){
     if(!opts.length) continue;
     let d;
     if(c.cpu){ await wait(350); d=cpuBlock(c, actor, act, opts); }
-    else d=await humanBlock(c, actor, act, opts);
+    else d=await humanBlock(c, actor, act, opts, target);
     if(!d) continue;
     if(d.kind==='trigger'){
       SFX.play('buzz');
+      if(S.action){ S.action.phase='block'; S.action.blocker=c; S.action.blockRole=null; renderAction(); }
       say(c, 'は？ダサくないが？');
       log(`${c.name} はトリガー「ダサすぎ返し」で「${ACTIONS[act].name}」をブロック！（公開済みなのでチャレンジ不可）`, c.cpu?'':'me');
       render(); await wait(700); return true;
     }
     SFX.play('buzz');
+    if(S.action){ S.action.phase='block'; S.action.blocker=c; S.action.blockRole=d.role; renderAction(); }
     say(c, ROLES[d.role].line);
     log(`${c.name}「${ROLES[d.role].line}」（${rname(d.role)} でブロック）`, c.cpu?'':'me');
     c.claims++;
@@ -708,14 +796,16 @@ async function loseInfluence(p, by, reason){
 async function resolveTrigger(p, card, by){
   switch(card.id){
     case 't1': {
-      if(p.hearts<5){ log(`${p.name} は5♥持っていないので不発`); return; }
+      if(p.hearts<3){ log(`${p.name} は3♥持っていないので不発`); return; }
       const cands=othersOf(p).filter(q=>q.hand.length>0);
       if(!cands.length) return;
-      const target = p.cpu ? cpuThreat(p,cands) : await humanPickPlayer(p, cands, '5♥払って即時「ざぁ～こ♥」！ 相手を選んでください');
-      p.hearts-=5; say(p,'ざぁ～こ♥');
-      log(`${p.name} は5♥払って即時「ざぁ～こ♥」 → ${target.name}`, p.cpu?'':'me');
-      render(); await wait(700);
-      await loseInfluence(target, p, 'おしおき返し');
+      const target = p.cpu ? cpuThreat(p,cands) : await humanPickPlayer(p, cands, '3♥払って即時「ざぁ～こ♥」！ 相手を選んでください');
+      p.hearts-=3; say(p,'ざぁ～こ♥');
+      log(`${p.name} は3♥払って即時「ざぁ～こ♥」 → ${target.name}`, p.cpu?'':'me');
+      const prevAction=S.action; setAction({actor:p, act:'coup', target, phase:'declare'});
+      render(); await wait(400);
+      await cutin(p, target);
+      try{ await loseInfluence(target, p, 'おしおき返し'); } finally { setAction(prevAction); }
       return;
     }
     case 't2': {
@@ -766,6 +856,26 @@ async function resolveTrigger(p, card, by){
     case 't8': p.flags.coupTax=true; log(`${p.name} 以外は「ざぁ～こ♥」に8♥必要になった`); return;
     case 't9': p.flags.win15=true; log(`${p.name} は${RULES.collectorGoal}♥集めても勝利になった${RULES.win15LiftsForcedCoup?'（10♥の強制ざぁ～こ♥も免除）':''}`); return;
     case 't10': S.flags.examineMode=true; log(`「ダサすぎ♥」が「相手の手札1枚を見て山札と交換させる」に変わった。幼馴染ガキでブロック可能`, 'sys'); return;
+    case 't11': {
+      if(!by || by===p || !by.hand.length){ log(`脱がせた相手がいないので不発`); return; }
+      const hidden=by.hand.filter(c=>!c.faceUp);
+      if(!hidden.length){ log(`${by.name} の手札はすでに表`); return; }
+      const c=pick(hidden); c.faceUp=true;
+      log(`${by.name} の手札「${rname(c.role)}」が表になった`, 'sys');
+      return;
+    }
+    case 't12': {
+      if(!by || by===p){ log(`脱がせた相手がいないので不発`); return; }
+      const n=Math.min(3, by.hearts); by.hearts-=n; p.hearts+=n; if(n) SFX.play('coin');
+      log(`${p.name} は ${by.name} から${n}♥奪い返した`);
+      return;
+    }
+    case 't13': {
+      let got=0; for(const q of othersOf(p)) if(q.hearts>p.hearts+got && q.hearts>0){ q.hearts--; got++; }
+      p.hearts+=got; if(got) SFX.play('coin'); log(`${p.name} は♥の多い相手から1♥ずつもらった（+${got}♥）`);
+      return;
+    }
+    case 't14': p.flags.coupDiscount=true; log(`${p.name} の「ざぁ～こ♥」は5♥で撃てるようになった`); return;
     default: log(`ハズレ… 何も起きない`); return;
   }
 }
@@ -892,7 +1002,7 @@ function cpuLoseCard(p){
 }
 function triggerValue(p, card){
   switch(card.id){
-    case 't1': return p.hearts>=5?9:1;
+    case 't1': return p.hearts>=3?9:2;
     case 't2': return p.hand.length>0?5:0;
     case 't3': return 2;
     case 't4': return 4;
@@ -902,6 +1012,10 @@ function triggerValue(p, card){
     case 't8': return 4;
     case 't9': return p.hearts>=6?6:3;
     case 't10': return 2;
+    case 't11': return 3;
+    case 't12': return 5;
+    case 't13': return 3;
+    case 't14': return 4;
     default: return 0;
   }
 }
@@ -953,7 +1067,7 @@ function linkRole(role,on){ if(!role) return; document.querySelectorAll(`#meWrap
 function actionTileEl(id, p, cost){
   const A=ACTIONS[id], b=document.createElement('button'); b.className='at'; b.dataset.act=id;
   let state='';
-  if(A.role){ const R=ROLES[A.role]; b.style.setProperty('--rcol',R.color); const held=hasRole(p,A.role); if(!held) b.classList.add('bluff'); state=held?'✓ 持ってる':'ハッタリ'; b.onmouseenter=()=>linkRole(A.role,true); b.onmouseleave=()=>linkRole(A.role,false); }
+  if(A.role){ const R=ROLES[A.role]; b.style.setProperty('--rcol',R.color); const held=p?hasRole(p,A.role):null; if(held===false) b.classList.add('bluff'); state=held===null?'':(held?'✓ 持ってる':'ハッタリ'); if(p){ b.onmouseenter=()=>linkRole(A.role,true); b.onmouseleave=()=>linkRole(A.role,false); } }
   else b.classList.add('basic');
   const costTxt = id==='coup'?`${cost}♥払う`: id==='assassinate'?'3♥払う':'';
   const effect = (id==='exchange'&&S.flags.examineMode) ? '相手の手札1枚を見て山札と交換させる' : A.desc.replace(/^\d♥を支払い、/,'');
@@ -984,12 +1098,14 @@ function triggerEl(t, mode, small){
 function playerPanel(p, isMe){
   const d=document.createElement('div');
   d.className='pl pxbox'+(S.current===p?' cur':'')+(!p.alive?' dead':'')+(S.target===p?' target':'')+(isMe?' me':'');
+  if(S.targetable && S.targetable.cands.includes(p) && !(TUT.restrict && !TUT.restrict(p))){ d.classList.add('pickable'); d.onclick=()=>S.targetable.done(p); }
   d.dataset.i=p.i;
   const tags=[];
   if(!p.alive) tags.push('脱落');
   if(p.flags.win15) tags.push(`${RULES.collectorGoal}♥で勝利`);
   if(p.flags.coupTax) tags.push('値上げ中');
   if(p.flags.blockExchange) tags.push('ダサすぎ返し');
+  if(p.flags.coupDiscount) tags.push('値下げ中');
   const head=document.createElement('div'); head.className='plhead';
   const bump = p._shownHearts!==undefined && p._shownHearts!==p.hearts; p._shownHearts=p.hearts;
   head.innerHTML=`<span class="nm">${p.name}<span class="tag">${p.ch.title}${tags.length?' ／ '+tags.join('・'):''}</span></span><span class="hearts${bump?' bump':''}" title="持っている♥">♥<b>${p.hearts}</b></span>`;
@@ -1042,6 +1158,7 @@ function render(){
     const cur=S.current?S.current.name:'—';
     info.innerHTML=`<span>山札 <b>${S.deck.length}</b>枚</span><span>手番 <b>${cur}</b></span><span>ざぁ～こ♥ <b>${S.players[0]?coupCost(S.players[0]):7}♥</b></span><span>ダサすぎ♥ <b>${S.flags.examineMode?'改変中':'通常'}</b></span>`;
   }
+  renderAction();
 }
 function renderLog(){
   const mini=$('#miniLog'); mini.innerHTML='';
@@ -1059,7 +1176,7 @@ function prompt(build, kind){
     if(kind) tutTake(kind);
     const box=$('#prompt'); box.classList.remove('idle'); box.innerHTML='';
     if(TUT.text){ const c=document.createElement('div'); c.className='coach'; c.innerHTML=`<span class="who">ナビ</span><span>${TUT.text}</span><span class="step">${TUT.stepLabel||''}</span>`; box.appendChild(c); }
-    const done=v=>{ S.rejectPrompt=null; TUT.text=''; TUT.restrict=null; setHighlight(null); box.innerHTML=''; box.classList.add('idle'); if(S.playable){ S.playable=null; render(); } resolve(v); };
+    const done=v=>{ S.rejectPrompt=null; TUT.text=''; TUT.restrict=null; setHighlight(null); box.innerHTML=''; box.classList.add('idle'); if(S.playable||S.targetable){ S.playable=null; S.targetable=null; render(); } resolve(v); };
     build(box, done);
   });
 }
@@ -1105,9 +1222,30 @@ async function humanChooseAction(p, forced){
     const A=ACTIONS[act];
     if(!(A.target || (act==='exchange'&&S.flags.examineMode))) return {action:act};
     const cands=others.filter(q=>q.hand.length>0);
-    const t=await askButtons(`「${A.name}」の相手を選んでください`, [...cands.map(q=>({label:q.name, value:q, sub:`♥${q.hearts} / 手札${q.hand.length}枚`})), {label:'もどる', value:null}], undefined, 'target');
+    const t=await askPlayer(`「${A.name}」の相手を選んでください`, cands, [{label:'もどる', value:null}], 'target');
     if(t) return {action:act, target:t};
   }
+}
+/* 見逃した／ブロックしなかったときに何が起きるかの説明文 */
+function passText(what, claimant, me){
+  const A=ACTIONS[what.action]; const t=what.target;
+  const who=p=>p===me?'あなた':p.name;
+  if(what.kind==='block'){
+    const act=what.actor;
+    const base=`ブロック成立。${who(act)} の「${A.name}」は不発`;
+    if(what.action==='assassinate') return base+'（払った3♥は戻らない）';
+    if(what.action==='aid') return base+'（2♥もらえない）';
+    if(what.action==='steal') return base+`（${who(t)} の♥はそのまま）`;
+    return base;
+  }
+  switch(what.action){
+    case 'aid': return `${who(claimant)} が2♥獲得（${claimant.hearts}♥ → ${claimant.hearts+2}♥）`;
+    case 'tax': return `${who(claimant)} が3♥獲得（${claimant.hearts}♥ → ${claimant.hearts+3}♥）`;
+    case 'steal': { const n=Math.min(2,t.hearts); return `${who(claimant)} が ${who(t)} から${n}♥奪う（${who(t)} ${t.hearts}♥ → ${t.hearts-n}♥、${who(claimant)} ${claimant.hearts}♥ → ${claimant.hearts+n}♥）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと後輩ガキ・幼馴染ガキでブロックできる':''); }
+    case 'assassinate': return `${who(t)} が影響力を1つ失う（手札1枚を捨て、服を1枚脱ぐ）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと わからせおじさん でブロックできる':'');
+    case 'exchange': return (S.flags.examineMode&&t) ? `${who(claimant)} が ${who(t)} の手札1枚を見て、山札と交換させられる`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと幼馴染ガキでブロックできる':'') : `${who(claimant)} が山札から2枚引いて2枚戻す（手札を整えられる）`;
+  }
+  return '';
 }
 async function humanChallenge(c, claimant, role, what){
   const A=ACTIONS[what.action];
@@ -1118,16 +1256,16 @@ async function humanChallenge(c, claimant, role, what){
     msgEl(box, msg+'。チャレンジする？');
     const cl=document.createElement('div'); cl.className='claim';
     cl.appendChild(roleCardEl(role));
-    const t=document.createElement('div'); t.className='cl'; t.innerHTML=`主張しているカード：<b>${rname(role)}</b><br>あなたから見えている${rname(role)}：${knownCount(c,role)}/3枚<br>持っていればあなたが、持っていなければ相手が影響力を失う`;
+    const t=document.createElement('div'); t.className='cl'; t.innerHTML=`主張しているカード：<b>${rname(role)}</b><br>あなたから見えている${rname(role)}：${knownCount(c,role)}/3枚<br><b>見逃すと：</b>${passText(what, claimant, c)}<br><b>チャレンジすると：</b>持っていればあなたが、持っていなければ相手が影響力を失う`;
     cl.appendChild(t); box.appendChild(cl);
     buttonsEl(box, [{label:'チャレンジ！', value:true, danger:true, sub:'外れたら自分が影響力を失う'}, {label:'見逃す', value:false, primary:true}], done);
   }, 'challenge');
 }
-async function humanBlock(c, actor, act, opts){
+async function humanBlock(c, actor, act, opts, target){
   const A=ACTIONS[act];
   const tgt=(A.target||(act==='exchange'&&S.flags.examineMode))?' → あなた':'';
   return await prompt((box,done)=>{
-    msgEl(box, `${actor.name} の「${A.name}」${tgt}。ブロックする？`, 'ブロックに使うカードを選ぶか、見送ります');
+    msgEl(box, `${actor.name} の「${A.name}」${tgt}。ブロックする？`, `ブロックしないと：${passText({kind:'action', action:act, target, atBlock:true}, actor, c)}`);
     const row=document.createElement('div'); row.className='atiles';
     for(const o of opts){ const t=blockTileEl(o,c); const ok=!TUT.restrict||TUT.restrict(o); t.disabled=!ok; if(TUT.restrict&&ok) t.classList.add('rec'); t.onclick=()=>done(o); row.appendChild(t); }
     box.appendChild(row);
@@ -1144,7 +1282,15 @@ function humanFlip(p){
   const opt=k=>{ const t=p.triggers[k]; return {label:`${half(k)}を脱ぐ`, value:k, sub:RULES.peekOwnTriggers?`トリガー：${t.card.name}`:'トリガー：？'}; };
   return askButtons('どちらのメスガキカードを裏返しますか？（下に敷いたトリガーが発動）', [opt('top'),opt('bottom')], undefined, 'flip');
 }
-function humanPickPlayer(p, cands, msg){ return askButtons(msg, cands.map(q=>({label:q.name, value:q, sub:`♥${q.hearts} / 手札${q.hand.length}枚`}))); }
+function humanPickPlayer(p, cands, msg){ return askPlayer(msg, cands, [], 'pickPlayer'); }
+/* 相手を選ぶ：ボタンでも、相手のパネルを直接クリックしても選べる */
+function askPlayer(msg, cands, extra, kind){
+  return prompt((box,done)=>{
+    msgEl(box, msg, '相手のパネルを直接クリックしても選べます');
+    buttonsEl(box, [...cands.map(q=>({label:q.name, value:q, sub:`♥${q.hearts} / 手札${q.hand.length}枚`})), ...(extra||[])], done);
+    S.targetable={cands, done}; render();
+  }, kind);
+}
 function humanPickCard(p, msg){ return askCards(msg, p.hand.map((c,i)=>({el:roleCardEl(c.role,{faceUp:c.faceUp}), value:i}))); }
 async function humanDeckSwap(p){
   const di=await askCards('山札を見て、手札と入れ替えるカードを選んでください', S.deck.map((r,i)=>({el:roleCardEl(r,{small:true}), value:i})), `山札 ${S.deck.length}枚（見たあと山札は混ぜ直されます）`, [{label:'入れ替えない', value:null}]);
@@ -1167,6 +1313,70 @@ function humanExchangeKeep(p, pool, n){
     box.appendChild(row);
     const r=document.createElement('div'); r.className='popts'; r.appendChild(btn); box.appendChild(r);
     btn.onclick=()=>done([...sel]);
+  });
+}
+
+/* =====================================================================
+ *  いまのアクション：誰→誰、チャレンジ／ブロックが入っているかを矢印とバナーで示す
+ * ===================================================================== */
+function setAction(a){ S.action=a; renderAction(); }
+function renderAction(){ if(S.headless) return; renderBanner(); renderArrows(); }
+function renderBanner(){
+  const el=$('#actionBanner'); if(!el) return;
+  const a=S.action;
+  if(!a){ el.hidden=true; el.innerHTML=''; return; }
+  const A=ACTIONS[a.act];
+  let h=`<span class="who">${a.actor.name}</span><span class="arr">→</span><span class="an">「${A.name}」</span>`;
+  if(a.target) h+=`<span class="arr">→</span><span class="who">${a.target.name}</span>`;
+  if(a.phase==='block'||a.phase==='blockchallenge') h+=`<span class="tag blk">は？ブロック：${a.blocker.name}${a.blockRole?`（${rname(a.blockRole)}）`:'（ダサすぎ返し）'}</span>`;
+  if(a.phase==='challenge') h+=`<span class="tag chal">チャレンジ！：${a.challenger.name}</span>`;
+  if(a.phase==='blockchallenge') h+=`<span class="tag chal">ブロックにチャレンジ！：${a.challenger.name}</span>`;
+  el.hidden=false; el.innerHTML=h;
+}
+function edgePt(r, to){
+  const dx=to.x-r.cx, dy=to.y-r.cy; if(!dx&&!dy) return {x:r.cx,y:r.cy};
+  const sx=(r.w/2)/Math.max(1e-6,Math.abs(dx)), sy=(r.h/2)/Math.max(1e-6,Math.abs(dy)); const t=Math.min(sx,sy);
+  return {x:r.cx+dx*t, y:r.cy+dy*t};
+}
+function renderArrows(){
+  const svg=$('#arrows'); if(!svg) return;
+  const a=S.action;
+  if(S.headless||!a||getComputedStyle(svg).display==='none'){ svg.innerHTML=''; return; }
+  const tbl=$('#table').getBoundingClientRect();
+  svg.setAttribute('width',tbl.width); svg.setAttribute('height',tbl.height); svg.setAttribute('viewBox',`0 0 ${tbl.width} ${tbl.height}`);
+  const rectOf=p=>{ const el=panelOf(p); if(!el) return null; const r=el.getBoundingClientRect(); return {x:r.left-tbl.left,y:r.top-tbl.top,w:r.width,h:r.height,cx:r.left-tbl.left+r.width/2,cy:r.top-tbl.top+r.height/2}; };
+  const A=rectOf(a.actor); if(!A){ svg.innerHTML=''; return; }
+  let endRect=null, end;
+  if(a.target){ endRect=rectOf(a.target); end={x:endRect.cx,y:endRect.cy}; }
+  else { const c=$('#deckInfo').getBoundingClientRect(); end={x:c.left-tbl.left+c.width/2, y:c.top-tbl.top+c.height/2}; }
+  const p0=edgePt(A,end); const p1=endRect?edgePt(endRect,{x:A.cx,y:A.cy}):end;
+  const mx=(p0.x+p1.x)/2, my=(p0.y+p1.y)/2; const dx=p1.x-p0.x, dy=p1.y-p0.y, len=Math.hypot(dx,dy)||1;
+  const nx=-dy/len, ny=dx/len; const bow=Math.min(60,len*0.18);
+  const cx=mx+nx*bow, cy=my+ny*bow;
+  const tt=0.38, lab={x:(1-tt)*(1-tt)*p0.x+2*(1-tt)*tt*cx+tt*tt*p1.x, y:(1-tt)*(1-tt)*p0.y+2*(1-tt)*tt*cy+tt*tt*p1.y};
+  const lblW=t=>Math.max(60, t.length*15+22);
+  const label=(pt,text,cls)=>`<g class="lbl ${cls||''}"><rect x="${pt.x-lblW(text)/2}" y="${pt.y-15}" width="${lblW(text)}" height="30" rx="4"/><text x="${pt.x}" y="${pt.y+1}">${text}</text></g>`;
+  let out=`<defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ff5fa8"/></marker><marker id="ahg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ffd166"/></marker><marker id="ahr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ff8da8"/></marker></defs>`;
+  out+=`<path class="main" d="M${p0.x},${p0.y} Q${cx},${cy} ${p1.x},${p1.y}" marker-end="url(#ah)"/>`;
+  const subs=[];
+  if(a.phase==='block'||a.phase==='blockchallenge'){ const B=rectOf(a.blocker); if(B){ const s0=edgePt(B,lab); subs.push({from:s0,to:lab,cls:'blk',m:'ahr',text:'は？ブロック'}); } }
+  if(a.phase==='challenge'||a.phase==='blockchallenge'){ const C=rectOf(a.challenger); if(C){ const s0=edgePt(C,lab); subs.push({from:s0,to:lab,cls:'chal',m:'ahg',text:'チャレンジ！'}); } }
+  for(const sb of subs){ const tx=sb.from.x+(sb.to.x-sb.from.x)*0.45, ty=sb.from.y+(sb.to.y-sb.from.y)*0.45; out+=`<path class="sub ${sb.cls}" d="M${sb.from.x},${sb.from.y} L${sb.to.x},${sb.to.y}" marker-end="url(#${sb.m})"/>`; out+=label({x:tx,y:ty},sb.text,sb.cls); }
+  out+=label(lab, ACTIONS[a.act].name, '');
+  svg.innerHTML=out;
+}
+
+/* ざぁ～こ♥のカットイン */
+function cutin(actor, target){
+  if(S.headless) return Promise.resolve();
+  const el=document.createElement('div'); el.className='cutin';
+  el.innerHTML=`<div class="ci-band"></div><div class="ci-lines"></div><img class="ci-img" src="${imgSrc(actor.ch,'top',actor.boro.top)}" alt=""><div class="ci-text"><div class="ci-main">ざぁ～こ♥</div><div class="ci-sub">${actor.name} → ${target.name}</div></div>`;
+  document.body.appendChild(el);
+  return new Promise(res=>{
+    let done=false;
+    const fin=()=>{ if(done) return; done=true; el.classList.add('out'); setTimeout(()=>el.remove(),350); res(); };
+    el.addEventListener('click',fin);
+    wait(1500).then(fin).catch(()=>{ el.remove(); res(); });
   });
 }
 
@@ -1358,43 +1568,76 @@ function setHighlight(sel){
  *  ルール表示・開始画面・初期化
  * ===================================================================== */
 function buildRules(){
-  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  const tbl=(head,rows)=>`<table><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;
-  const g=[
-    ['ふ～ん♥','なし','1♥を獲得する','不可','不可'],
-    ['よわ♥','なし','2♥を獲得する','メスガキ','不可'],
-    ['ざぁ～こ♥','7♥を支払う ※10♥持っていたら次の行動は必ずざぁ～こ♥','相手1人の影響力を失わせる（手札を1枚捨てる。選ぶのは相手。服を一枚脱がす）','不可','不可'],
-  ];
-  const r=[
-    ['よわよわ～♥','メスガキ','3♥を獲得する','不可','可能'],
-    ['なさけな～い♥','後輩ガキ','他プレイヤー1人から2♥を奪う','後輩ガキ・幼馴染ガキ','可能'],
-    ['ダサすぎ♥','幼馴染ガキ','山札から2枚引き、手札から2枚戻す','不可','可能'],
-    ['まけちゃえ～♥','サキュガキ＆3♥を支払う','相手1人の影響力を1枚失わせる','わからせおじさん','可能'],
-  ];
-  const c=ROLE_IDS.map(id=>{ const R=ROLES[id]; return [R.name, R.action?ACTIONS[R.action].name:'-', R.blocks.length?R.blocks.map(a=>ACTIONS[a].name).join('・'):'-', R.line, '3', R.phrase]; });
-  const t=TRIGGERS.map(x=>[x.name, x.text]).concat([[NO_TRIGGER.name+'（5枚）', NO_TRIGGER.text]]);
   return `
-  <h2>メスガキ・クー ルール早見表</h2>
-  <p>基本ルールはクー(Coup)と同じ。各プレイヤーは手札（ガキカード）2枚＝影響力2つと2♥でスタート。最後まで残った1人の勝ち。</p>
-  <h3>メスガキカードとトリガー</h3>
-  <p>各プレイヤーはメスガキカード「上半身」「下半身」を持ち、表は普通の服、裏はボロ絵。それぞれの下にトリガーカードを1枚ずつ裏向きで敷く（トリガー10枚＋ハズレ5枚から配布）。<br>
-  影響力を1つ失ったら、手札を1枚捨てたうえでメスガキカードのどちらかを裏返してボロ絵にし、その下に敷いていたトリガーカードの効果を発動する。両方ボロになったら脱落。</p>
-  <h3>基本アクション</h3>${tbl(['アクション','実行条件','効果','「は？」ブロック条件','チャレンジ'],g)}
-  <h3>ガキカードのアクション</h3>${tbl(['アクション','実行条件','効果','「は？」ブロック条件','チャレンジ'],r)}
-  <h3>ガキカード</h3>${tbl(['カード','できるアクション','できるブロック','ブロック台詞','枚数','台詞'],c)}
-  <h3>トリガーカード</h3>${tbl(['トリガー名（仮）','効果'],t)}
-  <h3>チャレンジ</h3>
-  <p>役職を主張したアクションやブロックには、ほかのプレイヤーが「チャレンジ！」できる。主張した本人がそのカードを持っていれば公開して山札と入れ替え、チャレンジした側が影響力を失う。持っていなければ主張した側が影響力を失い、アクションは失敗する。</p>
-  <h3>この実装での取り決め</h3>
-  <p>・トリガーは自分のものだけ見える。開始時に${RULES.triggerDeal}枚配られ、2枚を選んで上半身・下半身のどちらに敷くか決める（残りは山に戻す）。<br>
-  ・影響力を失わせた側（攻撃した人・チャレンジに勝った人）が、相手の上半身・下半身どちらを脱がせるか選ぶ。<br>
-  ・「♥コレクター」を持つプレイヤーは10♥での強制ざぁ～こ♥を免除する（${RULES.win15LiftsForcedCoup?'ON':'OFF'}。免除しないと${RULES.collectorGoal}♥に届かないため）。<br>
-  ・「ダサすぎ返し」は公開済みのトリガーなので、そのブロックはチャレンジできない。<br>
-  ・「まわして」の右隣は、席順で次のプレイヤー。<br>
-  ・まけちゃえ～♥の3♥はチャレンジで失敗しても戻らない（クー準拠）。</p>
+  <h2>メスガキ・クー ルール</h2>
+  <p class="rl-lede">クー(Coup)がベース。♥を集め、ハッタリと「は？」で相手の<b>影響力（手札）</b>を削る。<b>最後まで残った1人の勝ち</b>。影響力を失うたびにメスガキカードが裏返ってボロ絵になり、その横のトリガーが発動する。</p>
+
+  <div class="rl-sec"><h3><span class="no">1</span>準備</h3>
+  <ul class="rl-list">
+    <li>各自、<b>ガキカード2枚</b>（＝ライフ2つ）と <b>2♥</b> を持つ。手札は自分だけ見る。</li>
+    <li><b>メスガキカード</b> 上半身・下半身を並べる。表は普通の服、裏はボロ絵。</li>
+    <li><b>トリガーカード</b>を${RULES.triggerDeal}枚引き、2枚を選んで上半身・下半身の横に敷く（残りは山へ）。自分のトリガーは自分だけ見てよい。</li>
+  </ul></div>
+
+  <div class="rl-sec"><h3><span class="no">2</span>手番の流れ</h3>
+  <div class="rl-flow">
+    <div class="rl-step"><b>① 宣言</b>アクションを1つ宣言する<small>役職つきのアクションは、そのカードを持っていなくても宣言できる（ハッタリ）</small></div>
+    <div class="rl-arrow">→</div>
+    <div class="rl-step"><b>② 割り込み</b>ほかの人が止められる<small>「は？」ブロック（役職を主張して止める）／ チャレンジ！（ハッタリだと疑う）。ブロックにもチャレンジできる</small></div>
+    <div class="rl-arrow">→</div>
+    <div class="rl-step"><b>③ 解決</b>通れば効果、止まれば不発<small>♥の増減、影響力の喪失。10♥以上で手番が来たら必ず「ざぁ～こ♥」</small></div>
+  </div></div>
+
+  <div class="rl-sec"><h3><span class="no">3</span>アクション <small>色は使うガキカードの色。「誰でも」は役職なし</small></h3>
+  <div class="rl-tiles" id="rlActions"></div></div>
+
+  <div class="rl-sec"><h3><span class="no">4</span>ガキカード（役職） <small>5種×3枚＝15枚。手札2枚が影響力</small></h3>
+  <div class="rl-roles" id="rlRoles"></div>
+  <p class="rl-note">「できる」はそのカードで宣言できるアクション、「ブロック」はそのカードで止められる相手のアクション。</p></div>
+
+  <div class="rl-sec"><h3><span class="no">5</span>チャレンジ</h3>
+  <div class="rl-two">
+    <div class="rl-box ok"><b>主張が本当だった</b>そのカードを公開して山札と交換し、1枚引き直す。チャレンジした人が影響力を失う。アクションは通る。</div>
+    <div class="rl-box ng"><b>ハッタリだった</b>主張した人が影響力を失い、アクション（またはブロック）は失敗。まけちゃえ～♥で払った3♥は戻らない。</div>
+  </div></div>
+
+  <div class="rl-sec"><h3><span class="no">6</span>影響力を失ったとき</h3>
+  <ol class="rl-ol">
+    <li><b>手札を1枚</b>、自分で選んで表にして捨てる。</li>
+    <li><b>失わせた相手</b>が、メスガキカードの上半身・下半身どちらかを選んで裏返す（ボロ絵）。</li>
+    <li>その横に敷いてあった<b>トリガー</b>を表にして、効果を発動する。</li>
+  </ol>
+  <div class="rl-strip" id="rlStrip"></div>
+  <p class="rl-note">上下とも裏返ったら脱落。全員同時に脱落したら、最後に脱落した人の勝ち。</p></div>
+
+  <div class="rl-sec"><h3><span class="no">7</span>トリガーカード <small>${TRIGGERS.length}種＋ハズレ${RULES.dudCount}枚</small></h3>
+  <div class="rl-trig" id="rlTrig"></div></div>
+
+  <div class="rl-sec"><h3><span class="no">8</span>細かい決まり</h3>
+  <ul class="rl-list">
+    <li>「♥コレクター」を持つ人は <b>${RULES.collectorGoal}♥</b> 集めても勝ち。10♥の強制ざぁ～こ♥は免除される。</li>
+    <li>「値上げ」は他の全員のざぁ～こ♥を8♥に、「値下げ」は自分のざぁ～こ♥を5♥にする（両方なら6♥）。</li>
+    <li>「ダサすぎ返し」は公開済みのトリガーによるブロックなので、チャレンジできない。</li>
+    <li>「まわして」の右隣は、席順で次のプレイヤー。</li>
+    <li>CPUが脱がせる側のときは、上下をランダムに選ぶ。</li>
+  </ul></div>
   <div class="close"><button class="btn" data-close>閉じる</button></div>`;
 }
-
+function fillRules(){
+  const acts=$('#rlActions'); acts.innerHTML='';
+  for(const id of ['income','aid','coup','tax','steal','exchange','assassinate']){ const t=actionTileEl(id, null, RULES.coupCost); t.disabled=false; t.tabIndex=-1; acts.appendChild(t); }
+  const roles=$('#rlRoles'); roles.innerHTML='';
+  for(const r of ROLE_IDS) roles.appendChild(roleCardEl(r));
+  const trig=$('#rlTrig'); trig.innerHTML='';
+  for(const t of TRIGGERS) trig.appendChild(triggerEl({card:t,revealed:true},'on',false));
+  trig.appendChild(triggerEl({card:NO_TRIGGER,revealed:true},'on',false));
+  const strip=$('#rlStrip'); strip.innerHTML='';
+  const ch=CHARS[0];
+  strip.appendChild(figureEl(ch,{top:false,bottom:false},'sm',true,['top']));
+  const arrow=document.createElement('div'); arrow.className='rl-arrow'; arrow.textContent='→'; strip.appendChild(arrow);
+  strip.appendChild(figureEl(ch,{top:true,bottom:false},'sm',true,['top']));
+  const cap=document.createElement('div'); cap.className='rl-note'; cap.style.margin='0'; cap.textContent='表（普通の服）→ 裏（ボロ絵）。裏返った側のトリガーが発動'; strip.appendChild(cap);
+}
 let setup={ n:4, ch:0, auto:false };
 function openStart(){
   const np=$('#npick'); np.innerHTML='';
@@ -1408,7 +1651,8 @@ function openStart(){
 
 function init(){
   preloadImages();
-  $('#rulesBox').innerHTML=buildRules();
+  window.addEventListener('resize', ()=>renderArrows());
+  $('#rulesBox').innerHTML=buildRules(); fillRules();
   document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('.modal').classList.remove('show'));
   document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m && m.id!=='modalStart') m.classList.remove('show'); }));
   $('#btnRules').onclick=()=>$('#modalRules').classList.add('show');

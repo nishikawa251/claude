@@ -36,7 +36,7 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 
 .pxbox{--c:var(--line2);background:var(--panel);box-shadow:0 -3px 0 0 var(--c),0 3px 0 0 var(--c),-3px 0 0 0 var(--c),3px 0 0 0 var(--c)}
 
-#app{max-width:1100px;margin:0 auto;padding:10px 16px 24px;display:flex;flex-direction:column;gap:12px}
+#app{max-width:1100px;margin:0 auto;padding-block:10px 24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px}
 
 /* ---------- header ---------- */
 .top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -144,7 +144,7 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .me .figure{flex-direction:row}
 .me .tc{width:132px}
 
-.modal{position:fixed;inset:0;background:rgba(10,4,14,.82);display:none;align-items:center;justify-content:center;padding:16px;z-index:20;overflow:auto}
+.modal{position:fixed;inset:0;background:rgba(10,4,14,.82);display:none;align-items:center;justify-content:center;padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));z-index:20;overflow:auto}
 .modal.show{display:flex}
 .mbox{max-width:760px;width:100%;max-height:92vh;overflow:auto;padding:18px 20px;--c:var(--pink)}
 .mbox h2{margin:0 0 10px;font-size:18px;font-weight:400;color:var(--pink);letter-spacing:.1em}

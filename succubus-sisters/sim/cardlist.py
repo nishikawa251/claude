@@ -96,17 +96,7 @@ counts = {
     'changed': sum(len(d['ids']) for d in data if d['changes']),
     'groups': len(groups),
 }
-# ドット絵の試作（カード名 → img/pixel/*.svg）
-PIXEL = {'エクスカリバー': 'excalibur', 'ほのおのやいば': 'flameblade', 'クロスボウ': 'crossbow',
-         'なべのふた': 'potlid', 'ミラーシールド': 'mirrorshield', 'うろこのたて': 'scaleshield',
-         '＜火の玉＞': 'fireball', '＜氷の柱＞': 'icepillar', '＜稲妻＞': 'lightning',
-         'ハートのせいすい': 'heartwater', '太陽のお守り': 'sunamulet', '夜魔のホウキ': 'nightbroom',
-         '聖なるわからせ棒': 'holyrod', '聖なるわからせ竿': 'holypole', '聖なるちくりんちょ': 'holyneedle'}
-for d in data:
-    k = PIXEL.get(d['top']['name'])
-    if k: d['art'] = f'img/pixel/{k}.svg'
-counts['art'] = sum(1 for d in data if d.get('art'))
-images = sorted({f'img/cards/{d["ids"][0]:03d}.jpg' for d in data} | {d['art'] for d in data if d.get('art')})
+images = sorted({f'img/cards/{d["ids"][0]:03d}.jpg' for d in data})
 
 tpl = open(os.path.join(HERE, 'cardlist_template.html'), encoding='utf-8').read()
 page = (tpl.replace('__DATA__', json.dumps(data, ensure_ascii=False).replace('</', '<\\/'))

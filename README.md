@@ -27,3 +27,9 @@
 ---
 
 東方Project 二次創作 ／ 原作：上海アリス幻樂団
+
+---
+
+## 同梱：メスガキ・クー
+
+`mesugaki-coup/index.html` はカードゲーム「クー」をメスガキ化した別のブラウザゲームです。詳しくは `mesugaki-coup/README.md` を見てください。

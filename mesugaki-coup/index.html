@@ -32,7 +32,6 @@ html{height:100%}
 body{min-height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;-webkit-tap-highlight-color:transparent;
   background-image:radial-gradient(circle at 20% 10%,#2d1738 0,transparent 40%),radial-gradient(circle at 80% 90%,#2a1240 0,transparent 45%)}
 button{font:inherit;color:inherit}
-canvas.px{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 
 .pxbox{--c:var(--line2);background:var(--panel);box-shadow:0 -3px 0 0 var(--c),0 3px 0 0 var(--c),-3px 0 0 0 var(--c),3px 0 0 0 var(--c)}
 
@@ -56,7 +55,7 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .btn.primary .sub{color:#5a1b36}
 
 /* ---------- players ---------- */
-.opps{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.opps{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:10px}
 .pl{position:relative;padding:8px 10px 10px;--c:var(--line2);transition:opacity .3s}
 .pl.cur{--c:var(--pink)}
 .pl.dead{opacity:.45}
@@ -66,13 +65,19 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .plhead .nm .tag{font-size:11px;color:var(--dim);margin-left:6px}
 .hearts{color:var(--heart);font-size:15px;white-space:nowrap}
 .hearts b{color:var(--ink);font-weight:400;font-size:17px;margin-left:2px}
-.plbody{display:flex;gap:10px;align-items:flex-start}
-.figure{display:flex;flex-direction:column;gap:3px;flex:none;align-items:flex-start}
+.plbody{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.pl:not(.me) .plbody{flex-direction:column}
+.figure{display:flex;flex-direction:row;gap:4px;flex:none;align-items:flex-start;flex-wrap:wrap;--cw:150px}
+.figure.sm{--cw:112px}
+.figure.md{--cw:150px}
+.figure.lg{--cw:224px}
+.figure.xl{--cw:260px}
 .figure .ccard{width:max-content}
+.ccard img{display:block;width:var(--cw);height:auto;aspect-ratio:416/298;background:#2d1a3a;user-select:none;-webkit-user-drag:none}
+.ccard.noimg{width:var(--cw);aspect-ratio:416/298;display:grid;place-items:center}
+.ccard.noimg .ph{font-size:12px;color:var(--dim);text-align:center;white-space:pre-line;line-height:1.5}
 .ccard{position:relative;padding:3px;background:#3a2548;box-shadow:0 0 0 2px var(--pink) inset}
 .ccard.boro{background:#2a2228;box-shadow:0 0 0 2px var(--boro) inset}
-.ccard canvas{background:linear-gradient(#4a2d5c,#2d1a3a)}
-.ccard.boro canvas{background:linear-gradient(#3a3038,#241c24)}
 .ccard .lbl{position:absolute;left:2px;top:2px;font-size:10px;line-height:1;padding:2px 3px;background:rgba(0,0,0,.45);color:var(--dim)}
 .ccard.boro .lbl{color:#d6c2cc}
 .cards{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
@@ -183,7 +188,6 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 /* ---------- me ---------- */
 .me{padding:10px 12px}
 .me .plbody{gap:14px;flex-wrap:wrap}
-.me .figure{flex-direction:row}
 .me .tc{width:132px}
 
 .modal{position:fixed;inset:0;background:rgba(10,4,14,.82);display:none;align-items:center;justify-content:center;padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));z-index:20;overflow:auto}
@@ -206,6 +210,7 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .setup .row label{color:var(--dim);font-size:13px;min-width:90px}
 .chpick{display:flex;gap:8px;flex-wrap:wrap}
 .chpick .ch{padding:6px;background:var(--panel2);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;box-shadow:0 0 0 2px var(--line) inset}
+.chpick .ch .figure{--cw:104px}
 .chpick .ch.on{box-shadow:0 0 0 2px var(--pink) inset;background:#3d2550}
 .endbox{text-align:center}
 .endbox .big{font-size:26px;color:var(--pink);margin:8px 0 4px;letter-spacing:.1em}
@@ -215,7 +220,9 @@ canvas.px{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
   .mid{grid-template-columns:1fr}
   .deck{display:flex;gap:14px;flex-wrap:wrap}
   .rc{width:72px;min-height:96px}
-  .me .figure{flex-direction:column}
+  .figure.lg{--cw:160px}
+  .figure.xl{--cw:150px}
+  .opps{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -301,249 +308,40 @@ const RULES = {
   forcedCoupAt: 10,
 };
 
-/* キャラ：ボンバーガール風の「通常絵／ボロ絵」を自前のドット絵で描く */
-const SKIN='#ffe3cf', SKIN2='#e9b8a0';
+/* キャラ：img/{id}_{top|bottom}_{000|001}.webp（000=通常絵、001=ボロ絵）を上下2枚のカードとして表示 */
 const CHARS = [
-  { name:'ひまり', style:'twin', outfit:'sailor', hair:'#ff8ac4', hairDark:'#d4559a', hairLight:'#ffc2e0',
-    top:'#fff7fb', topDark:'#d9c3dc', accent:'#ff3f8e', bottomType:'skirt', bottom:'#ff5fa8', bottomDark:'#c0397c',
-    legStyle:'socks', sock:'#ffffff', sockDark:'#d6cfe0', shoe:'#5a2d4a', shoeLight:'#8a4a74', eye:'#8a3fc9', ahoge:true, title:'ギャルガキ' },
-  { name:'そら',   style:'pony', outfit:'jacket', hair:'#6fb4ff', hairDark:'#3a7ad9', hairLight:'#b9dbff',
-    top:'#f6f9ff', topDark:'#4a90e2', accent:'#ffd34d', bottomType:'shorts', bottom:'#34507f', bottomDark:'#22355a',
-    legStyle:'bare', sock:'#ffffff', sockDark:'#cfd8e8', shoe:'#f4f6ff', shoeLight:'#ffffff', shoeDark:'#9fb2d6', eye:'#2a4d9a', title:'体育会ガキ' },
-  { name:'みかん', style:'bob', outfit:'hoodie', hair:'#ffb347', hairDark:'#dd7f24', hairLight:'#ffd79a',
-    top:'#ff8c42', topDark:'#d6652a', accent:'#fff2c7', bottomType:'shorts', bottom:'#5b6fa0', bottomDark:'#3e4c74',
-    legStyle:'stripes', sock:'#ffffff', sockDark:'#ff9b58', shoe:'#3b2a28', shoeLight:'#6a4a44', eye:'#b84a1a', ahoge:true, title:'小悪魔ガキ' },
-  { name:'すみれ', style:'long', outfit:'frill', hair:'#b48cff', hairDark:'#7f55d6', hairLight:'#dcc8ff',
-    top:'#2c1f3e', topDark:'#1b1228', accent:'#ffffff', bottomType:'skirt', bottom:'#2c1f3e', bottomDark:'#1b1228',
-    legStyle:'tights', sock:'#3a2a52', sockDark:'#2a1d3c', shoe:'#1b1228', shoeLight:'#4a3a66', eye:'#e24f9c', title:'ゴスガキ' },
-  { name:'わかば', style:'buns', outfit:'jacket', hair:'#8fe08a', hairDark:'#4aa85a', hairLight:'#cdf7c9',
-    top:'#f2fff4', topDark:'#3fae72', accent:'#ffe066', bottomType:'skirt', bottom:'#2f6b4a', bottomDark:'#214d35',
-    legStyle:'socks', sock:'#3a3a4a', sockDark:'#26262f', shoe:'#6b4a2a', shoeLight:'#8e6a42', eye:'#2f7a4a', ahoge:false, title:'委員長ガキ' },
+  { id:'shiro',    name:'シロ' },
+  { id:'momoko',   name:'モモコ' },
+  { id:'emera',    name:'エメラ' },
+  { id:'oren',     name:'オレン' },
+  { id:'aqua',     name:'アクア' },
+  { id:'asagi',    name:'アサギ' },
+  { id:'grimaloe', name:'グリムアロエ' },
+  { id:'papuru',   name:'パプル' },
+  { id:'sepia',    name:'セピア' },
+  { id:'tsugaru',  name:'ツガル' },
+  { id:'urushi',   name:'ウルシ' },
+  { id:'pin',      name:'パイン' },
 ];
+for(const ch of CHARS) ch.title=ch.id.toUpperCase();
+const imgSrc=(ch,half,boro)=>`img/${ch.id}_${half}_${boro?'001':'000'}.webp`;
 
 /* =====================================================================
- *  ドット絵：32×64 の論理ピクセルに描き、上(0-33行)と下(34-63行)の2枚に分ける
+ *  立ち絵カード：上半身／下半身の2枚。ボロ絵なら裏面(001)を表示
  * ===================================================================== */
-const SW=32, SH=64, SPLIT=34;
-function newBuf(){ return Array.from({length:SH},()=>new Array(SW).fill(null)); }
-function pen(buf){
-  const set=(x,y,c)=>{ if(x>=0&&x<SW&&y>=0&&y<SH) buf[y][x]=c; };
-  return {
-    set,
-    rect(x,y,w,h,c){ for(let j=y;j<y+h;j++) for(let i=x;i<x+w;i++) set(i,j,c); },
-    row(y,x0,x1,c){ for(let i=x0;i<=x1;i++) set(i,y,c); },
-    pts(list,c){ for(const [x,y] of list) set(x,y,c); },
-    get(x,y){ return (x>=0&&x<SW&&y>=0&&y<SH)?buf[y][x]:null; },
-  };
-}
-
-// 顔の輪郭（行ごとの左右端）
-const FACE_ROWS=[[3,11,20],[4,9,22],[5,8,23],[6,8,23]];
-for(let y=7;y<=19;y++) FACE_ROWS.push([y,7,24]);
-FACE_ROWS.push([20,8,23],[21,9,22],[22,11,20]);
-
-function drawFigure(ch, boroTop, boroBottom){
-  const buf=newBuf(), p=pen(buf);
-  const dirt='#6a4f4a', bandage='#fff5e8', bandage2='#ffd1dc', tear='#9fd8ff';
-
-  /* ---- 後ろ髪（体より奥） ---- */
-  if(ch.style==='long'){
-    p.rect(5,13,3,26,ch.hairDark); p.rect(24,13,3,26,ch.hairDark);
-    p.rect(6,13,1,24,ch.hair); p.rect(25,13,1,24,ch.hair);
-    p.pts([[5,39],[7,39],[24,39],[26,39],[6,40],[25,40]],ch.hairDark);
-  }
-  if(ch.style==='pony'){
-    p.row(6,26,28,ch.hairDark); p.row(7,25,29,ch.hairDark);
-    p.rect(25,8,6,15,ch.hair); p.rect(26,23,4,6,ch.hair); p.rect(27,29,2,3,ch.hairDark);
-    p.rect(30,8,1,15,ch.hairDark); p.rect(29,23,1,6,ch.hairDark);
-    p.rect(26,9,1,10,ch.hairLight);
-    p.pts([[25,8],[26,8],[25,9]],ch.accent); // リボン
-    if(boroTop){ p.pts([[31,12],[31,13],[30,27],[31,26]],ch.hairDark); }
-  }
-  if(ch.style==='twin'){
-    for(const sx of [0,1]){
-      const m=x=>sx?31-x:x;
-      p.pts([[m(3),9],[m(4),9]],ch.hairDark);
-      p.row(10,sx?26:2,sx?29:5,ch.hair); p.row(11,sx?26:2,sx?29:5,ch.hair);
-      for(let y=12;y<=20;y++) p.row(y,sx?26:1,sx?30:5,ch.hair);
-      for(let y=21;y<=23;y++) p.row(y,sx?26:2,sx?29:5,ch.hair);
-      p.row(24,sx?27:3,sx?28:4,ch.hair); p.set(m(3),25,ch.hairDark);
-      for(let y=12;y<=22;y++) p.set(sx?30:1,y,ch.hairDark);
-      p.rect(sx?27:2,12,1,8,ch.hairLight);
-      p.pts([[m(4),9],[m(5),9],[m(4),10],[m(5),10]],ch.accent); // リボン
-      if(boroTop){ p.pts([[m(0),15],[m(0),19],[m(1),24]],ch.hairDark); p.set(m(2),22,null); p.set(m(4),24,null); }
-    }
-  }
-
-  /* ---- 体（上着） ---- */
-  const t=ch;
-  p.rect(14,23,4,1,SKIN);                 // 首
-  p.row(24,10,21,t.top);                  // 肩
-  p.rect(9,25,14,9,t.top);                // 胴
-  p.rect(7,25,2,4,t.top); p.rect(23,25,2,4,t.top);   // 袖
-  p.rect(7,29,2,5,SKIN); p.rect(23,29,2,5,SKIN);     // 腕
-  p.rect(7,33,2,1,SKIN2); p.rect(23,33,2,1,SKIN2);   // 手
-  p.rect(9,25,1,9,t.topDark); p.rect(22,25,1,9,t.topDark); // 胴の影
-  if(t.outfit==='sailor'){
-    p.pts([[11,24],[12,25],[13,26],[18,26],[19,25],[20,24]],t.accent);
-    p.pts([[10,24],[21,24]],t.topDark);
-    p.pts([[14,27],[17,27],[15,28],[16,28],[15,27],[16,27]],t.accent); // リボン
-    p.row(33,9,22,t.topDark);
-  } else if(t.outfit==='jacket'){
-    p.rect(9,25,3,9,t.topDark); p.rect(20,25,3,9,t.topDark);
-    p.rect(7,25,2,4,t.topDark); p.rect(23,25,2,4,t.topDark);
-    p.row(24,10,21,t.topDark);
-    p.pts([[12,25],[19,25],[12,26],[19,26]],t.accent);
-    p.pts([[15,29],[16,29],[15,30],[16,30]],t.accent); // 胸のワッペン
-  } else if(t.outfit==='hoodie'){
-    p.rect(13,23,6,2,t.topDark); p.row(24,11,20,t.topDark); // フード
-    p.pts([[14,25],[14,26],[14,27],[17,25],[17,26],[17,27]],t.accent); // ひも
-    p.rect(12,31,8,2,t.topDark); // ポケット
-    p.rect(7,25,2,8,t.top); p.rect(23,25,2,8,t.top); p.rect(7,32,2,1,t.topDark); p.rect(23,32,2,1,t.topDark); // 長袖
-    p.rect(7,33,2,1,SKIN); p.rect(23,33,2,1,SKIN);
-  } else if(t.outfit==='frill'){
-    p.row(24,10,21,t.accent); p.pts([[10,25],[12,25],[14,25],[17,25],[19,25],[21,25]],t.accent);
-    p.pts([[15,27],[16,27],[15,28],[16,28]],'#e24f9c'); // ブローチ
-    p.rect(7,25,2,8,t.top); p.rect(23,25,2,8,t.top); p.row(32,7,8,t.accent); p.row(32,23,24,t.accent);
-    p.rect(7,33,2,1,SKIN); p.rect(23,33,2,1,SKIN);
-    p.pts([[12,30],[12,32],[19,30],[19,32]],t.accent);
-  }
-  if(boroTop){
-    p.pts([[7,28],[24,28],[8,27]],SKIN);                // 袖の破れ
-    p.pts([[20,24],[21,24]],SKIN);                      // 肩が裂けた
-    p.pts([[12,30],[13,31],[11,31]],t.topDark);         // 裂け目
-    p.pts([[18,28],[19,33],[10,32]],dirt);              // 泥
-    p.rect(23,30,2,2,bandage); p.set(24,30,bandage2);   // 腕の包帯
-  }
-
-  /* ---- 頭 ---- */
-  for(const [y,x0,x1] of FACE_ROWS) p.row(y,x0,x1,SKIN);
-  p.row(22,11,20,SKIN2); p.pts([[8,19],[23,19],[9,20],[22,20]],SKIN2);
-  // 髪（頭頂～生え際）
-  p.row(2,10,21,ch.hair); p.row(3,8,23,ch.hair); p.row(4,7,24,ch.hair);
-  for(let y=5;y<=10;y++) p.row(y,6,25,ch.hair);
-  const bangs = {
-    twin:[11,12,13,12,11,11,12,13,12,11,12,13,12,11,11,12,13,12],
-    pony:[12,13,12,11,11,12,12,11,11,12,13,12,11,11,12,13,12,11],
-    bob: [12,12,13,13,12,11,11,12,12,13,12,11,11,12,13,13,12,12],
-    long:[13,12,11,11,12,13,12,11,12,13,12,11,12,13,12,11,11,12],
-    buns:[11,12,12,13,12,11,12,12,11,12,13,12,11,11,12,12,13,11],
-  }[ch.style];
-  for(let i=0;i<18;i++){ const x=7+i; for(let y=11;y<=bangs[i];y++) p.set(x,y,ch.hair); p.set(x,bangs[i],ch.hairDark); }
-  // 横髪
-  for(let y=11;y<=19;y++){ p.set(6,y,ch.hair); p.set(25,y,ch.hair); p.set(7,y,ch.hairDark); p.set(24,y,ch.hairDark); }
-  p.set(6,11,ch.hairDark); p.set(25,11,ch.hairDark);
-  if(ch.style==='bob'){ for(let y=16;y<=21;y++){ p.set(5,y,ch.hair); p.set(26,y,ch.hair);} p.pts([[6,20],[7,21],[8,21],[25,20],[24,21],[23,21]],ch.hair); p.pts([[5,22],[26,22]],ch.hairDark); }
-  if(ch.style==='twin'||ch.style==='long'||ch.style==='pony'){ for(let y=20;y<=21;y++){ p.set(6,y,ch.hairDark); p.set(25,y,ch.hairDark);} }
-  if(ch.style==='buns'){ p.rect(5,1,5,4,ch.hair); p.rect(22,1,5,4,ch.hair); p.pts([[5,1],[9,1],[22,1],[26,1],[5,4],[26,4]],null); p.pts([[6,2],[23,2]],ch.hairLight); p.pts([[8,4],[25,4],[9,3],[26,3]],ch.hairDark); p.pts([[7,0],[24,0]],ch.accent); }
-  p.row(4,10,14,ch.hairLight); p.pts([[9,5],[15,5]],ch.hairLight); // ハイライト
-  if(ch.ahoge){ p.pts([[16,1],[17,0],[18,0],[19,1]],ch.hair); }
-  if(boroTop){
-    p.pts([[5,8],[4,9],[26,13],[27,12],[6,3],[26,4]],ch.hairDark); // ほつれ毛
-    if(ch.ahoge){ p.pts([[16,1],[17,0],[18,0],[19,1]],null); p.pts([[16,1],[15,0],[14,0]],ch.hair); }
-  }
-  // 眉・目・口
-  const eyeDark='#2a1a30';
-  const lash=(x)=>{ p.row(12,x,x+2,eyeDark); };
-  const eye=(x)=>{ p.rect(x,13,3,3,ch.eye); p.set(x,13,'#ffffff'); p.set(x+1,14,eyeDark); p.set(x+1,15,eyeDark); p.set(x+2,15,eyeDark); };
-  const eyeBoro=(x)=>{ p.rect(x,13,3,2,ch.eye); p.set(x,13,'#ffffff'); p.set(x+1,14,eyeDark); p.row(15,x,x+2,eyeDark); };
-  lash(10); lash(19);
-  if(!boroTop){
-    eye(10); eye(19);
-    p.pts([[9,10],[10,10],[11,11],[20,11],[21,10],[22,10]],ch.hairDark);          // ドヤ眉
-    p.pts([[13,17],[14,18],[15,18],[16,18],[17,18],[18,17]],'#c0405a');            // ニヤ笑い
-    p.set(17,18,'#ffffff');                                                        // 八重歯
-    p.pts([[8,16],[9,16],[22,16],[23,16]],'#ffb3c6');                              // 頬
-  } else {
-    eyeBoro(10); eyeBoro(19);
-    p.pts([[9,11],[10,10],[11,10],[20,10],[21,10],[22,11]],ch.hairDark);          // 困り眉
-    p.pts([[13,18],[14,19],[15,18],[16,19],[17,18],[18,19]],'#c0405a');            // へにょ口
-    p.pts([[10,16],[10,17],[21,16],[21,17]],tear);                                 // 涙
-    p.pts([[8,16],[9,16],[22,16],[23,16],[8,17],[23,17]],'#ff9bb4');               // 赤面
-    p.rect(8,18,3,2,bandage); p.set(9,18,bandage2);                                // 絆創膏
-    p.pts([[26,8],[26,9],[27,9]],tear);                                            // 汗
-  }
-
-  /* ---- 下半身 ---- */
-  const b=ch;
-  // 脚（先に描き、スカート/ショートパンツを上から）
-  const legTop = b.bottomType==='skirt'?45:42;
-  for(const lx of [10,18]){
-    p.rect(lx,legTop,4,60-legTop,SKIN);
-    p.rect(lx+3,legTop,1,60-legTop,SKIN2);
-    if(b.legStyle==='tights'){ p.rect(lx,legTop,4,60-legTop,b.sock); p.rect(lx+3,legTop,1,60-legTop,b.sockDark); }
-    if(b.legStyle==='socks'){ p.rect(lx,51,4,9,b.sock); p.rect(lx+3,51,1,9,b.sockDark); p.row(51,lx,lx+3,b.sockDark); }
-    if(b.legStyle==='stripes'){ for(let y=51;y<60;y++) p.row(y,lx,lx+3,(y%2)?b.sock:b.sockDark); }
-    if(b.legStyle==='bare'){ p.rect(lx,58,4,2,b.sock); }
-  }
-  // 靴
-  p.rect(9,60,6,4,b.shoe); p.rect(17,60,6,4,b.shoe);
-  p.row(60,9,14,b.shoeLight); p.row(60,17,22,b.shoeLight);
-  if(b.shoeDark){ p.row(63,9,14,b.shoeDark); p.row(63,17,22,b.shoeDark); }
-  p.pts([[8,63],[23,63]],b.shoe);
-  // スカート / ショートパンツ
-  if(b.bottomType==='skirt'){
-    const widths=[[34,9,22],[35,9,22],[36,8,23],[37,8,23],[38,8,23],[39,7,24],[40,7,24],[41,7,24],[42,6,25],[43,6,25],[44,6,25]];
-    for(const [y,x0,x1] of widths) p.row(y,x0,x1,b.bottom);
-    for(let y=36;y<=44;y++) for(const x of [10,13,16,19,22]) p.set(x,y,b.bottomDark);
-    p.row(44,6,25,b.bottomDark); p.row(34,9,22,b.bottomDark);
-    for(const [y,x0,x1] of widths){ p.set(x0,y,b.bottomDark); p.set(x1,y,b.bottomDark); }
-    if(b.outfit==='frill'){ for(let x=6;x<=25;x+=2) p.set(x,44,b.accent); p.row(35,9,22,'#5a3a7a'); }
-    if(b.outfit==='sailor'){ p.row(35,9,22,b.bottomDark); }
-    if(boroBottom){
-      p.pts([[6,44],[7,44],[8,43],[8,44],[11,44],[13,43],[14,43],[13,44],[14,44],[17,44],[20,42],[21,42],[20,43],[21,43],[20,44],[21,44],[24,43],[25,43],[24,44],[25,44],[6,43]],null); // 裾ボロボロ
-      p.pts([[11,38],[12,39],[12,38]],b.bottomDark);  // 裂け目
-      p.pts([[19,36],[20,37],[9,41],[23,40]],dirt);    // 泥
-    }
-  } else {
-    p.row(34,9,22,b.bottomDark);
-    p.rect(9,35,14,7,b.bottom);
-    p.rect(9,35,1,7,b.bottomDark); p.rect(22,35,1,7,b.bottomDark);
-    p.rect(15,39,2,3,null); p.set(15,38,b.bottomDark); p.set(16,38,b.bottomDark);
-    p.pts([[12,34],[19,34]],b.accent); // ベルトの金具
-    if(boroBottom){
-      p.pts([[9,41],[10,41],[13,41],[20,41],[21,41],[22,41],[22,40],[9,40]],null);
-      p.pts([[18,37],[19,38]],b.bottomDark); p.pts([[11,39],[21,36]],dirt);
-    }
-  }
-  if(boroBottom){
-    // 靴下ずり落ち・破れ、膝の包帯、靴の擦れ
-    if(b.legStyle==='socks'||b.legStyle==='stripes'){ p.rect(18,51,4,3,SKIN); p.set(21,51,SKIN2); p.set(21,52,SKIN2); p.set(21,53,SKIN2); p.row(54,18,21,b.sockDark); p.pts([[12,56],[13,55]],SKIN); }
-    if(b.legStyle==='tights'){ p.pts([[12,54],[13,55],[12,55],[19,49],[20,49]],SKIN); }
-    p.rect(10,48,4,2,bandage); p.set(11,48,bandage2);
-    p.pts([[9,62],[14,61],[18,63]],dirt);
-    p.pts([[10,57],[20,46]],dirt);
-  }
-  return buf;
-}
-
-const spriteCache=new Map();
-function spriteCanvas(ch, half, boro, scale){
-  const key=`${ch.name}|${half}|${boro?1:0}|${scale}`;
-  if(spriteCache.has(key)) return spriteCache.get(key);
-  const buf=drawFigure(ch, half==='top'&&boro, half==='bottom'&&boro);
-  const y0=half==='top'?0:SPLIT, y1=half==='top'?SPLIT:SH;
-  const c=document.createElement('canvas'); c.className='px';
-  c.width=SW*scale; c.height=(y1-y0)*scale;
-  c.style.width=c.width+'px'; c.style.height=c.height+'px';
-  const g=c.getContext('2d');
-  for(let y=y0;y<y1;y++) for(let x=0;x<SW;x++){ const col=buf[y][x]; if(!col) continue; g.fillStyle=col; g.fillRect(x*scale,(y-y0)*scale,scale,scale); }
-  spriteCache.set(key,c);
-  return c;
-}
-function figureEl(ch, boro, scale, withLabel){
-  const wrap=document.createElement('div'); wrap.className='figure';
-  for(const half of ['top','bottom']){
+function figureEl(ch, boro, size, withLabel, halves){
+  const wrap=document.createElement('div'); wrap.className='figure '+(size||'md');
+  for(const half of (halves||['top','bottom'])){
     const card=document.createElement('div'); card.className='ccard'+(boro[half]?' boro':'');
-    const src=spriteCanvas(ch,half,boro[half],scale);
-    const c=document.createElement('canvas'); c.className='px'; c.width=src.width; c.height=src.height; c.style.width=src.width+'px'; c.style.height=src.height+'px';
-    c.getContext('2d').drawImage(src,0,0);
-    card.appendChild(c);
+    const img=document.createElement('img'); img.src=imgSrc(ch,half,boro[half]); img.width=416; img.height=298; img.alt=`${ch.name} ${half==='top'?'上半身':'下半身'}${boro[half]?'（ボロ）':''}`; img.draggable=false;
+    img.onerror=()=>{ card.classList.add('noimg'); img.remove(); const t=document.createElement('div'); t.className='ph'; t.textContent=`${ch.name}\n${half==='top'?'上':'下'}${boro[half]?' ボロ':''}`; card.prepend(t); };
+    card.appendChild(img);
     if(withLabel){ const l=document.createElement('span'); l.className='lbl'; l.textContent=(half==='top'?'上':'下')+(boro[half]?' ボロ':''); card.appendChild(l); }
     wrap.appendChild(card);
   }
   return wrap;
 }
+function preloadImages(){ for(const ch of CHARS) for(const h of ['top','bottom']) for(const b of [false,true]){ const i=new Image(); i.src=imgSrc(ch,h,b); } }
 
 /* =====================================================================
  *  ゲーム状態・進行
@@ -849,7 +647,7 @@ async function endGame(){
   const box=$('#endBox');
   box.innerHTML='';
   const h=document.createElement('h2'); h.textContent='けっか'; box.appendChild(h);
-  box.appendChild(figureEl(w.ch, w.boro, 3, false)).style.justifyContent='center';
+  box.appendChild(figureEl(w.ch, w.boro, 'xl', false)).style.justifyContent='center';
   const big=document.createElement('div'); big.className='big'; big.textContent=`${w.name} の勝ち！`; box.appendChild(big);
   const sub=document.createElement('p'); sub.textContent = w.i===0 ? 'ざぁこ♡ 全員わからせ完了！' : (w.flags.win15&&w.hearts>=15 ? `${w.hearts}♥集めきった…` : 'わからされちゃった…'); box.appendChild(sub);
   if(TUT.active){ const t=document.createElement('p'); t.innerHTML=TUT_END; box.appendChild(t); }
@@ -1035,7 +833,7 @@ function playerPanel(p, isMe){
   head.innerHTML=`<span class="nm">${p.name}<span class="tag">${p.ch.title}${tags.length?' ／ '+tags.join('・'):''}</span></span><span class="hearts">♥<b>${p.hearts}</b></span>`;
   d.appendChild(head);
   const body=document.createElement('div'); body.className='plbody';
-  body.appendChild(figureEl(p.ch, p.boro, isMe?3:2, true));
+  body.appendChild(figureEl(p.ch, p.boro, isMe?'lg':'md', true));
   const cards=document.createElement('div'); cards.className='cards';
   const hl=document.createElement('div'); hl.className='lbl2'; hl.textContent=isMe?'手札（影響力）':'手札';
   const hand=document.createElement('div'); hand.className='hand';
@@ -1315,13 +1113,14 @@ function openStart(){
   const np=$('#npick'); np.innerHTML='';
   for(const n of [2,3,4,5]){ const b=document.createElement('button'); b.className='btn'+(setup.n===n?' primary':''); b.textContent=`${n}人`; b.onclick=()=>{ setup.n=n; openStart(); }; np.appendChild(b); }
   const cp=$('#chpick'); cp.innerHTML='';
-  CHARS.forEach((ch,i)=>{ const d=document.createElement('div'); d.className='ch'+(setup.ch===i?' on':''); d.appendChild(figureEl(ch,{top:false,bottom:false},2,false)); const l=document.createElement('span'); l.textContent=`${ch.name}`; d.appendChild(l); d.onclick=()=>{ setup.ch=i; openStart(); }; cp.appendChild(d); });
+  CHARS.forEach((ch,i)=>{ const d=document.createElement('div'); d.className='ch'+(setup.ch===i?' on':''); d.appendChild(figureEl(ch,{top:false,bottom:false},'sm',false,['top'])); const l=document.createElement('span'); l.textContent=`${ch.name}`; d.appendChild(l); d.onclick=()=>{ setup.ch=i; openStart(); }; cp.appendChild(d); });
   let auto=$('#autoPick');
   if(!auto){ auto=document.createElement('label'); auto.id='autoPick'; auto.style.cssText='font-size:13px;color:var(--dim);display:flex;gap:6px;align-items:center'; auto.innerHTML='<input type="checkbox"> おまかせ（自分の手もCPUに任せて観戦）'; $('#btnStart').parentElement.appendChild(auto); auto.querySelector('input').onchange=e=>{ setup.auto=e.target.checked; }; }
   $('#modalStart').classList.add('show');
 }
 
 function init(){
+  preloadImages();
   $('#rulesBox').innerHTML=buildRules();
   document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('.modal').classList.remove('show'));
   document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m && m.id!=='modalStart') m.classList.remove('show'); }));

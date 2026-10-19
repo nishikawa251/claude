@@ -368,6 +368,7 @@ button{font:inherit;color:inherit}
 .chpick .ch.on{box-shadow:0 0 0 2px var(--pink) inset;background:#3d2550}
 .endbox{text-align:center}
 .endbox .big{font-size:26px;color:var(--pink);margin:8px 0 4px;letter-spacing:.1em}
+.endbox .winline{font-size:21px;color:var(--ink);margin:4px 0 8px;line-height:1.5;text-shadow:0 0 12px rgba(255,95,168,.5)}
 .endbox .figure{align-items:center;margin:0 auto}
 
 .prompt{position:sticky;bottom:0;z-index:6;max-height:48vh;overflow:auto}
@@ -471,6 +472,16 @@ const TRIGGERS = [
   { id:'t14', name:'値下げ',        text:'以後、自分の「ざぁ～こ♥」は5♥で撃てる', persistent:true },
 ];
 const NO_TRIGGER = { id:'none', name:'ハズレ', text:'効果なし' };
+
+/* 勝者の決め台詞（ランダム） */
+const WIN_LINES = [
+  'みんなザコじゃん……♥',
+  'は？ 弱すぎて話にならないんだけど♥',
+  'ねぇ、それで本気だったの？ ざぁ～こ♥',
+  'ボロボロなのはそっちじゃん♥ 鏡、見た？',
+  'わからせるって言ってたの、誰だっけ？♥',
+  'はい、全員おしまい♥ 出直してきなよ？',
+];
 
 /* ルールの調整点（早見表に明記がない部分はここで切り替え） */
 const RULES = {
@@ -906,15 +917,18 @@ async function doExamine(p, target){
 async function endGame(){
   const w=S.winner; S.current=null; S.target=null;
   SFX.play(w.i===0?'fanfare':'down');
-  log(`${w.name} の勝ち！`, 'sys');
+  const line=pick(WIN_LINES);
+  log(`${w.name} の勝ち！「${line}」`, 'sys');
   if(S.headless) return;
+  say(w, line);
   render(); setIdle('ゲーム終了');
   const box=$('#endBox');
   box.innerHTML='';
   const h=document.createElement('h2'); h.textContent='けっか'; box.appendChild(h);
   box.appendChild(figureEl(w.ch, w.boro, 'xl', false)).style.justifyContent='center';
   const big=document.createElement('div'); big.className='big'; big.textContent=`${w.name} の勝ち！`; box.appendChild(big);
-  const sub=document.createElement('p'); sub.textContent = w.i===0 ? 'ざぁこ♡ 全員わからせ完了！' : (w.flags.win15&&w.hearts>=RULES.collectorGoal ? `${w.hearts}♥集めきった…` : 'わからされちゃった…'); box.appendChild(sub);
+  const wl=document.createElement('p'); wl.className='winline'; wl.textContent=`「${line}」`; box.appendChild(wl);
+  const sub=document.createElement('p'); sub.textContent = w.i===0 ? '全員わからせ完了！' : (w.flags.win15&&w.hearts>=RULES.collectorGoal ? `${w.name} は${w.hearts}♥集めきった……わからされちゃった` : '……わからされちゃった'); box.appendChild(sub);
   if(TUT.active){ const t=document.createElement('p'); t.innerHTML=TUT_END; box.appendChild(t); }
   const row=document.createElement('div'); row.className='close'; row.style.textAlign='center';
   const b=document.createElement('button'); b.className='btn primary'; b.textContent=TUT.active?'本番をはじめる':'もう一度'; b.onclick=()=>{ $('#modalEnd').classList.remove('show'); openStart(); }; row.appendChild(b);

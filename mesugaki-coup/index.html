@@ -218,12 +218,44 @@ button{font:inherit;color:inherit}
 @keyframes burst{0%{transform:translate(-50%,-50%) scale(.5);opacity:1}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.5) rotate(var(--rot));opacity:0}}
 .rc.lost.just{animation:drop .6s ease-out}
 @keyframes drop{0%{transform:translateY(-22px) rotate(-10deg)}55%{transform:translateY(5px) rotate(4deg)}100%{transform:none}}
-.ccard.reveal{animation:reveal .8s ease-out}
-@keyframes reveal{0%{transform:rotateY(90deg);filter:brightness(2.2)}45%{transform:rotateY(0);filter:brightness(1.8)}100%{filter:none}}
 .tc.reveal{animation:glow 1s ease-out}
 @keyframes glow{0%{box-shadow:0 0 0 2px var(--gold) inset,0 0 28px var(--gold);transform:scale(1.08)}100%{transform:none}}
 .btn.sfx-off{color:var(--dim)}
-@media (prefers-reduced-motion:reduce){.pl.shake,.pl.hit::after,.fxp,.rc.lost.just,.ccard.reveal,.tc.reveal{animation:none}}
+@media (prefers-reduced-motion:reduce){.pl.shake,.pl.hit::after,.fxp,.rc.lost.just,.tc.reveal{animation:none}}
+
+/* ---------- card flip (3D) ---------- */
+.figure{perspective:700px}
+.ccard.flipcard{overflow:visible}
+.flipper{position:relative;width:var(--cw);aspect-ratio:416/298;transform-style:preserve-3d;transition:transform .85s cubic-bezier(.3,.1,.2,1)}
+.flipper.go{transform:rotateY(180deg)}
+.flipper .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.flipper .face img{width:100%;height:100%;display:block}
+.flipper .face.back{transform:rotateY(180deg)}
+.flipper.go .face.back{box-shadow:0 0 0 2px var(--boro) inset}
+.ccard.flipcard .lbl{display:none}
+
+/* ---------- trigger cutscene ---------- */
+.cut{position:fixed;inset:0;z-index:40;display:grid;place-items:center;background:rgba(10,4,14,.74);animation:cutin .25s ease-out;cursor:pointer;padding:16px}
+.cut.out{animation:cutout .3s ease-in forwards}
+@keyframes cutin{from{opacity:0}to{opacity:1}}
+@keyframes cutout{to{opacity:0}}
+.cut .rays{position:absolute;left:50%;top:50%;width:160vmax;height:160vmax;transform:translate(-50%,-50%);background:repeating-conic-gradient(rgba(255,95,168,.28) 0 9deg,transparent 9deg 22deg);-webkit-mask:radial-gradient(circle,#000 0,rgba(0,0,0,.5) 25%,transparent 55%);mask:radial-gradient(circle,#000 0,rgba(0,0,0,.5) 25%,transparent 55%);animation:spin 9s linear infinite}
+@keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+.cut.dud .rays{display:none}
+.cutbox{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;max-width:min(560px,100%)}
+.cutwho{font-size:15px;color:var(--ink);letter-spacing:.08em;animation:rise .4s ease-out both}
+.cutlabel{font-size:clamp(30px,6vw,52px);color:var(--gold);letter-spacing:.3em;text-shadow:0 0 14px rgba(255,209,102,.9),0 4px 0 #6b4a00;animation:slam .5s cubic-bezier(.2,1.6,.4,1) both;animation-delay:.1s}
+.cut.dud .cutlabel{color:var(--dim);text-shadow:none;letter-spacing:.15em}
+.cutcard{width:min(440px,100%);padding:14px 18px 16px;background:#2b3148;color:#e6ecff;box-shadow:0 0 0 3px #8090d8 inset,0 0 40px rgba(127,193,255,.55),0 20px 50px rgba(0,0,0,.6);animation:popin .6s cubic-bezier(.2,1.5,.4,1) both;animation-delay:.2s}
+.cutcard .tn{font-size:clamp(22px,4.5vw,32px);color:#fff;letter-spacing:.1em;margin-bottom:8px}
+.cutcard .tt{font-size:15px;line-height:1.7}
+.cut.dud .cutcard{background:#2a2a36;box-shadow:0 0 0 3px #4a4a5c inset,0 20px 50px rgba(0,0,0,.6);color:#9a9aa8}
+.cuthint{font-size:11px;color:var(--dim);animation:rise .4s ease-out both;animation-delay:.6s}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes slam{from{opacity:0;transform:scale(2.2)}to{opacity:1;transform:scale(1)}}
+@keyframes popin{from{opacity:0;transform:scale(.4) rotate(-6deg)}to{opacity:1;transform:none}}
+.cut .fxp{font-size:32px}
+@media (prefers-reduced-motion:reduce){.flipper{transition:none}.cut,.cut.out,.cut .rays,.cutwho,.cutlabel,.cutcard,.cuthint{animation:none}}
 
 /* ---------- tutorial ---------- */
 .coach{display:flex;gap:10px;align-items:flex-start;background:#3a2550;border-left:4px solid var(--gold);padding:8px 12px;margin-bottom:10px;line-height:1.65;font-size:14px}
@@ -451,7 +483,7 @@ function newGame(n, myChar, opts){
   }
   if(auto){ S.players[0].cpu=true; S.players[0].name=`${S.players[0].ch.name}（おまかせ）`; }
   S.deck=deck; S.turn=rnd(n); S.flags={examineMode:false}; S.winner=null; S.log=[]; S.current=null; S.target=null;
-  TUT.active=false; setHighlight(null); S.playable=null;
+  TUT.active=false; setHighlight(null); S.playable=null; document.querySelectorAll('#cut').forEach(e=>e.remove());
   if(opts.tutorial) tutSetup();
   $('#modalEnd').classList.remove('show');
   render();
@@ -614,11 +646,13 @@ async function loseInfluence(p, by, reason){
   const avail=['top','bottom'].filter(k=>!p.boro[k]);
   let k=avail[0];
   if(avail.length>1) k = p.cpu ? cpuFlip(p) : await humanFlip(p);
-  p.boro[k]=true;
-  const t=p.triggers[k]; t.revealed=true;
+  const t=p.triggers[k];
+  SFX.play('rip');
+  await fxFlipCard(p,k);
+  p.boro[k]=true; t.revealed=true;
   log(`${p.name} の${half(k)}がボロボロに… トリガー「${t.card.name}」：${t.card.text}`, 'sys');
-  SFX.play('rip'); render(); fxFlip(p,k); await wait(700);
-  SFX.play(t.card.id==='none'?'dud':'sparkle'); await wait(500);
+  render(); fxTrigGlow(p,k);
+  await cutscene(p, k, t.card);
   await resolveTrigger(p, t.card, by);
   if(p.hand.length===0){ p.alive=false; SFX.play('down'); log(`${p.name} は脱落…`, 'hurt'); }
   render();
@@ -1095,10 +1129,39 @@ function fxHit(p){
   }
   setTimeout(()=>{ el.classList.remove('shake','hit'); }, 800);
 }
-function fxFlip(p,k){
+function fxTrigGlow(p,k){
   const el=panelOf(p); if(!el) return;
-  const cards=el.querySelectorAll('.figure .ccard'); const c=cards[k==='top'?0:1]; if(c){ c.classList.add('reveal'); setTimeout(()=>c.classList.remove('reveal'), 900); }
-  const ts=el.querySelectorAll('.tc'); const t=ts[k==='top'?0:1]; if(t){ t.classList.add('reveal'); setTimeout(()=>t.classList.remove('reveal'), 1100); }
+  const ts=el.querySelectorAll('.trigcol .tc'); const t=ts[k==='top'?0:1]; if(t){ t.classList.add('reveal'); setTimeout(()=>t.classList.remove('reveal'), 1100); }
+}
+/* メスガキカードを3Dで裏返す。render() が静的なボロ絵に差し替えるまでのつなぎ */
+async function fxFlipCard(p,k){
+  const el=panelOf(p); if(!el){ await wait(300); return; }
+  const card=el.querySelectorAll('.figure .ccard')[k==='top'?0:1]; if(!card){ await wait(300); return; }
+  const img=card.querySelector('img');
+  const flipper=document.createElement('div'); flipper.className='flipper';
+  const front=document.createElement('div'); front.className='face front'; if(img) front.appendChild(img);
+  const back=document.createElement('div'); back.className='face back'; const bimg=document.createElement('img'); bimg.src=imgSrc(p.ch,k,true); bimg.alt=''; back.appendChild(bimg);
+  flipper.append(front,back); card.classList.add('flipcard'); card.prepend(flipper);
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  flipper.classList.add('go');
+  setTimeout(()=>card.classList.add('boro'), 420);
+  await wait(900);
+}
+/* トリガー発動の演出：画面中央にトリガーカードをドンと出す。クリックで早送り */
+function cutscene(p, k, card){
+  const dud=card.id==='none';
+  const cut=document.createElement('div'); cut.id='cut'; cut.className='cut'+(dud?' dud':'');
+  cut.innerHTML=`<div class="rays"></div><div class="cutbox"><div class="cutwho">${p.name} の${half(k)}がボロボロに…</div><div class="cutlabel">${dud?'ハズレ…':'TRIGGER!'}</div><div class="cutcard"><div class="tn">${card.name}</div><div class="tt">${card.text}</div></div><div class="cuthint">クリックで進む</div></div>`;
+  document.body.appendChild(cut);
+  SFX.play(dud?'dud':'sparkle');
+  if(!dud){ for(let i=0;i<16;i++){ const sp=document.createElement('span'); sp.className='fxp'; sp.textContent=['✦','♥','✧','★'][i%4]; sp.style.color=['#ffd166','#ff5fa8','#7fc1ff','#fff'][i%4]; const a=Math.random()*Math.PI*2, r=160+Math.random()*220; sp.style.setProperty('--dx',`${Math.cos(a)*r}px`); sp.style.setProperty('--dy',`${Math.sin(a)*r}px`); sp.style.setProperty('--rot',`${Math.random()*180-90}deg`); sp.style.animationDelay=`${0.2+Math.random()*0.25}s`; sp.style.animationDuration='1.1s'; cut.appendChild(sp); } }
+  const gid=S.gameId;
+  return new Promise((resolve)=>{
+    let done=false;
+    const finish=()=>{ if(done) return; done=true; cut.classList.add('out'); setTimeout(()=>cut.remove(), 320); if(gid!==S.gameId) resolve(); else resolve(); };
+    cut.addEventListener('click', finish);
+    wait(dud?1400:2200).then(finish).catch(()=>{ cut.remove(); resolve(); });
+  });
 }
 
 /* =====================================================================

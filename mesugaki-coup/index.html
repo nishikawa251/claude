@@ -272,6 +272,15 @@ button{font:inherit;color:inherit}
 .swapcap{font-size:13px;color:var(--ink);min-height:1.6em;letter-spacing:.04em}
 .swapcap b{color:var(--gold)}
 .rc.fresh{animation:fresh 1.8s ease-out}
+/* チャレンジ成功（ハッタリ発覚）の演出 */
+.cut.bluff{background:rgba(22,4,12,.68)}
+.cut.bluff .cutlabel{color:var(--pink);text-shadow:0 0 16px rgba(255,95,168,.95),0 4px 0 #5a0030}
+.bluffstage{position:relative;display:grid;place-items:center;width:190px;height:132px}
+.bluffstage .rc{width:164px;animation:popin .35s cubic-bezier(.2,1.4,.4,1) both}
+.bluffstage.hit .rc{filter:grayscale(.75) brightness(.75);animation:shake .5s}
+.bluffx{position:absolute;inset:0;display:grid;place-items:center;font-size:130px;line-height:1;color:var(--pink);text-shadow:0 0 18px rgba(255,95,168,.85),0 4px 0 #5a0030;opacity:0;pointer-events:none}
+.bluffstage.hit .bluffx{animation:stamp .4s cubic-bezier(.2,1.6,.4,1) forwards}
+@keyframes stamp{from{opacity:0;transform:scale(3) rotate(-25deg)}to{opacity:1;transform:scale(1) rotate(-12deg)}}
 @keyframes fresh{0%{box-shadow:0 0 0 3px #7fc1ff inset,0 0 28px #7fc1ff;transform:translateY(-8px)}100%{transform:none}}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes slam{from{opacity:0;transform:scale(2.2)}to{opacity:1;transform:scale(1)}}
@@ -520,7 +529,7 @@ const WIN_LINES = [
 /* ルールの調整点（早見表に明記がない部分はここで切り替え） */
 const RULES = {
   peekOwnTriggers: true,   // 自分のトリガーは自分だけ見える
-  triggerDeal: 3,          // 開始時に配るトリガー枚数。ここから2枚を選んで上下に仕込む
+  triggerDeal: 2,          // 開始時に配るトリガー枚数。2ならそのまま上下に仕込む（3以上なら選んで残りを山へ）
   attackerChoosesFlip: true, // 影響力を失わせた側が、どちらを脱がせるか選ぶ
   collectorGoal: 10,       // ♥コレクターの勝利条件
   win15LiftsForcedCoup: true, // ♥コレクター所持者は10♥の強制ざぁ～こ♥を免除（目標を10♥より上にしたとき用）
@@ -725,7 +734,7 @@ function cpuPlaceTriggers(p){
 }
 async function humanPlaceTriggers(p){
   const cardEl=c=>{ const el=triggerEl({card:c,revealed:true},'on',false); el.style.width='190px'; el.style.minHeight='84px'; return el; };
-  const top=await askCards(`トリガーを仕込みます。${p.trigHand.length}枚のうち2枚を使います。まず「上半身」の横に置くカードを選んでください`, p.trigHand.map(c=>({el:cardEl(c), value:c})), p.trigHand.length>2?'残りの1枚は山に戻ります（相手には見えません）':'2枚とも仕込みます（相手には見えません）', undefined, 'placeTrigger');
+  const top=await askCards(p.trigHand.length>2?`トリガーを仕込みます。${p.trigHand.length}枚のうち2枚を使います。まず「上半身」の横に置くカードを選んでください`:'トリガーを仕込みます。配られた2枚を上半身・下半身に1枚ずつ伏せます。まず「上半身」の横に置くカードを選んでください', p.trigHand.map(c=>({el:cardEl(c), value:c})), p.trigHand.length>2?`残りの${p.trigHand.length-2}枚は山に戻ります（相手には見えません）`:'どちらを先に脱がされるかで発動順が変わります（相手には見えません）', undefined, 'placeTrigger');
   const rest=p.trigHand.filter(c=>c!==top);
   const bottom = rest.length===1 ? rest[0] : await askCards('次に「下半身」の横に置くカードを選んでください', rest.map(c=>({el:cardEl(c), value:c})), `上半身：${top.name}`, undefined, 'placeTrigger');
   return [top,bottom];
@@ -767,7 +776,8 @@ async function resolveChallenge(claimant, challenger, role){
   } else {
     claimant.bluffsCaught++;
     log(`${claimant.name} は ${rname(role)} を持っていなかった！ハッタリ失敗`, 'hurt');
-    render(); await wait(700);
+    render();
+    await fxBluff(claimant, challenger, role);
     await loseInfluence(claimant, challenger, 'ハッタリ失敗');
     return false;
   }
@@ -1534,6 +1544,25 @@ function fxSwap(p, role, title, label, showRole){
       .catch(()=>{ cut.remove(); resolve(); });
   });
 }
+/* チャレンジ成功：主張したカードを出して、少し溜めてから「ハッタリ！」と✗を叩きつける */
+function fxBluff(claimant, challenger, role){
+  if(S.headless) return Promise.resolve();
+  const cut=document.createElement('div'); cut.id='cut'; cut.className='cut bluff';
+  cut.innerHTML=`<div class="cutbox"><div class="cutwho">${challenger.name}「チャレンジ！」 ${claimant.name} は ${rname(role)} を…</div><div class="bluffstage"><div class="bluffx">✗</div></div><div class="swapcap">持っているのか…？</div><div class="cuthint">クリックで飛ばす</div></div>`;
+  const box=cut.querySelector('.cutbox'), stage=cut.querySelector('.bluffstage'), cap=cut.querySelector('.swapcap');
+  stage.prepend(roleCardEl(role));
+  document.body.appendChild(cut);
+  const gid=S.gameId;
+  return new Promise((resolve)=>{
+    let done=false;
+    const finish=()=>{ if(done) return; done=true; cut.classList.add('out'); setTimeout(()=>cut.remove(), 320); resolve(); };
+    cut.addEventListener('click', finish);
+    const step=(ms,fn)=>wait(ms).then(()=>{ if(!done && gid===S.gameId) fn(); });
+    step(700,()=>{ const lb=document.createElement('div'); lb.className='cutlabel'; lb.textContent='ハッタリ！'; box.insertBefore(lb, stage); stage.classList.add('hit'); cap.innerHTML=`持っていなかった → <b>影響力を1つ失う</b>`; SFX.play('buzz'); })
+      .then(()=>step(1500,finish))
+      .catch(()=>{ cut.remove(); resolve(); });
+  });
+}
 // 引き直した直後のカードを光らせる
 function markFresh(c){ c.fresh=true; setTimeout(()=>{ delete c.fresh; if(!S.headless) render(); }, 2000); }
 
@@ -1676,7 +1705,7 @@ function buildRules(){
   <ul class="rl-list">
     <li>各自、<b>ガキカード2枚</b>（＝ライフ2つ）と <b>2♥</b> を持つ。手札は自分だけ見る。</li>
     <li><b>メスガキカード</b> 上半身・下半身を並べる。表は普通の服、裏はボロ絵。</li>
-    <li><b>トリガーカード</b>を${RULES.triggerDeal}枚引き、2枚を選んで上半身・下半身の横に敷く（残りは山へ）。自分のトリガーは自分だけ見てよい。</li>
+    <li><b>トリガーカード</b>を${RULES.triggerDeal}枚引き、${RULES.triggerDeal>2?'2枚を選んで上半身・下半身の横に敷く（残りは山へ）':'上半身・下半身の横に1枚ずつ敷く（ハズレも仕込むことになる）'}。自分のトリガーは自分だけ見てよい。</li>
   </ul></div>
 
   <div class="rl-sec"><h3><span class="no">2</span>手番の流れ</h3>

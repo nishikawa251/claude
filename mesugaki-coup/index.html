@@ -55,17 +55,23 @@ button{font:inherit;color:inherit}
 .btn.primary .sub{color:#5a1b36}
 
 /* ---------- players ---------- */
-/* 円卓：中央にフェルト、相手は上の弧、あなたは手前 */
-.table{position:relative;min-height:760px}
-.felt{position:absolute;left:50%;top:44%;width:80%;height:70%;transform:translate(-50%,-50%);border-radius:50%;
+/* 円卓：上段＝奥の相手、中段＝左右の相手と中央のログ、下段＝あなた。フェルトは後ろに敷く */
+.table{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto auto;gap:14px 12px;align-items:center;justify-items:center;padding-top:6px}
+.seats{display:contents}
+.seat-top{grid-area:1/1/2/4;display:flex;gap:18px;justify-content:center;align-items:flex-start;flex-wrap:wrap;z-index:2}
+.seat-left{grid-area:2/1/3/2;z-index:2}
+.seat-right{grid-area:2/3/3/4;z-index:2}
+.center{grid-area:2/2/3/3;width:100%;max-width:460px;z-index:1}
+.meseat{grid-area:3/1/4/4;z-index:3}
+.felt{position:absolute;left:5%;right:5%;top:90px;bottom:150px;border-radius:50%;z-index:0;
   background:radial-gradient(ellipse at 50% 35%,#6c2f60 0,#4a1f45 45%,#30142d 100%);
   box-shadow:inset 0 0 0 12px #6b4a36,inset 0 0 0 16px #3a2419,inset 0 0 90px rgba(0,0,0,.55),0 26px 60px rgba(0,0,0,.6)}
 .felt::after{content:'';position:absolute;inset:26px;border-radius:50%;border:1px dashed rgba(255,150,200,.16)}
-.seats .pl{position:absolute;width:290px;transform:translate(-50%,-50%);z-index:2}
+.seats .pl{width:290px;position:relative}
 .seats .figure.md{--cw:120px}
-.center{position:absolute;left:50%;top:43%;transform:translate(-50%,-50%);width:400px;display:flex;flex-direction:column;gap:8px;z-index:1}
-.meseat{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:max-content;max-width:100%;z-index:3}
-.meseat .figure.lg{--cw:200px}
+.center{display:flex;flex-direction:column;gap:8px}
+.meseat{width:max-content;max-width:100%}
+.meseat .figure.lg{--cw:184px}
 .pl{position:relative;padding:8px 10px 10px;--c:var(--line2);transition:opacity .3s}
 .pl.cur{--c:var(--pink)}
 .pl.dead{opacity:.45}
@@ -231,15 +237,15 @@ button{font:inherit;color:inherit}
 .endbox .big{font-size:26px;color:var(--pink);margin:8px 0 4px;letter-spacing:.1em}
 .endbox .figure{align-items:center;margin:0 auto}
 
+.prompt{position:sticky;bottom:0;z-index:6;max-height:48vh;overflow:auto}
 @media (max-width:960px){
-  .table{min-height:0;display:flex;flex-direction:column;gap:10px}
+  .table{display:flex;flex-direction:column;gap:10px;padding-top:0}
   .felt{display:none}
-  .seats{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
-  .seats .pl{position:static;transform:none;width:auto;left:auto!important;top:auto!important}
+  .seat-top{display:contents}
+  .seats .pl{width:auto}
   .seats .figure.md{--cw:150px}
-  .center{position:static;transform:none;width:auto}
-  .meseat{position:static;transform:none;width:auto}
-  .prompt{position:sticky;bottom:0;z-index:6;max-height:52vh;overflow:auto}
+  .center{max-width:none}
+  .meseat{width:auto}
 }
 @media (max-width:640px){
   .rc{width:72px;min-height:96px}
@@ -890,11 +896,13 @@ function playerPanel(p, isMe){
 function say(p, text){ p.bubble={text, until:Date.now()+2200}; render(); setTimeout(()=>{ if(p.bubble&&Date.now()>=p.bubble.until) render(); }, 2300); }
 
 // 相手の席（テーブル内の位置%）。人数ごとに上の弧へ並べる
-const SEATS={1:[[50,16]],2:[[27,18],[73,18]],3:[[13,36],[50,14],[87,36]],4:[[12,40],[30,14],[70,14],[88,40]]};
+const SEATS={1:['top'],2:['top','top'],3:['left','top','right'],4:['left','top','top','right']};
 function render(){
   const opps=$('#opps'); opps.innerHTML='';
   const others=S.players.filter(p=>p.i!==0);
-  others.forEach((p,k)=>{ const el=playerPanel(p,false); const pos=(SEATS[others.length]||SEATS[4])[k]; if(pos){ el.style.left=pos[0]+'%'; el.style.top=pos[1]+'%'; } opps.appendChild(el); });
+  const plan=SEATS[others.length]||SEATS[4];
+  const topWrap=document.createElement('div'); topWrap.className='seat-top'; opps.appendChild(topWrap);
+  others.forEach((p,k)=>{ const el=playerPanel(p,false); const seat=plan[k]||'top'; if(seat==='top') topWrap.appendChild(el); else { el.classList.add('seat-'+seat); opps.appendChild(el); } });
   const me=$('#meWrap'); me.innerHTML=''; if(S.players[0]) me.appendChild(playerPanel(S.players[0],true));
   const info=$('#deckInfo');
   if(S.players.length){

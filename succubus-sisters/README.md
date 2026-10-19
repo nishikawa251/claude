@@ -107,6 +107,10 @@ python3 sim/proposal.py sim/patches/buff2.json sim/result.json /tmp/buff2.json p
 
 過去のバランス調査（調整前のレポート）は、`sim/history.json` に一覧があり、`balance.html` の最後から開ける。各版のレポートは git の履歴（コミット `d7daf91`・`568a3be`・`2b3ca99`・`afefa62` の `balance.html`）にも残っている。
 
+## カードリスト
+
+`cardlist.html` は全120枚の一覧。種類・属性・トリガー・名前や効果で絞り込め、カードで見る／表で見るを切り替えられる。強化案で変えたカードには変更前の値を並べ、最新のバランス調査の評価（Tier）も載せている。カードを変えたら `python3 sim/cardlist.py` で作り直す（中身は `index.html` の CARD_TSV、評価は `sim/cards.csv` から読む）。
+
 ## 構成
 
 `index.html` 一枚です。主な関数：

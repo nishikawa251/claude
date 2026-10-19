@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>サキュバスシスターズ カードリスト</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+/* バランス調査と同じ色と書体。カードは属性の色で見分け、数値は大きく。上に絞り込み、下に種類ごとの並び */
+:root{
+  --bg:#faf6f8; --surface:#ffffff; --ink:#1f1522; --ink2:#4f4252; --muted:#7a6c7d; --line:#eadfe7; --band:#f6eef3;
+  --accent:#b8306a; --accent-soft:#f6dbe7; --heart:#d23d7c;
+  --el-none:#6f6470; --el-fire:#c9531f; --el-water:#246fb8; --el-thunder:#9a7400;
+  --tS:#8f1d4f; --tA:#b8306a; --tB:#d9699a; --tC:#eba9c6; --tD:#d9d2d8; --tE:#e9e3ea;
+  --onS:#ffffff; --onA:#ffffff; --onB:#1f1522; --onC:#1f1522; --onD:#1f1522; --onE:#4f4252;
+  --display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  color-scheme:dark; --bg:#141015; --surface:#1d171f; --ink:#f6ecf2; --ink2:#d3c4cf; --muted:#a896a6; --line:#382c3a; --band:#241c26;
+  --accent:#ff74aa; --accent-soft:#44202f; --heart:#ff74aa;
+  --el-none:#c3b6c2; --el-fire:#ff8a57; --el-water:#6cb8ff; --el-thunder:#ffd54d;
+  --tS:#ff74aa; --tA:#e0558f; --tB:#b04a78; --tC:#7a3a57; --tD:#3a323c; --tE:#2b242d;
+  --onS:#1f0a14; --onA:#1f0a14; --onB:#ffffff; --onC:#ffffff; --onD:#d3c4cf; --onE:#d3c4cf;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark; --bg:#141015; --surface:#1d171f; --ink:#f6ecf2; --ink2:#d3c4cf; --muted:#a896a6; --line:#382c3a; --band:#241c26;
+  --accent:#ff74aa; --accent-soft:#44202f; --heart:#ff74aa;
+  --el-none:#c3b6c2; --el-fire:#ff8a57; --el-water:#6cb8ff; --el-thunder:#ffd54d;
+  --tS:#ff74aa; --tA:#e0558f; --tB:#b04a78; --tC:#7a3a57; --tD:#3a323c; --tE:#2b242d;
+  --onS:#1f0a14; --onA:#1f0a14; --onB:#ffffff; --onC:#ffffff; --onD:#d3c4cf; --onE:#d3c4cf;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.7}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+main{max-width:1120px;margin:0 auto;padding-block:28px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:32px}
+.eyebrow{font-size:12px;letter-spacing:.25em;color:var(--accent);font-weight:700}
+.nb{display:inline-block}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,6vw,44px);line-height:1.15;margin:6px 0 10px;text-wrap:balance}
+h2{font-family:var(--display);font-weight:400;font-size:22px;margin:0;text-wrap:balance;display:flex;align-items:baseline;gap:10px}
+h2 small{font-family:var(--body);font-size:13px;color:var(--muted);font-weight:400}
+p{margin:0 0 10px;max-width:68ch;color:var(--ink2)}
+.lede{font-size:16px}
+section{display:flex;flex-direction:column;gap:12px}
+
+/* 構成 */
+.mix{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.mixbox{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.mixbox h3{margin:0 0 6px;font-size:12px;letter-spacing:.15em;color:var(--muted)}
+.mixrow{display:flex;flex-wrap:wrap;gap:6px 14px;font-variant-numeric:tabular-nums}
+.mixrow span{display:inline-flex;align-items:baseline;gap:5px;font-size:13px;color:var(--ink2)}
+.mixrow b{font-size:18px;color:var(--ink)}
+.total{display:flex;gap:22px;flex-wrap:wrap;font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+.total b{display:block;font-size:22px;color:var(--ink)}
+
+/* 絞り込み */
+.filters{background:var(--bg);padding-block:10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.frow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.frow .lab{font-size:12px;color:var(--muted);min-width:3.5em}
+.chip{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink2);border-radius:999px;padding:2px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.chip:focus-visible,.search:focus-visible,select:focus-visible,.cardlink:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.search{font:inherit;font-size:14px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 12px;flex:1 1 200px;min-width:0;max-width:360px}
+select{font:inherit;font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:5px 8px}
+.shown{font-size:13px;color:var(--muted);margin-left:auto;font-variant-numeric:tabular-nums}
+
+/* カード */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.cc{--c:var(--el-none);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0;position:relative}
+.el-none{--c:var(--el-none)} .el-fire{--c:var(--el-fire)} .el-water{--c:var(--el-water)} .el-thunder{--c:var(--el-thunder)}
+.cc-top{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.marks{font-size:14px;color:var(--ink);letter-spacing:.05em}
+.trig{border:1px solid var(--line);border-radius:5px;padding:0 6px;font-weight:700;color:var(--ink2)}
+.qty{margin-left:auto;font-weight:700;color:var(--ink2)}
+.cardlink{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:zoom-in;text-align:left}
+.cc-name{margin:0;font-size:17px;line-height:1.35;font-weight:700;overflow-wrap:anywhere}
+.stats{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;font-variant-numeric:tabular-nums}
+.elb{display:inline-block;font-size:11px;font-weight:700;color:var(--c);border:1.5px solid var(--c);border-radius:5px;padding:0 5px;line-height:1.5}
+.num{display:inline-flex;align-items:baseline;gap:3px;font-size:12px;color:var(--muted)}
+.num b{font-family:var(--display);font-weight:400;font-size:24px;line-height:1;color:var(--ink)}
+.meta{font-size:12px;color:var(--ink2)}
+.cost{font-size:12px;font-weight:700;color:var(--accent)}
+.txt{margin:0;font-size:13px;color:var(--ink2);white-space:pre-line;line-height:1.6}
+.heart{border-top:1px dashed var(--line);padding-top:6px;display:flex;flex-direction:column;gap:4px}
+.heart .hname{font-size:14px;font-weight:700;color:var(--heart)}
+.foot{margin-top:auto;padding-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tier{display:inline-block;min-width:30px;text-align:center;border-radius:6px;padding:0 6px;font-weight:700;font-size:12px}
+.tS{background:var(--tS);color:var(--onS)} .tA{background:var(--tA);color:var(--onA)} .tB{background:var(--tB);color:var(--onB)}
+.tC{background:var(--tC);color:var(--onC)} .tD{background:var(--tD);color:var(--onD)} .tE{background:var(--tE);color:var(--onE)}
+.chg{font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:0 8px}
+.chlist{margin:0;padding:6px 10px;list-style:none;background:var(--band);border-radius:8px;font-size:12px;color:var(--ink2);display:flex;flex-direction:column;gap:2px}
+.chlist s{color:var(--muted)}
+.empty{color:var(--muted);font-size:14px;padding:12px 0}
+
+/* 表 */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12px;color:var(--muted);white-space:nowrap;position:sticky;top:0;background:var(--surface)}
+td.n{text-align:right;white-space:nowrap}
+td.nm{font-weight:700;white-space:nowrap}
+td.tx{min-width:18em;color:var(--ink2);white-space:pre-line}
+td.hx{min-width:12em;color:var(--ink2)}
+tbody tr:hover td{background:var(--band)}
+
+ul.plain{margin:0;padding-left:1.2em;color:var(--ink2);max-width:72ch} ul.plain li{margin-bottom:6px}
+ul.plain a{color:var(--accent);font-weight:700}
+.note{font-size:13px;color:var(--muted)}
+#zoom{position:fixed;inset:0;z-index:60;background:rgba(10,6,12,.72);display:grid;place-items:center;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+#zoom figure{margin:0;display:flex;flex-direction:column;gap:8px;align-items:center;max-width:min(420px,100%)}
+#zoom img{max-height:78vh;max-width:100%;border-radius:12px;background:#fff}
+#zoom figcaption{font-size:13px;color:#f6ecf2;text-align:center;max-width:36ch}
+@media (min-width:700px){ .filters{position:sticky;top:env(safe-area-inset-top,0px);z-index:5} }
+@media (max-width:699px){
+  .filters .frow:not(:first-child){flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .filters .frow .lab{min-width:auto;flex:none}
+  .chip{flex:none}
+  .grid{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+<main>
+<header>
+  <div class="eyebrow">260717基本ルール・120枚Ver ＋ カード強化案・回復は自分にだけ</div>
+  <h1><span class="nb">サキュバスシスターズ</span> <span class="nb">カードリスト</span></h1>
+  <p class="lede">いまゲームで使っている全カード。同じ中身のカードは1枚にまとめ、枚数とIDを添えた。強化案で変えたところには印をつけ、変更前の値も並べている。カード名をタップすると実物カードを表示する。</p>
+  <div class="total" id="total"></div>
+</header>
+
+<section>
+  <h2>構成</h2>
+  <div class="mix" id="mix"></div>
+</section>
+
+<section aria-label="カード一覧">
+  <div class="filters" role="search">
+    <div class="frow"><input class="search" id="q" type="search" placeholder="名前・効果で探す（例：追撃、回復）" aria-label="名前・効果で探す">
+      <select id="sort" aria-label="並べ方"><option value="id">ID順</option><option value="atk">攻撃が高い順</option><option value="def">防御が高い順</option><option value="value">評価が高い順</option><option value="name">名前順</option></select>
+      <select id="view" aria-label="表示"><option value="cards">カードで見る</option><option value="table">表で見る</option></select>
+      <span class="shown" id="shown"></span></div>
+    <div class="frow" id="fKind"><span class="lab">種類</span></div>
+    <div class="frow" id="fEl"><span class="lab">属性</span></div>
+    <div class="frow" id="fTrig"><span class="lab">トリガー</span></div>
+    <div class="frow" id="fMore"><span class="lab">その他</span></div>
+  </div>
+  <div id="out"></div>
+</section>
+
+<section>
+  <h2>読み方</h2>
+  <ul class="plain">
+    <li>記号：▲ 攻撃、○ 防御、☆ 魔法（HPを払って使い、場に残る）、△ 補助、† 断罪（正体を明かしたシスターだけ）、♥ 両面カード（サキュバスは下の面を使う）。</li>
+    <li>範囲の「ランダム〔A C E〕」は、相手全員が山札を1枚めくり、トリガーが合った人にだけ当たる。</li>
+    <li>評価は最新の<a href="__BALANCE_URL__" target="_blank" rel="noopener">バランス調査</a>の Tier（1回使ったときに動いたHPの量。S 18以上／A 13〜18／B 8〜13／C 4〜8／D 4未満）。「効果」はHPを動かさないカードで、この指標では測れない。</li>
+    <li>強化案で値を変えたカードは、実物カードの画像が変更前のままになっている。表示しているのは変更後の値。</li>
+  </ul>
+  <p class="note">作成日 __DATE__　・　元データ：GFカードシート【強化版】260927 _120枚Ver（ゲームの CARD_TSV と同じ内容）</p>
+</section>
+</main>
+<div id="zoom" hidden><figure><img alt=""><figcaption></figcaption></figure></div>
+<script>
+const DATA = __DATA__;
+const COUNTS = __COUNTS__;
+const TOTAL = __TOTAL__;
+const KIND = { atk:'攻撃 ▲', def:'防御 ○', magic:'魔法 ☆', sup:'補助 △', judge:'断罪 †' };
+const KIND_ORDER = ['atk', 'def', 'magic', 'sup', 'judge'];
+const EL = { none:'無', fire:'火', water:'水', thunder:'雷' };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const $ = s => document.querySelector(s);
+const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch {} } };
+const F = { kind:new Set(), el:new Set(), trig:new Set(), heart:false, changed:false, q:'', sort:'id', view:store.get('cl-view') || 'cards' };
+
+/* 合計と構成 */
+$('#total').innerHTML = [
+  [TOTAL + '枚', 'カード'], [COUNTS.groups + '種', '中身ちがい'], [COUNTS.heart + '枚', '♥両面カード'], [COUNTS.changed + '枚', '強化案で変更'],
+].map(([b, s]) => `<span><b>${b}</b>${s}</span>`).join('');
+const mixBox = (title, items) => `<div class="mixbox"><h3>${title}</h3><div class="mixrow">${items.map(([l, n]) => `<span>${l}<b>${n}</b></span>`).join('')}</div></div>`;
+$('#mix').innerHTML =
+  mixBox('種類（主な記号）', KIND_ORDER.map(k => [KIND[k], COUNTS.kind[k]])) +
+  mixBox('属性', Object.keys(EL).map(e => [`<span class="elb el-${e}">${EL[e]}</span>`, COUNTS.el[e]])) +
+  mixBox('トリガー', 'ABCDE'.split('').map(t => [t, COUNTS.trig[t]]));
+
+/* 絞り込みの部品 */
+function chips(id, key, items){
+  $(id).insertAdjacentHTML('beforeend', items.map(([v, label]) => `<button type="button" class="chip" data-f="${key}" data-v="${v}" aria-pressed="false">${label}</button>`).join(''));
+}
+chips('#fKind', 'kind', KIND_ORDER.map(k => [k, KIND[k]]));
+chips('#fEl', 'el', Object.keys(EL).map(e => [e, `<span class="dot el-${e}" style="background:var(--c)"></span>${EL[e]}`]));
+chips('#fTrig', 'trig', 'ABCDE'.split('').map(t => [t, t]));
+chips('#fMore', 'flag', [['heart', '♥両面カード'], ['changed', '強化案で変更']]);
+document.addEventListener('click', e => {
+  const b = e.target.closest('.chip');
+  if (b){
+    const k = b.dataset.f, v = b.dataset.v;
+    if (k === 'flag'){ F[v] = !F[v]; b.setAttribute('aria-pressed', F[v]); }
+    else { F[k].has(v) ? F[k].delete(v) : F[k].add(v); b.setAttribute('aria-pressed', F[k].has(v)); }
+    draw(); return;
+  }
+  const z = e.target.closest('.cardlink');
+  if (z){ openZoom(DATA[+z.dataset.i]); return; }
+  if (e.target.closest('#zoom')) $('#zoom').hidden = true;
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#zoom').hidden = true; });
+$('#q').addEventListener('input', e => { F.q = e.target.value.trim(); draw(); });
+$('#sort').addEventListener('change', e => { F.sort = e.target.value; draw(); });
+$('#view').value = F.view;
+$('#view').addEventListener('change', e => { F.view = e.target.value; store.set('cl-view', F.view); draw(); });
+
+function openZoom(d){
+  const z = $('#zoom');
+  z.querySelector('img').src = `img/cards/${String(d.ids[0]).padStart(3, '0')}.jpg`;
+  z.querySelector('img').alt = d.top.name;
+  z.querySelector('figcaption').textContent = d.changes.length ? 'このカードは強化案で値を変えている。画像は変更前の値のまま。' : `${d.top.name}（ID ${d.ids.join('・')}）`;
+  z.hidden = false;
+}
+
+/* 表示 */
+const rangeText = r => /^[A-E](,\s*[A-E])*$/.test(r) ? `ランダム〔${r.replace(/,\s*/g, ' ')}〕` : r;
+const costText = c => c.replace('生存✕', '生存人数×');
+const tierChip = t => t ? `<span class="tier t${t.tier === '効果' ? 'E' : t.tier}" title="1回あたりHP価値 ${t.value.toFixed(1)}">${esc(t.tier)}</span>` : '';
+function statsHTML(f){
+  const out = [`<span class="elb el-${f.el}">${EL[f.el]}</span>`];
+  if (f.atk !== null) out.push(`<span class="num"><b>${f.atk}</b>攻撃</span>`);
+  if (f.def !== null) out.push(`<span class="num"><b>${f.def}</b>防御</span>`);
+  out.push(`<span class="meta">${esc(rangeText(f.range))}</span>`);
+  if (f.cost) out.push(`<span class="cost">${esc(costText(f.cost))}</span>`);
+  return `<div class="stats">${out.join('')}</div>`;
+}
+function cardHTML(d){
+  const i = DATA.indexOf(d), t = d.top, h = d.heart;
+  const ch = d.changes.length ? `<ul class="chlist" aria-label="強化案での変更">${d.changes.map(c => `<li>${c.side === 'heart' ? '♥面 ' : ''}${esc(c.field)}：<s>${esc(c.from)}</s> → <b>${esc(c.to)}</b></li>`).join('')}</ul>` : '';
+  return `<article class="cc el-${t.el}">
+    <div class="cc-top"><span class="marks">${esc(t.marks.join(''))}</span><span class="trig" title="トリガー">${esc(d.trig || '–')}</span><span>${esc(d.exp)}</span><span class="qty">×${d.ids.length}</span></div>
+    <h3 class="cc-name"><button type="button" class="cardlink" data-i="${i}">${esc(t.name)}</button></h3>
+    ${statsHTML(t)}
+    ${t.text ? `<p class="txt">${esc(t.text)}</p>` : ''}
+    ${h ? `<div class="heart el-${h.el}"><span class="hname">♥ ${esc(h.name)}</span>${statsHTML(h)}${h.text ? `<p class="txt">${esc(h.text)}</p>` : ''}</div>` : ''}
+    ${ch}
+    <div class="foot">${d.tier ? `評価 ${tierChip(d.tier)}` : ''}${d.htier ? `<span>♥面 ${tierChip(d.htier)}</span>` : ''}<span>ID ${d.ids.join(' ')}</span>${d.changes.length ? '<span class="chg">変更あり</span>' : ''}</div>
+  </article>`;
+}
+function rowHTML(d){
+  const t = d.top, h = d.heart, i = DATA.indexOf(d);
+  return `<tr><td class="n">${d.ids.join(' ')}</td><td class="nm"><button type="button" class="cardlink" data-i="${i}">${esc(t.name)}</button>${d.changes.length ? ' <span class="chg">変更</span>' : ''}</td>
+    <td>${esc(t.marks.join(''))}</td><td class="n">${d.ids.length}</td><td><span class="elb el-${t.el}">${EL[t.el]}</span></td>
+    <td class="n">${t.atk ?? '–'}</td><td class="n">${t.def ?? '–'}</td><td>${esc(rangeText(t.range))}</td><td>${esc(costText(t.cost) || '–')}</td><td class="n">${esc(d.trig || '–')}</td>
+    <td class="tx">${esc(t.text || '–')}</td><td class="hx">${h ? `<b style="color:var(--heart)">♥ ${esc(h.name)}</b><br>${h.atk !== null ? '攻撃' + h.atk + '　' : ''}${h.def !== null ? '防御' + h.def + '　' : ''}${esc(h.text || '')}` : '–'}</td>
+    <td>${tierChip(d.tier)}</td></tr>`;
+}
+function match(d){
+  if (F.kind.size && !F.kind.has(d.kind)) return false;
+  if (F.el.size && !F.el.has(d.top.el)) return false;
+  if (F.trig.size && !F.trig.has(d.trig)) return false;
+  if (F.heart && !d.heart) return false;
+  if (F.changed && !d.changes.length) return false;
+  if (F.q){
+    const hay = [d.top.name, d.top.text, d.heart && d.heart.name, d.heart && d.heart.text, d.ids.join(' ')].join(' ');
+    if (!F.q.split(/\s+/).every(w => hay.includes(w))) return false;
+  }
+  return true;
+}
+const SORTS = {
+  id:(a, b) => a.ids[0] - b.ids[0],
+  atk:(a, b) => (b.top.atk ?? -1) - (a.top.atk ?? -1) || a.ids[0] - b.ids[0],
+  def:(a, b) => (b.top.def ?? -1) - (a.top.def ?? -1) || a.ids[0] - b.ids[0],
+  value:(a, b) => (b.tier ? b.tier.value : -99) - (a.tier ? a.tier.value : -99) || a.ids[0] - b.ids[0],
+  name:(a, b) => a.top.name.localeCompare(b.top.name, 'ja'),
+};
+function draw(){
+  const list = DATA.filter(match).sort(SORTS[F.sort]);
+  const n = list.reduce((s, d) => s + d.ids.length, 0);
+  $('#shown').textContent = `${n}枚（${list.length}種）を表示`;
+  let h = '';
+  if (!list.length) h = '<p class="empty">条件に合うカードがない。絞り込みを外してみてほしい。</p>';
+  else if (F.view === 'table'){
+    h = `<div class="tbl"><table><thead><tr><th>ID</th><th>カード</th><th>種類</th><th class="n">枚</th><th>属性</th><th class="n">攻撃</th><th class="n">防御</th><th>範囲</th><th>コスト</th><th>トリガー</th><th>効果</th><th>♥面</th><th>評価</th></tr></thead><tbody>${list.map(rowHTML).join('')}</tbody></table></div>`;
+  } else {
+    // 種類ごとに見出しを立てる
+    h = KIND_ORDER.map(k => {
+      const g = list.filter(d => d.kind === k);
+      if (!g.length) return '';
+      const cnt = g.reduce((s, d) => s + d.ids.length, 0);
+      return `<section><h2>${KIND[k]}<small>${cnt}枚・${g.length}種</small></h2><div class="grid">${g.map(cardHTML).join('')}</div></section>`;
+    }).join('');
+  }
+  $('#out').innerHTML = h;
+}
+draw();
+</script>
+</body></html>

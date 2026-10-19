@@ -272,6 +272,14 @@ button{font:inherit;color:inherit}
 .arrows .lbl.chal rect{fill:#3a2a00;stroke:var(--gold)} .arrows .lbl.chal text{fill:var(--gold)}
 .arrows .lbl.blk rect{fill:#3a0f1c;stroke:#ff8da8} .arrows .lbl.blk text{fill:#ff8da8}
 .abanner{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:14px;padding:6px 10px;background:rgba(10,4,14,.65);box-shadow:0 0 0 2px var(--pink) inset;line-height:1.4}
+/* 常時効果（発動後ずっと効くトリガー）の表示 */
+.effects{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;background:rgba(10,4,14,.6);box-shadow:0 0 0 2px var(--blue) inset;font-size:12px;line-height:1.4}
+.effects .elbl{color:var(--blue);letter-spacing:.12em;font-size:11px;margin-right:2px}
+.ef{display:inline-flex;gap:6px;align-items:center;padding:2px 8px 2px 2px;background:#2b3148;color:#e6ecff;box-shadow:0 0 0 1px #5a6aa8 inset}
+.ef b{font-weight:400;color:#fff;background:#3a3f6a;padding:1px 6px;box-shadow:0 0 0 1px var(--blue) inset;white-space:nowrap}
+.fxchip{display:inline-block;font-size:11px;color:#fff;background:#3a3f6a;box-shadow:0 0 0 1px var(--blue) inset;padding:0 6px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+.tc.active{box-shadow:0 0 0 2px var(--gold) inset}
+.tc.active::after{content:'常時';position:absolute;right:3px;bottom:2px;font-size:9px;color:var(--gold);letter-spacing:.1em}
 .abanner .an{color:var(--pink);font-size:16px}
 .abanner .arr{color:var(--dim)}
 .abanner .tag{padding:1px 8px;font-size:12px}
@@ -409,6 +417,7 @@ button{font:inherit;color:inherit}
     <div class="center">
       <div id="actionBanner" class="abanner" hidden></div>
       <div id="deckInfo" class="deck"></div>
+      <div id="effects" class="effects" hidden></div>
       <div id="miniLog" class="minilog pxbox"></div>
     </div>
     <div id="meWrap" class="meseat"></div>
@@ -686,7 +695,7 @@ function cpuPlaceTriggers(p){
 }
 async function humanPlaceTriggers(p){
   const cardEl=c=>{ const el=triggerEl({card:c,revealed:true},'on',false); el.style.width='190px'; el.style.minHeight='84px'; return el; };
-  const top=await askCards(`トリガーを仕込みます。${p.trigHand.length}枚のうち2枚を使います。まず「上半身」の横に置くカードを選んでください`, p.trigHand.map(c=>({el:cardEl(c), value:c})), '残りの1枚は山に戻ります（相手には見えません）', undefined, 'placeTrigger');
+  const top=await askCards(`トリガーを仕込みます。${p.trigHand.length}枚のうち2枚を使います。まず「上半身」の横に置くカードを選んでください`, p.trigHand.map(c=>({el:cardEl(c), value:c})), p.trigHand.length>2?'残りの1枚は山に戻ります（相手には見えません）':'2枚とも仕込みます（相手には見えません）', undefined, 'placeTrigger');
   const rest=p.trigHand.filter(c=>c!==top);
   const bottom = rest.length===1 ? rest[0] : await askCards('次に「下半身」の横に置くカードを選んでください', rest.map(c=>({el:cardEl(c), value:c})), `上半身：${top.name}`, undefined, 'placeTrigger');
   return [top,bottom];
@@ -1116,19 +1125,20 @@ function playerPanel(p, isMe){
   d.dataset.i=p.i;
   const tags=[];
   if(!p.alive) tags.push('脱落');
-  if(p.flags.win15) tags.push(`${RULES.collectorGoal}♥で勝利`);
-  if(p.flags.coupTax) tags.push('値上げ中');
-  if(p.flags.blockExchange) tags.push('ダサすぎ返し');
-  if(p.flags.coupDiscount) tags.push('値下げ中');
+  const chips=[];
+  if(p.alive && p.flags.coupTax) chips.push('値上げ');
+  if(p.alive && p.flags.coupDiscount) chips.push('値下げ');
+  if(p.alive && p.flags.blockExchange) chips.push('ダサすぎ返し');
+  if(p.alive && p.flags.win15) chips.push(`${RULES.collectorGoal}♥で勝利`);
   const head=document.createElement('div'); head.className='plhead';
   const bump = p._shownHearts!==undefined && p._shownHearts!==p.hearts; p._shownHearts=p.hearts;
-  head.innerHTML=`<span class="nm">${p.name}<span class="tag">${p.ch.title}${tags.length?' ／ '+tags.join('・'):''}</span></span><span class="hearts${bump?' bump':''}" title="持っている♥">♥<b>${p.hearts}</b></span>`;
+  head.innerHTML=`<span class="nm">${p.name}<span class="tag">${p.ch.title}${tags.length?' ／ '+tags.join('・'):''}</span>${chips.map(c=>`<span class="fxchip">${c}</span>`).join('')}</span><span class="hearts${bump?' bump':''}" title="持っている♥">♥<b>${p.hearts}</b></span>`;
   d.appendChild(head);
   const body=document.createElement('div'); body.className='plbody';
   const figrow=document.createElement('div'); figrow.className='figrow '+(isMe?'lg':'md');
   figrow.appendChild(figureEl(p.ch, p.boro, 'inherit', true));
   const trigcol=document.createElement('div'); trigcol.className='trigcol';
-  for(const k of ['top','bottom']){ const t=p.triggers[k]; trigcol.appendChild(triggerEl(t, t.revealed?'on':(isMe&&RULES.peekOwnTriggers?'peek':'back'), !isMe)); }
+  for(const k of ['top','bottom']){ const t=p.triggers[k]; const te=triggerEl(t, t.revealed?'on':(isMe&&RULES.peekOwnTriggers?'peek':'back'), !isMe); if(t.revealed && t.card && t.card.persistent && p.alive) te.classList.add('active'); trigcol.appendChild(te); }
   figrow.appendChild(trigcol);
   body.appendChild(figrow);
   const cards=document.createElement('div'); cards.className='cards';
@@ -1158,12 +1168,12 @@ function playerPanel(p, isMe){
 function say(p, text){ if(S.headless) return; p.bubble={text, until:Date.now()+2200}; render(); setTimeout(()=>{ if(p.bubble&&Date.now()>=p.bubble.until) render(); }, 2300); }
 
 // 相手の席（テーブル内の位置%）。人数ごとに上の弧へ並べる
-const SEATS={1:['top'],2:['top','top'],3:['left','top','right'],4:['left','top','top','right']};
+const SEATS={1:['top'],2:['top','top'],3:['left','top','right'],4:['left','top','top','right'],5:['left','top','top','top','right']};
 function render(){
   if(S.headless) return;
   const opps=$('#opps'); opps.innerHTML='';
   const others=S.players.filter(p=>p.i!==0);
-  const plan=SEATS[others.length]||SEATS[4];
+  const plan=SEATS[others.length]||SEATS[5];
   const topWrap=document.createElement('div'); topWrap.className='seat-top'; opps.appendChild(topWrap);
   others.forEach((p,k)=>{ const el=playerPanel(p,false); const seat=plan[k]||'top'; if(seat==='top') topWrap.appendChild(el); else { el.classList.add('seat-'+seat); opps.appendChild(el); } });
   const me=$('#meWrap'); me.innerHTML=''; if(S.players[0]) me.appendChild(playerPanel(S.players[0],true));
@@ -1172,7 +1182,22 @@ function render(){
     const cur=S.current?S.current.name:'—';
     info.innerHTML=`<span>山札 <b>${S.deck.length}</b>枚</span><span>手番 <b>${cur}</b></span><span>ざぁ～こ♥ <b>${S.players[0]?coupCost(S.players[0]):7}♥</b></span><span>ダサすぎ♥ <b>${S.flags.examineMode?'改変中':'通常'}</b></span>`;
   }
+  renderEffects();
   renderAction();
+}
+function renderEffects(){
+  const el=$('#effects'); if(!el) return;
+  const items=[];
+  for(const p of S.players){
+    if(!p.alive) continue;
+    if(p.flags.coupTax) items.push(['値上げ', `${p.name} 以外の「ざぁ～こ♥」は8♥`]);
+    if(p.flags.coupDiscount) items.push(['値下げ', `${p.name} の「ざぁ～こ♥」は5♥`]);
+    if(p.flags.blockExchange) items.push(['ダサすぎ返し', `${p.name} は「ダサすぎ♥」をブロックできる`]);
+    if(p.flags.win15) items.push(['♥コレクター', `${p.name} は${RULES.collectorGoal}♥集めても勝ち（10♥の強制なし）`]);
+  }
+  if(S.flags.examineMode) items.push(['ルール改変', '「ダサすぎ♥」は審問（相手の手札1枚を見て山札と交換させる）。幼馴染ガキでブロック可']);
+  if(!items.length){ el.hidden=true; el.innerHTML=''; return; }
+  el.hidden=false; el.innerHTML='<span class="elbl">場の効果</span>'+items.map(([n,t])=>`<span class="ef"><b>${n}</b>${t}</span>`).join('');
 }
 function renderLog(){
   const mini=$('#miniLog'); mini.innerHTML='';
@@ -1590,7 +1615,7 @@ function buildRules(){
   <ul class="rl-list">
     <li>各自、<b>ガキカード2枚</b>（＝ライフ2つ）と <b>2♥</b> を持つ。手札は自分だけ見る。</li>
     <li><b>メスガキカード</b> 上半身・下半身を並べる。表は普通の服、裏はボロ絵。</li>
-    <li><b>トリガーカード</b>を${RULES.triggerDeal}枚引き、2枚を選んで上半身・下半身の横に敷く（残りは山へ）。自分のトリガーは自分だけ見てよい。</li>
+    <li><b>トリガーカード</b>を${RULES.triggerDeal}枚（6人戦は山が足りないので2枚）引き、2枚を選んで上半身・下半身の横に敷く（残りは山へ）。自分のトリガーは自分だけ見てよい。</li>
   </ul></div>
 
   <div class="rl-sec"><h3><span class="no">2</span>手番の流れ</h3>
@@ -1655,7 +1680,7 @@ function fillRules(){
 let setup={ n:4, ch:0, auto:false };
 function openStart(){
   const np=$('#npick'); np.innerHTML='';
-  for(const n of [2,3,4,5]){ const b=document.createElement('button'); b.className='btn'+(setup.n===n?' primary':''); b.textContent=`${n}人`; b.onclick=()=>{ setup.n=n; openStart(); }; np.appendChild(b); }
+  for(const n of [3,4,5,6]){ const b=document.createElement('button'); b.className='btn'+(setup.n===n?' primary':''); b.textContent=`${n}人`; b.onclick=()=>{ setup.n=n; openStart(); }; np.appendChild(b); }
   const cp=$('#chpick'); cp.innerHTML='';
   CHARS.forEach((ch,i)=>{ const d=document.createElement('div'); d.className='ch'+(setup.ch===i?' on':''); d.appendChild(figureEl(ch,{top:false,bottom:false},'sm',false)); const l=document.createElement('span'); l.textContent=`${ch.name}`; d.appendChild(l); d.onclick=()=>{ setup.ch=i; openStart(); }; cp.appendChild(d); });
   let auto=$('#autoPick');

@@ -68,6 +68,7 @@
 - 進行：`runGame` → `takeTurn` → `performAction`。チャレンジは `challengeWindow`、ブロックは `blockWindow`、影響力の喪失とトリガーは `loseInfluence` / `resolveTrigger`。
 - CPU：`cpuChooseAction` ほか `cpu*` 関数。
 - チュートリアル：`tutSetup` の `TUT.beats`（ナビの台詞と許可する選択）と `TUT.cpu`（CPUの台本）。
+- 分析ページ：`docs/trigger-analysis.html`。`tools/build_analysis.py docs/sim_summary.json <artifact.html> docs/trigger-analysis.html` でシミュレーション結果から生成する。
 - バランス検証：`tools/sim.js`（Playwright）。`node tools/sim.js 10000 4 5` で「1万戦・4人戦・ハズレ5枚」をヘッドレスで回し、トリガーごとの勝率をJSONで出す。ゲーム側は `S.headless=true` で描画・待ち・演出・音を飛ばす。
 
 立ち絵はボンバーガールのキャラクター画像を使った私的なファン用です。画像の権利は各権利者にあります。

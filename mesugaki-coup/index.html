@@ -73,8 +73,13 @@ button{font:inherit;color:inherit}
 .plhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
 .plhead .nm{letter-spacing:.08em}
 .plhead .nm .tag{font-size:11px;color:var(--dim);margin-left:6px}
-.hearts{color:var(--heart);font-size:15px;white-space:nowrap}
-.hearts b{color:var(--ink);font-weight:400;font-size:17px;margin-left:2px}
+.hearts{display:inline-flex;align-items:baseline;gap:5px;background:rgba(255,77,141,.16);padding:1px 12px 1px 9px;box-shadow:0 0 0 2px var(--heart) inset;color:var(--heart);font-size:18px;line-height:1.25;white-space:nowrap}
+.hearts b{color:#fff;font-weight:400;font-size:30px;font-variant-numeric:tabular-nums;text-shadow:0 0 10px rgba(255,77,141,.6)}
+.me .hearts{font-size:22px;padding:2px 14px 2px 11px}
+.me .hearts b{font-size:40px}
+.hearts.bump{animation:bump .5s ease-out}
+@keyframes bump{0%{transform:scale(1)}35%{transform:scale(1.25)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.hearts.bump{animation:none}}
 .plbody{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
 .figure{display:flex;flex-direction:column;gap:2px;flex:none;align-items:flex-start;--cw:150px}
 .figure.sm{--cw:112px}
@@ -850,7 +855,8 @@ function playerPanel(p, isMe){
   if(p.flags.coupTax) tags.push('値上げ中');
   if(p.flags.blockExchange) tags.push('ダサすぎ返し');
   const head=document.createElement('div'); head.className='plhead';
-  head.innerHTML=`<span class="nm">${p.name}<span class="tag">${p.ch.title}${tags.length?' ／ '+tags.join('・'):''}</span></span><span class="hearts">♥<b>${p.hearts}</b></span>`;
+  const bump = p._shownHearts!==undefined && p._shownHearts!==p.hearts; p._shownHearts=p.hearts;
+  head.innerHTML=`<span class="nm">${p.name}<span class="tag">${p.ch.title}${tags.length?' ／ '+tags.join('・'):''}</span></span><span class="hearts${bump?' bump':''}" title="持っている♥">♥<b>${p.hearts}</b></span>`;
   d.appendChild(head);
   const body=document.createElement('div'); body.className='plbody';
   body.appendChild(figureEl(p.ch, p.boro, isMe?'lg':'md', true));

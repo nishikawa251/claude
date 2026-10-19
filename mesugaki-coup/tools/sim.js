@@ -14,7 +14,7 @@ const OVR = {}; for (const kv of (process.argv[5] || '').split(',').filter(Boole
   const res = await page.evaluate(async ({ N, PLAYERS, DUD, OVR }) => {
     S.headless = true; RULES.dudCount = DUD; Object.assign(RULES, OVR);
     const ids = [...TRIGGERS.map(t => t.id), 'none'];
-    const st = {}; for (const id of ids) st[id] = { held: 0, heldWin: 0, first: 0, firstWin: 0, last: 0, firstByWin: 0, firstBy: 0 };
+    const st = {}; for (const id of ids) st[id] = { held: 0, heldWin: 0, first: 0, firstWin: 0, last: 0, firstByWin: 0, firstBy: 0, revive: 0, reviveWin: 0 };
     const out = { games: 0, turns: 0, winnerLostLife: 0, winnerHearts: 0, lifeLossTotal: 0, errors: 0, winBySeat: {}, firstTurnWin: 0 };
     for (let g = 0; g < N; g++) {
       const n = PLAYERS[g % PLAYERS.length];
@@ -32,7 +32,7 @@ const OVR = {}; for (const kv of (process.argv[5] || '').split(',').filter(Boole
         lostLife[a.i] = (lostLife[a.i] || 0) + 1; out.lifeLossTotal++;
         const win = S.players[a.i] === w ? 1 : 0;
         if (a.left === 1) { st[a.id].first++; st[a.id].firstWin += win; if (a.by >= 0 && a.by !== a.i) { st[a.id].firstBy++; st[a.id].firstByWin += (S.players[a.by] === w ? 1 : 0); } }
-        else st[a.id].last++;
+        else { st[a.id].last++; if (a.after > 0) { st[a.id].revive++; st[a.id].reviveWin += win; } }
       }
       if (lostLife[w.i]) out.winnerLostLife++;
     }

@@ -121,7 +121,7 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
 </style>
 <main>
 <header>
-  <div class="eyebrow">CPU同士の自動対戦・2026-10-19 第3版・トリガー13種16枚＋ハズレ2枚／配られた2枚をそのまま仕込む／脱がせる側は相手が選ぶ／♥コレクター10♥／おしおき返しは4♥／3〜6人</div>
+  <div class="eyebrow">CPU同士の自動対戦・2026-10-19 第4版・トリガー13種16枚＋ハズレ2枚／配られた2枚をそのまま仕込む／♥コレクター9♥＋公開時に山分け／おしおき返しは6♥／山分け・値上げを外し、遺言・着替えを追加／3〜6人</div>
   <h1><span class="nb">メスガキ・クー</span> <span class="nb">トリガー分析</span></h1>
   <p class="lede">トリガーカード13種（計16枚）＋ハズレ2枚を、どれが持ち主を勝たせているかで並べた。指標は「1枚目の脱ぎで発動したあとに勝った割合」。プライドを1つ失った状態からの勝率なので、ハズレ（何も起きない）との差で強さを見る。</p>
   <div class="total" id="total"></div>
@@ -145,7 +145,7 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
 
 <section>
   <h2>ハズレ比 <small id="barsub"></small></h2>
-  <p>発動後勝率からハズレの発動後勝率を引いた差。右（ピンク）が持ち主の得、左（青）が損。±2ポイントは誤差の範囲。</p>
+  <p>発動後勝率からハズレの発動後勝率を引いた差。右（ピンク）が持ち主の得、左（青）が損。±2ポイントは誤差の範囲。着替えだけは脱落時にしか効かないので、所持時勝率の差（◆）で見る。</p>
   <div class="bars" id="bars"></div>
 </section>
 
@@ -162,8 +162,8 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
 
 <section>
   <h2>調整案と新カード候補</h2>
-  <p>♥コレクターの目標を変えた試算（4人戦・各10,000戦）と、空撃ち（脱落時発動）でも意味がある札の案。</p>
-  <div class="tbl"><table id="whatif"></table></div>
+  <p>数値を変えた試算（4人戦・各10,000戦）と、次に試す案。</p>
+  <div id="whatif"></div>
   <div class="grid" id="cands"></div>
 </section>
 
@@ -172,15 +172,16 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
   <ul class="plain">
     <li>所持時勝率：そのカードを仕込んでいたプレイヤーの勝率。発動しなかった場合も含む。4人戦の平均は25%、3〜6人戦の平均は約22%。</li>
     <li>発動後勝率：1枚目の脱ぎでそのカードが発動したあと、そのプレイヤーが勝った割合。ハズレ比はこの値とハズレの差で、判定は±2ポイントを境にしている。</li>
-    <li>脱落時発動率：発動のうち、2枚目の脱ぎ（脱落）で発動した割合。本人にはほぼ意味がない発動。</li>
+    <li>脱落時発動率：発動のうち、2枚目の脱ぎ（脱落）で発動した割合。着替え以外は本人にほぼ意味がない発動。</li>
+    <li>着替えは発動後勝率ではなく所持時勝率のハズレ比で判定している（復活回数と復活後の勝率はカードに併記）。</li>
     <li>1枚物は約2,000回、2枚物とハズレは約4,200回の発動。1枚物のハズレ比は±2ポイント程度の揺れがあるので、4人戦と3〜6人戦の両方で同じ向きに出ているかを見る。</li>
     <li>CPUは♥コレクターを持っていて目標まで3♥以内なら、ざぁ～こ♥より先に♥を集めて勝ちに行く。周りのCPUも目標が近い所持者を優先して狙う。</li>
   </ul>
-  <p class="note">作成日 2026-10-19（第3版）　・　元データ：mesugaki-coup tools/sim.js（ヘッドレス自動対戦）</p>
+  <p class="note">作成日 2026-10-19（第4版）　・　元データ：mesugaki-coup tools/sim.js（ヘッドレス自動対戦）</p>
 </section>
 </main>
 <script>
-const DATA = {"conds": {"p4": {"label": "4人戦", "sub": "ハズレ2枚・10,000戦", "games": 10000, "rows": [{"id": "t1", "name": "おしおき返し", "eff": "4♥持っていたら即時払って「ざぁ～こ♥」を打つ", "held": 4515, "heldWin": 1287, "first": 2064, "firstWin": 453, "last": 1756, "memo": "4♥に上げても最上位。発動した瞬間に相手を脱がせるので、脱落時の空撃ちでも相打ちにできる"}, {"id": "t12", "name": "仕返し", "eff": "自分を脱がせた相手から3♥奪う", "held": 8843, "heldWin": 2281, "first": 4122, "firstWin": 891, "last": 3300, "memo": "脱がせた相手から3♥取り返す。2枚入りで発動数が多く、数字は安定して上位"}, {"id": "t11", "name": "みちづれのキス", "eff": "自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）", "held": 4447, "heldWin": 1144, "first": 2079, "firstWin": 432, "last": 1642, "memo": "脱がせた相手の手札を自分だけ見る。見た相手の主張にはチャレンジしなくなるので無駄死にが減る。CPUが「知っているカード」を逆に疑う癖を直したら、マイナスからプラスに変わった"}, {"id": "t6", "name": "みかじめ", "eff": "全員から1♥ずつもらう", "held": 9016, "heldWin": 2255, "first": 4237, "firstWin": 880, "last": 3372, "memo": "全員から1♥。人数が多いほど得だが、今回はやや控えめ"}, {"id": "t2", "name": "山札のぞき", "eff": "山札を見て1枚選び、手札と入れ替える", "held": 4429, "heldWin": 1146, "first": 2057, "firstWin": 421, "last": 1632, "memo": "手札の質を上げる。前回は中立だったが今回はややプラス"}, {"id": "t7", "name": "まわして", "eff": "全員手札を1枚選び、右隣に渡す", "held": 8934, "heldWin": 2195, "first": 4215, "firstWin": 844, "last": 3341, "memo": "中立。全員が1枚ずつ渡すので自分の得にならない"}, {"id": "t14", "name": "値下げ", "eff": "以後、自分の「ざぁ～こ♥」は5♥で撃てる", "held": 4429, "heldWin": 1098, "first": 2044, "firstWin": 406, "last": 1681, "memo": "自分だけざぁ～こ♥が5♥になる。4人戦では中立寄り、3〜6人戦では最上位と条件で揺れる"}, {"id": "t8", "name": "値上げ", "eff": "自分以外は「ざぁ～こ♥」が8♥になる", "held": 4462, "heldWin": 1124, "first": 2026, "firstWin": 402, "last": 1704, "memo": "中立。自分以外のざぁ～こ♥が8♥になるが、終盤はあまり効かない"}, {"id": "t13", "name": "山分け", "eff": "自分より♥の多い全員から1♥ずつもらう", "held": 4467, "heldWin": 1124, "first": 2069, "firstWin": 401, "last": 1663, "memo": "中立。負けているときに発動しやすいが、取れるのは1〜2♥"}, {"id": "t10", "name": "ルール改変", "eff": "「ダサすぎ♥」を審問（相手の手札1枚を見て山札と交換させる）に変える", "held": 4376, "heldWin": 1015, "first": 2040, "firstWin": 385, "last": 1690, "memo": "中立。全員に効くので自分の得にならない"}, {"id": "t3", "name": "ダサすぎ返し", "eff": "これを持っていれば「ダサすぎ♥」をブロックできる", "held": 4449, "heldWin": 1102, "first": 2030, "firstWin": 383, "last": 1692, "memo": "中立。前回は上位だったが、2枚配りで仕込む札を選べなくなった影響か平均に戻った"}, {"id": "t5", "name": "総入れ替え", "eff": "自分以外の全員の手札を山札に戻し、同じ枚数を引き直す", "held": 4365, "heldWin": 1050, "first": 2042, "firstWin": 361, "last": 1623, "memo": "やや弱い。全員に影響する効果で自分の得は安定しない"}, {"id": "t9", "name": "♥コレクター", "eff": "自分の勝利条件に「10♥集める」を追加", "held": 4387, "heldWin": 950, "first": 2091, "firstWin": 295, "last": 1641, "memo": "10♥にしても最下位。勝利条件が公開されて狙われ、残り1枚で10♥まで耐えられない。CPUに「あと3♥以内なら取りに行く」手を入れても変わらず。9♥なら中立、8♥なら上位（下の試算）"}, {"id": "none", "name": "ハズレ", "eff": "効果なし", "held": 8881, "heldWin": 2229, "first": 4193, "firstWin": 792, "last": 3231, "memo": "基準。配られた2枚をそのまま仕込むので、ハズレも必ず場に出る"}]}, "p3456": {"label": "3〜6人戦", "sub": "各3,000戦・ハズレ2枚・12,000戦", "games": 12000, "rows": [{"id": "t14", "name": "値下げ", "eff": "以後、自分の「ざぁ～こ♥」は5♥で撃てる", "held": 6041, "heldWin": 1427, "first": 2899, "firstWin": 604, "last": 2297, "memo": "自分だけざぁ～こ♥が5♥になる。4人戦では中立寄り、3〜6人戦では最上位と条件で揺れる"}, {"id": "t1", "name": "おしおき返し", "eff": "4♥持っていたら即時払って「ざぁ～こ♥」を打つ", "held": 5972, "heldWin": 1551, "first": 2864, "firstWin": 570, "last": 2277, "memo": "4♥に上げても最上位。発動した瞬間に相手を脱がせるので、脱落時の空撃ちでも相打ちにできる"}, {"id": "t2", "name": "山札のぞき", "eff": "山札を見て1枚選び、手札と入れ替える", "held": 5997, "heldWin": 1377, "first": 2757, "firstWin": 545, "last": 2391, "memo": "手札の質を上げる。前回は中立だったが今回はややプラス"}, {"id": "t11", "name": "みちづれのキス", "eff": "自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）", "held": 5890, "heldWin": 1358, "first": 2795, "firstWin": 544, "last": 2265, "memo": "脱がせた相手の手札を自分だけ見る。見た相手の主張にはチャレンジしなくなるので無駄死にが減る。CPUが「知っているカード」を逆に疑う癖を直したら、マイナスからプラスに変わった"}, {"id": "t12", "name": "仕返し", "eff": "自分を脱がせた相手から3♥奪う", "held": 12078, "heldWin": 2788, "first": 5622, "firstWin": 1056, "last": 4688, "memo": "脱がせた相手から3♥取り返す。2枚入りで発動数が多く、数字は安定して上位"}, {"id": "t6", "name": "みかじめ", "eff": "全員から1♥ずつもらう", "held": 12031, "heldWin": 2716, "first": 5628, "firstWin": 1023, "last": 4687, "memo": "全員から1♥。人数が多いほど得だが、今回はやや控えめ"}, {"id": "t3", "name": "ダサすぎ返し", "eff": "これを持っていれば「ダサすぎ♥」をブロックできる", "held": 5990, "heldWin": 1316, "first": 2853, "firstWin": 496, "last": 2299, "memo": "中立。前回は上位だったが、2枚配りで仕込む札を選べなくなった影響か平均に戻った"}, {"id": "t8", "name": "値上げ", "eff": "自分以外は「ざぁ～こ♥」が8♥になる", "held": 5901, "heldWin": 1255, "first": 2832, "firstWin": 478, "last": 2277, "memo": "中立。自分以外のざぁ～こ♥が8♥になるが、終盤はあまり効かない"}, {"id": "t7", "name": "まわして", "eff": "全員手札を1枚選び、右隣に渡す", "held": 11977, "heldWin": 2599, "first": 5659, "firstWin": 947, "last": 4636, "memo": "中立。全員が1枚ずつ渡すので自分の得にならない"}, {"id": "t10", "name": "ルール改変", "eff": "「ダサすぎ♥」を審問（相手の手札1枚を見て山札と交換させる）に変える", "held": 5936, "heldWin": 1261, "first": 2806, "firstWin": 465, "last": 2313, "memo": "中立。全員に効くので自分の得にならない"}, {"id": "t5", "name": "総入れ替え", "eff": "自分以外の全員の手札を山札に戻し、同じ枚数を引き直す", "held": 6076, "heldWin": 1310, "first": 2923, "firstWin": 483, "last": 2311, "memo": "やや弱い。全員に影響する効果で自分の得は安定しない"}, {"id": "t13", "name": "山分け", "eff": "自分より♥の多い全員から1♥ずつもらう", "held": 6049, "heldWin": 1251, "first": 2852, "firstWin": 471, "last": 2398, "memo": "中立。負けているときに発動しやすいが、取れるのは1〜2♥"}, {"id": "t9", "name": "♥コレクター", "eff": "自分の勝利条件に「10♥集める」を追加", "held": 6019, "heldWin": 1175, "first": 2780, "firstWin": 337, "last": 2401, "memo": "10♥にしても最下位。勝利条件が公開されて狙われ、残り1枚で10♥まで耐えられない。CPUに「あと3♥以内なら取りに行く」手を入れても変わらず。9♥なら中立、8♥なら上位（下の試算）"}, {"id": "none", "name": "ハズレ", "eff": "効果なし", "held": 12043, "heldWin": 2616, "first": 5675, "firstWin": 972, "last": 4695, "memo": "基準。配られた2枚をそのまま仕込むので、ハズレも必ず場に出る"}]}}, "dud": {"d5": {"label": "ハズレ2枚", "games": 10000, "avgLog": 75.3, "winnerLostLife": 0.735, "lifeLoss": 6.73}, "d0": {"label": "ハズレ0枚", "games": 10000, "avgLog": 75.3, "winnerLostLife": 0.741, "lifeLoss": 6.73}}, "cands": [{"name": "♥コレクターを9♥に", "eff": "自分の勝利条件に「9♥集める」を追加する", "aim": "4人戦1万戦の試算でハズレ比 −1.4pt（中立）。10♥のままだと −4.8pt で最下位"}, {"name": "♥コレクターを8♥に", "eff": "自分の勝利条件に「8♥集める」を追加する", "aim": "試算で +3.8pt と最上位に入る。強すぎるならこちらは避ける"}, {"name": "道連れ", "eff": "自分を脱がせた相手はプライドを1つ失う", "aim": "脱落時に発動しても意味がある。強すぎるなら「相手が手札2枚のときだけ」"}, {"name": "遺言", "eff": "自分の♥をすべて好きな相手に渡す", "aim": "脱落後もキングメーカーになれる"}, {"name": "着替え", "eff": "残り手札1枚のとき、山札から1枚引いて手札に加える", "aim": "ライフが戻る逆転札。条件付き"}], "thr": 0.02, "whatif": [{"goal": 10, "first": 2091, "firstp": 0.1410808225729316, "delta": -0.04780541639677982, "heldp": 0.21654889446090722}, {"goal": 9, "first": 2172, "firstp": 0.1712707182320442, "delta": -0.014013400272084003, "heldp": 0.24227496641289745}, {"goal": 8, "first": 2011, "firstp": 0.23023371456986574, "delta": 0.03837056154166418, "heldp": 0.2702883970489604}]};
+const DATA = {"conds": {"p4": {"label": "4人戦", "sub": "ハズレ2枚・10,000戦", "games": 10000, "rows": [{"id": "t12", "name": "仕返し", "eff": "自分を脱がせた相手から3♥奪う", "held": 8853, "heldWin": 2294, "first": 4130, "firstWin": 934, "last": 3281, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "脱がせた相手から3♥取り返す。2枚入りで発動数が多く、両条件で最上位"}, {"id": "t14", "name": "値下げ", "eff": "以後、自分の「ざぁ～こ♥」は5♥で撃てる", "held": 4506, "heldWin": 1114, "first": 2134, "firstWin": 469, "last": 1684, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "自分だけざぁ～こ♥が5♥になる。両条件で上位"}, {"id": "t11", "name": "みちづれのキス", "eff": "自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）", "held": 4501, "heldWin": 1157, "first": 2083, "firstWin": 451, "last": 1671, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "脱がせた相手の手札を自分だけ見る。見た相手の主張を無駄に疑わなくなるぶん得をする"}, {"id": "t6", "name": "みかじめ", "eff": "全員から1♥ずつもらう", "held": 8950, "heldWin": 2182, "first": 4106, "firstWin": 881, "last": 3445, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "全員から1♥。人数が多いほど得で、3〜6人戦では上位"}, {"id": "t5", "name": "総入れ替え", "eff": "自分以外の全員の手札を山札に戻し、同じ枚数を引き直す", "held": 4418, "heldWin": 1078, "first": 2040, "firstWin": 417, "last": 1669, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "全員の手札を引き直させる。4人戦では中立、3〜6人戦ではプラス"}, {"id": "t9", "name": "♥コレクター", "eff": "自分の勝利条件に「9♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう", "held": 4364, "heldWin": 1078, "first": 2088, "firstWin": 422, "last": 1620, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "9♥＋公開時の山分けで、10♥時代の最下位から中立〜ややプラスまで戻った。8♥にすると +8pt で強すぎる（下の試算）"}, {"id": "t7", "name": "まわして", "eff": "全員手札を1枚選び、右隣に渡す", "held": 8895, "heldWin": 2160, "first": 4263, "firstWin": 851, "last": 3246, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "中立。全員が1枚ずつ渡すので自分の得にならない"}, {"id": "t10", "name": "ルール改変", "eff": "「ダサすぎ♥」を審問（相手の手札1枚を見て山札と交換させる）に変える", "held": 4441, "heldWin": 1055, "first": 2082, "firstWin": 415, "last": 1675, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "中立。全員に効くので自分の得にならない"}, {"id": "t3", "name": "ダサすぎ返し", "eff": "これを持っていれば「ダサすぎ♥」をブロックできる", "held": 4366, "heldWin": 1064, "first": 2023, "firstWin": 403, "last": 1647, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "中立。ダサすぎ♥を止める機会しだい"}, {"id": "t1", "name": "おしおき返し", "eff": "6♥持っていたら即時払って「ざぁ～こ♥」を打つ", "held": 4380, "heldWin": 1074, "first": 2094, "firstWin": 415, "last": 1660, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "6♥に上げたら中立に落ち着いた。6♥持って脱がされる場面が少なく、発動しても不発が多い。5♥なら上位、4♥なら最上位（下の試算）"}, {"id": "t2", "name": "山札のぞき", "eff": "山札を見て1枚選び、手札と入れ替える", "held": 4459, "heldWin": 1051, "first": 2133, "firstWin": 412, "last": 1659, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "手札の質を上げる。中立〜ややプラス"}, {"id": "t15", "name": "遺言", "eff": "自分の♥をすべて好きな相手に渡す", "held": 4400, "heldWin": 992, "first": 2057, "firstWin": 358, "last": 1673, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "脱落時は好きな相手に♥を遺せるキングメーカー札。ただし1枚目の脱ぎでめくれると、生きたまま自分の♥を全部手放すので損（4人戦 −2pt）。「脱落時のみ」にする手もある"}, {"id": "t16", "name": "着替え", "eff": "プライドが0になったときだけ発動。山札から1枚引いて脱落を免れる", "held": 4514, "heldWin": 1551, "first": 2042, "firstWin": 354, "last": 1683, "revive": 1683, "reviveWin": 462, "evalBy": "held", "memo": "プライドが0になる脱ぎでめくれたときだけ発動し、山札から1枚引いて生き残る。1枚目でめくれると不発なので発動後勝率はハズレ並みだが、所持時勝率は全カード中トップ（4人戦 34%）。実質3枚目のプライド"}, {"id": "none", "name": "ハズレ", "eff": "効果なし", "held": 8953, "heldWin": 2150, "first": 4155, "firstWin": 806, "last": 3357, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "基準。配られた2枚をそのまま仕込むので、ハズレも必ず場に出る"}]}, "p3456": {"label": "3〜6人戦", "sub": "各3,000戦・ハズレ2枚・12,000戦", "games": 12000, "rows": [{"id": "t14", "name": "値下げ", "eff": "以後、自分の「ざぁ～こ♥」は5♥で撃てる", "held": 6007, "heldWin": 1369, "first": 2835, "firstWin": 550, "last": 2308, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "自分だけざぁ～こ♥が5♥になる。両条件で上位"}, {"id": "t11", "name": "みちづれのキス", "eff": "自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）", "held": 5914, "heldWin": 1330, "first": 2821, "firstWin": 539, "last": 2255, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "脱がせた相手の手札を自分だけ見る。見た相手の主張を無駄に疑わなくなるぶん得をする"}, {"id": "t12", "name": "仕返し", "eff": "自分を脱がせた相手から3♥奪う", "held": 11998, "heldWin": 2642, "first": 5582, "firstWin": 1064, "last": 4732, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "脱がせた相手から3♥取り返す。2枚入りで発動数が多く、両条件で最上位"}, {"id": "t6", "name": "みかじめ", "eff": "全員から1♥ずつもらう", "held": 12122, "heldWin": 2716, "first": 5774, "firstWin": 1091, "last": 4621, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "全員から1♥。人数が多いほど得で、3〜6人戦では上位"}, {"id": "t5", "name": "総入れ替え", "eff": "自分以外の全員の手札を山札に戻し、同じ枚数を引き直す", "held": 5954, "heldWin": 1282, "first": 2796, "firstWin": 513, "last": 2329, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "全員の手札を引き直させる。4人戦では中立、3〜6人戦ではプラス"}, {"id": "t1", "name": "おしおき返し", "eff": "6♥持っていたら即時払って「ざぁ～こ♥」を打つ", "held": 6028, "heldWin": 1377, "first": 2820, "firstWin": 516, "last": 2370, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "6♥に上げたら中立に落ち着いた。6♥持って脱がされる場面が少なく、発動しても不発が多い。5♥なら上位、4♥なら最上位（下の試算）"}, {"id": "t2", "name": "山札のぞき", "eff": "山札を見て1枚選び、手札と入れ替える", "held": 6040, "heldWin": 1304, "first": 2821, "firstWin": 512, "last": 2380, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "手札の質を上げる。中立〜ややプラス"}, {"id": "t9", "name": "♥コレクター", "eff": "自分の勝利条件に「9♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう", "held": 5990, "heldWin": 1308, "first": 2876, "firstWin": 519, "last": 2325, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "9♥＋公開時の山分けで、10♥時代の最下位から中立〜ややプラスまで戻った。8♥にすると +8pt で強すぎる（下の試算）"}, {"id": "t10", "name": "ルール改変", "eff": "「ダサすぎ♥」を審問（相手の手札1枚を見て山札と交換させる）に変える", "held": 5894, "heldWin": 1241, "first": 2815, "firstWin": 496, "last": 2283, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "中立。全員に効くので自分の得にならない"}, {"id": "t3", "name": "ダサすぎ返し", "eff": "これを持っていれば「ダサすぎ♥」をブロックできる", "held": 6005, "heldWin": 1264, "first": 2852, "firstWin": 495, "last": 2328, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "中立。ダサすぎ♥を止める機会しだい"}, {"id": "t7", "name": "まわして", "eff": "全員手札を1枚選び、右隣に渡す", "held": 12057, "heldWin": 2527, "first": 5619, "firstWin": 965, "last": 4792, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "中立。全員が1枚ずつ渡すので自分の得にならない"}, {"id": "t15", "name": "遺言", "eff": "自分の♥をすべて好きな相手に渡す", "held": 6021, "heldWin": 1247, "first": 2876, "firstWin": 480, "last": 2332, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "脱落時は好きな相手に♥を遺せるキングメーカー札。ただし1枚目の脱ぎでめくれると、生きたまま自分の♥を全部手放すので損（4人戦 −2pt）。「脱落時のみ」にする手もある"}, {"id": "t16", "name": "着替え", "eff": "プライドが0になったときだけ発動。山札から1枚引いて脱落を免れる", "held": 5986, "heldWin": 1911, "first": 2803, "firstWin": 459, "last": 2289, "revive": 2289, "reviveWin": 597, "evalBy": "held", "memo": "プライドが0になる脱ぎでめくれたときだけ発動し、山札から1枚引いて生き残る。1枚目でめくれると不発なので発動後勝率はハズレ並みだが、所持時勝率は全カード中トップ（4人戦 34%）。実質3枚目のプライド"}, {"id": "none", "name": "ハズレ", "eff": "効果なし", "held": 11984, "heldWin": 2482, "first": 5643, "firstWin": 907, "last": 4659, "revive": 0, "reviveWin": 0, "evalBy": "first", "memo": "基準。配られた2枚をそのまま仕込むので、ハズレも必ず場に出る"}]}}, "dud": {"d5": {"label": "ハズレ2枚", "games": 10000, "avgLog": 76.5, "winnerLostLife": 0.759, "lifeLoss": 6.74}, "d0": {"label": "ハズレ0枚", "games": 10000, "avgLog": 76.5, "winnerLostLife": 0.753, "lifeLoss": 6.73}}, "cands": [{"name": "遺言を「脱落時のみ」に", "eff": "プライドが0になったときだけ、自分の♥をすべて好きな相手に渡す", "aim": "1枚目でめくれたときの自損をなくす。着替えと同じ条件にそろう"}, {"name": "道連れ", "eff": "自分を脱がせた相手はプライドを1つ失う", "aim": "脱落時に発動しても意味がある。強すぎるなら「相手が手札2枚のときだけ」"}, {"name": "おしおき返しを5♥に", "eff": "5♥持っていたら即時払って「ざぁ～こ♥」を打つ", "aim": "6♥だと中立。5♥なら上位に戻る（下の試算）"}], "thr": 0.02, "whatif": [{"title": "♥コレクターの目標（公開時の山分けあり）", "rows": [{"label": "10♥", "current": false, "first": 2055, "firstp": 0.1562043795620438, "delta": -0.03200533292889604, "heldp": 0.22420410927974713}, {"label": "9♥", "current": true, "first": 2088, "firstp": 0.2021072796934866, "delta": 0.008124126865568432, "heldp": 0.2470210815765353}, {"label": "8♥", "current": false, "first": 2128, "firstp": 0.26456766917293234, "delta": 0.08354153170923437, "heldp": 0.27392078326657765}]}, {"title": "おしおき返しのコスト", "rows": [{"label": "6♥", "current": true, "first": 2094, "firstp": 0.1981852913085005, "delta": 0.004202138480582318, "heldp": 0.2452054794520548}, {"label": "5♥", "current": false, "first": 2090, "firstp": 0.21483253588516746, "delta": 0.024619055434219994, "heldp": 0.26462085835001115}, {"label": "4♥", "current": false, "first": 2059, "firstp": 0.21903836813987373, "delta": 0.02483546958914909, "heldp": 0.2912400455062571}]}]};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const pct=(v,d=1)=>(v*100).toFixed(d)+'%';
@@ -191,7 +192,8 @@ function compute(cond){
   const rows=DATA.conds[cond].rows.map(r=>({...r}));
   const dud=rows.find(r=>r.id==='none');
   const base=dud.firstWin/dud.first;
-  for(const r of rows){ r.heldp=r.heldWin/r.held; r.firstp=r.firstWin/r.first; r.delta=r.firstp-base; r.lastRate=r.last/(r.first+r.last); r.tier=r.id==='none'?'none':(r.delta>=DATA.thr?'強い':(r.delta<=-DATA.thr?'弱い':'中立')); }
+  const hbase=dud.heldWin/dud.held;
+  for(const r of rows){ r.heldp=r.heldWin/r.held; r.firstp=r.firstWin/r.first; r.delta=r.firstp-base; r.heldDelta=r.heldp-hbase; r.score=r.evalBy==='held'?r.heldDelta:r.delta; r.lastRate=r.last/(r.first+r.last); r.revivep=r.revive?r.reviveWin/r.revive:0; r.tier=r.id==='none'?'none':(r.score>=DATA.thr?'強い':(r.score<=-DATA.thr?'弱い':'中立')); }
   return rows;
 }
 const tierCls={'強い':'tS','中立':'tN','弱い':'tW','none':'tA'};
@@ -202,17 +204,17 @@ function renderTotal(){
 }
 function renderMix(){
   const r4=compute('p4'), r3=compute('p3456');
-  const d3=Object.fromEntries(r3.map(r=>[r.name,r.delta]));
-  const both=r4.filter(r=>r.id!=='none' && r.delta>=DATA.thr && d3[r.name]>=0).map(r=>r.name);
+  const d3=Object.fromEntries(r3.map(r=>[r.name,r.score]));
+  const both=r4.filter(r=>r.id!=='none' && r.score>=DATA.thr && d3[r.name]>=0).map(r=>r.name);
   const top4=both.length?both:r4.filter(r=>r.tier==='強い').map(r=>r.name);
   const weak=r4.filter(r=>r.tier==='弱い' && d3[r.name]<0).map(r=>r.name);
   const col=r4.find(r=>r.name==='♥コレクター'), col3=r3.find(r=>r.name==='♥コレクター');
   const lastAvg=r4.reduce((a,r)=>a+r.last,0)/r4.reduce((a,r)=>a+r.first+r.last,0);
   const items=[
     ['強い', top4.join('・'), `4人戦でハズレ比 +${(DATA.thr*100).toFixed(0)}pt 以上で、3〜6人戦でもプラスのカード。`],
-    ['弱い', weak.join('・')||'なし', `♥コレクターは発動後勝率がハズレより ${Math.abs(col.delta*100).toFixed(1)}pt（3〜6人戦 ${Math.abs(col3.delta*100).toFixed(1)}pt）低い。勝利条件が公開されて狙われるため。`],
+    ['弱い', weak.join('・')||'なし', weak.length?'両条件でマイナスのカード。':'両条件でマイナスになるカードはなくなった。♥コレクターは9♥＋山分けで中立に戻った。'],
     ['空撃ち', pct(lastAvg,0), '発動のうち脱落時（2枚目の脱ぎ）に起きた割合。本人には意味のない発動が半分近くある。'],
-    ['効果の幅', `${spct(Math.max(...r4.map(r=>r.delta)))} 〜 ${spct(Math.min(...r4.map(r=>r.delta)))}`, 'トリガーは負けかけた側に起きるので、どれも勝敗を覆すほどの力はない。'],
+    ['効果の幅', `${spct(Math.max(...r4.map(r=>r.score)))} 〜 ${spct(Math.min(...r4.map(r=>r.score)))}`, 'トリガーは負けかけた側に起きるので、どれも勝敗を覆すほどの力はない。'],
   ];
   $('#mix').innerHTML=items.map(([h,b,p])=>`<div class="mixbox"><h3>${esc(h)}</h3><div class="big">${esc(b)}</div><p>${esc(p)}</p></div>`).join('');
 }
@@ -226,13 +228,14 @@ function renderChips(){
 function renderBars(rows){
   const c=DATA.conds[state.cond];
   $('#barsub').textContent=`${c.label}・${c.sub}`;
-  const list=rows.filter(r=>r.id!=='none').sort((a,b)=>b.delta-a.delta);
-  const max=Math.max(...list.map(r=>Math.abs(r.delta)), 0.01);
+  const list=rows.filter(r=>r.id!=='none').sort((a,b)=>b.score-a.score);
+  const max=Math.max(...list.map(r=>Math.abs(r.score)), 0.01);
   const dud=rows.find(r=>r.id==='none');
   $('#bars').innerHTML=`<div class="barhead"><span>カード</span><span class="mid">ハズレ（発動後勝率 ${pct(dud.firstp)}）を0とした差</span><span class="r">ハズレ比</span></div>`+list.map(r=>{
-    const w=Math.abs(r.delta)/max*50; const zero=Math.abs(r.delta)<0.001;
-    const style=r.delta>=0?`left:50%;width:${w}%`:`right:50%;width:${w}%`;
-    return `<div class="bar" title="${esc(r.name)}：発動後勝率 ${pct(r.firstp)}（ハズレ ${pct(dud.firstp)}）、発動 ${fmt(r.first)}回"><span class="bn">${esc(r.name)}</span><span class="bt"><span class="bf ${r.delta<0?'neg':''} ${zero?'zero':''}" style="${style}"></span></span><span class="bv">${spct(r.delta)} <small>${pct(r.firstp)}</small></span></div>`;
+    const v=r.score; const w=Math.abs(v)/max*50; const zero=Math.abs(v)<0.001; const held=r.evalBy==='held';
+    const style=v>=0?`left:50%;width:${w}%`:`right:50%;width:${w}%`;
+    const title=held?`${r.name}：所持時勝率 ${pct(r.heldp)}（ハズレ ${pct(dud.heldp)}）、復活 ${fmt(r.revive)}回`:`${r.name}：発動後勝率 ${pct(r.firstp)}（ハズレ ${pct(dud.firstp)}）、発動 ${fmt(r.first)}回`;
+    return `<div class="bar" title="${esc(title)}"><span class="bn">${esc(r.name)}${held?' ◆':''}</span><span class="bt"><span class="bf ${v<0?'neg':''} ${zero?'zero':''}" style="${style}"></span></span><span class="bv">${spct(v)} <small>${pct(held?r.heldp:r.firstp)}</small></span></div>`;
   }).join('');
 }
 function filtered(rows){
@@ -240,14 +243,14 @@ function filtered(rows){
   if(state.tier!=='all') list=list.filter(r=>r.tier===state.tier);
   if(state.q){ const q=state.q.toLowerCase(); list=list.filter(r=>(r.name+r.eff+r.memo).toLowerCase().includes(q)); }
   const s=state.sort;
-  list.sort((a,b)=> s==='name'?a.name.localeCompare(b.name,'ja') : s==='heldp'?b.heldp-a.heldp : s==='first'?b.first-a.first : b.delta-a.delta);
+  list.sort((a,b)=> s==='name'?a.name.localeCompare(b.name,'ja') : s==='heldp'?b.heldp-a.heldp : s==='first'?b.first-a.first : b.score-a.score);
   return list;
 }
 function card(r){
   return `<article class="cc"><div class="cc-top"><span class="tier ${tierCls[r.tier]}">${tierLabel(r.tier)}</span><span>発動 ${fmt(r.first)}回</span><span class="qty">所持 ${fmt(r.held)}</span></div>
   <h3 class="cc-name">${esc(r.name)}</h3><p class="txt">${esc(r.eff)}</p>
-  <div class="stats"><span class="num"><b>${pct(r.firstp)}</b>発動後勝率</span><span class="num"><b>${spct(r.delta)}</b>ハズレ比</span></div>
-  <div class="meta"><span>所持時勝率 <b>${pct(r.heldp)}</b></span><span>脱落時発動率 <b>${pct(r.lastRate,0)}</b></span></div>
+  <div class="stats">${r.evalBy==='held'?`<span class="num"><b>${pct(r.heldp)}</b>所持時勝率</span><span class="num"><b>${spct(r.heldDelta)}</b>ハズレ比（所持時）</span>`:`<span class="num"><b>${pct(r.firstp)}</b>発動後勝率</span><span class="num"><b>${spct(r.delta)}</b>ハズレ比</span>`}</div>
+  <div class="meta">${r.evalBy==='held'?`<span>発動後勝率 <b>${pct(r.firstp)}</b>（1枚目では不発）</span><span>復活 <b>${fmt(r.revive)}回</b></span><span>復活後勝率 <b>${pct(r.revivep)}</b></span>`:`<span>所持時勝率 <b>${pct(r.heldp)}</b></span><span>脱落時発動率 <b>${pct(r.lastRate,0)}</b></span>`}</div>
   <p class="memo">${esc(r.memo)}</p></article>`;
 }
 function table(list){
@@ -266,8 +269,8 @@ function renderDud(){
   $('#dudtbl').innerHTML=`<thead><tr><th>条件</th><th class="n">ゲーム数</th><th class="n">平均ログ行数</th><th class="n">勝者が途中で被弾していた率</th><th class="n">1ゲームの被弾回数</th></tr></thead><tbody>`+['d5','d0'].map(k=>`<tr><td class="nm">${esc(d[k].label)}</td><td class="n">${fmt(d[k].games)}</td><td class="n">${d[k].avgLog}</td><td class="n">${pct(d[k].winnerLostLife)}</td><td class="n">${d[k].lifeLoss}</td></tr>`).join('')+'</tbody>';
 }
 function renderWhatif(){
-  const w=DATA.whatif; if(!w.length){ $('#whatif').closest('.tbl').hidden=true; return; }
-  $('#whatif').innerHTML='<thead><tr><th>♥コレクターの目標</th><th class="n">発動後勝率</th><th class="n">ハズレ比</th><th class="n">所持時勝率</th><th>判定</th></tr></thead><tbody>'+w.map(x=>`<tr><td class="nm">${x.goal}♥${x.goal===10?'（現行）':''}</td><td class="n">${pct(x.firstp)}</td><td class="n">${spct(x.delta)}</td><td class="n">${pct(x.heldp)}</td><td><span class="tier ${x.delta>=DATA.thr?'tS':x.delta<=-DATA.thr?'tW':'tN'}">${x.delta>=DATA.thr?'強い':x.delta<=-DATA.thr?'弱い':'中立'}</span></td></tr>`).join('')+'</tbody>';
+  const w=DATA.whatif; if(!w.length){ $('#whatif').hidden=true; return; }
+  $('#whatif').innerHTML=w.map(t=>`<div class="tbl"><table><thead><tr><th>${esc(t.title)}</th><th class="n">発動後勝率</th><th class="n">ハズレ比</th><th class="n">所持時勝率</th><th>判定</th></tr></thead><tbody>`+t.rows.map(x=>`<tr><td class="nm">${esc(x.label)}${x.current?'（現行）':''}</td><td class="n">${pct(x.firstp)}</td><td class="n">${spct(x.delta)}</td><td class="n">${pct(x.heldp)}</td><td><span class="tier ${x.delta>=DATA.thr?'tS':x.delta<=-DATA.thr?'tW':'tN'}">${x.delta>=DATA.thr?'強い':x.delta<=-DATA.thr?'弱い':'中立'}</span></td></tr>`).join('')+'</tbody></table></div>').join('');
 }
 function renderCands(){
   $('#cands').innerHTML=DATA.cands.map(c=>`<article class="cc"><h3 class="cc-name">${esc(c.name)}</h3><p class="txt">${esc(c.eff)}</p><p class="memo">${esc(c.aim)}</p></article>`).join('');

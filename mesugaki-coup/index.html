@@ -497,22 +497,37 @@ const ACTIONS = {
   assassinate: { id:'assassinate', name:'まけちゃえ～♥', role:'succu',     desc:'3♥を支払い、相手1人のプライドを1枚失わせる', target:true, cost:3, blockedBy:['ojisan'] },
 };
 
+const RULES = {
+  peekOwnTriggers: true,   // 自分のトリガーは自分だけ見える
+  triggerDeal: 2,          // 開始時に配るトリガー枚数。2ならそのまま上下に仕込む（3以上なら選んで残りを山へ）
+  attackerChoosesFlip: true, // プライドを失わせた側が、どちらを脱がせるか選ぶ
+  collectorGoal: 9,        // ♥コレクターの勝利条件
+  punishCost: 6,           // おしおき返しの即時ざぁ～こ♥のコスト
+  win15LiftsForcedCoup: true, // ♥コレクター所持者は10♥の強制ざぁ～こ♥を免除（目標を10♥より上にしたとき用）
+  coupCost: 7,
+  dudCount: 2,             // ハズレ（効果なし）トリガーの枚数
+  coupCostTaxed: 8,
+  forcedCoupAt: 10,
+};
+
 // count は山に入れる枚数（0なら使わない）
 const TRIGGERS = [
-  { id:'t1',  count:1, name:'おしおき返し',  text:'4♥持っていたら即時払って「ざぁ～こ♥」を打つ' },
+  { id:'t1',  count:1, name:'おしおき返し',  text:`${RULES.punishCost}♥持っていたら即時払って「ざぁ～こ♥」を打つ` },
   { id:'t2',  count:1, name:'山札のぞき',    text:'山札を見て1枚選び、手札と入れ替える' },
   { id:'t3',  count:1, name:'ダサすぎ返し',  text:'これを持っていれば「ダサすぎ♥」をブロックできる', persistent:true },
   { id:'t4',  count:0, name:'まるみえ',      text:'誰か一人の手札を表にする。効果で山札からカードを入れ替えた時点で、裏向きにして良い。' },
   { id:'t5',  count:1, name:'総入れ替え',    text:'自分以外の全員の手札をすべて山札に戻し、各プレイヤーは戻した分の枚数を引き手札にする' },
   { id:'t6',  count:2, name:'みかじめ',      text:'全員から1♥ずつもらう' },
   { id:'t7',  count:2, name:'まわして',      text:'全員手札を1枚選び、右隣のプレイヤーに渡す。' },
-  { id:'t8',  count:1, name:'値上げ',        text:'自分以外のプレイヤーは「ざぁ～こ♥」の使用条件が「8♥を支払う」になる', persistent:true },
-  { id:'t9',  count:1, name:'♥コレクター',   text:'自分の勝利条件に「10♥集める」を追加する', persistent:true },
+  { id:'t8',  count:0, name:'値上げ',        text:'自分以外のプレイヤーは「ざぁ～こ♥」の使用条件が「8♥を支払う」になる', persistent:true },
+  { id:'t9',  count:1, name:'♥コレクター',   text:`自分の勝利条件に「${RULES.collectorGoal}♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう`, persistent:true },
   { id:'t10', count:1, name:'ルール改変',    text:'「ダサすぎ♥」の効果を「相手の手札1枚を見て山札と交換させる。」に変える。以降は幼馴染ガキが「ダサすぎ♥」をブロック可能になる。', persistent:true },
   { id:'t11', count:1, name:'みちづれのキス', text:'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）' },
   { id:'t12', count:2, name:'仕返し',        text:'自分を脱がせた相手から3♥奪う' },
-  { id:'t13', count:1, name:'山分け',        text:'自分より♥の多い全員から1♥ずつもらう' },
+  { id:'t13', count:0, name:'山分け',        text:'自分より♥の多い全員から1♥ずつもらう' },
   { id:'t14', count:1, name:'値下げ',        text:'以後、自分の「ざぁ～こ♥」は5♥で撃てる', persistent:true },
+  { id:'t15', count:1, name:'遺言',          text:'自分の♥をすべて好きな相手に渡す' },
+  { id:'t16', count:1, name:'着替え',        text:'プライドが0になったときだけ発動。山札から1枚引いて手札に加え、脱落を免れる' },
 ];
 const NO_TRIGGER = { id:'none', name:'ハズレ', text:'効果なし' };
 
@@ -527,17 +542,6 @@ const WIN_LINES = [
 ];
 
 /* ルールの調整点（早見表に明記がない部分はここで切り替え） */
-const RULES = {
-  peekOwnTriggers: true,   // 自分のトリガーは自分だけ見える
-  triggerDeal: 2,          // 開始時に配るトリガー枚数。2ならそのまま上下に仕込む（3以上なら選んで残りを山へ）
-  attackerChoosesFlip: true, // プライドを失わせた側が、どちらを脱がせるか選ぶ
-  collectorGoal: 10,       // ♥コレクターの勝利条件
-  win15LiftsForcedCoup: true, // ♥コレクター所持者は10♥の強制ざぁ～こ♥を免除（目標を10♥より上にしたとき用）
-  coupCost: 7,
-  dudCount: 2,             // ハズレ（効果なし）トリガーの枚数
-  coupCostTaxed: 8,
-  forcedCoupAt: 10,
-};
 
 /* キャラ：img/{id}_{top|bottom}_{000|001}.webp（000=通常絵、001=ボロ絵）を上下2枚のカードとして表示 */
 const CHARS = [
@@ -740,6 +744,11 @@ async function humanPlaceTriggers(p){
   return [top,bottom];
 }
 
+// 山分け：自分より♥の多い相手から1♥ずつもらう（♥コレクター公開時にも使う）
+function shareUp(p){ let got=0; for(const q of othersOf(p)) if(q.hearts>p.hearts+got && q.hearts>0){ q.hearts--; got++; } p.hearts+=got; if(got) SFX.play('coin'); return got; }
+// 遺言の渡し先：脱がせてきた相手以外で、いちばん弱い相手
+function cpuBequeath(p,cands,by){ const pool=cands.filter(q=>q!==by); return (pool.length?pool:cands).slice().sort((a,b)=>threatScore(p,a)-threatScore(p,b))[0]; }
+
 /* ---- チャレンジ ---- */
 async function challengeWindow(claimant, role, what, candidates){
   for(const c of candidates){
@@ -836,21 +845,26 @@ async function loseInfluence(p, by, reason){
   fxHit(p); await wait(850);
 
   const avail=['top','bottom'].filter(k=>!p.boro[k]);
-  let k=avail[0];
-  if(avail.length>1){
-    const chooser = (RULES.attackerChoosesFlip && by && by!==p && by.alive) ? by : p;
-    if(chooser===p) k = p.cpu ? cpuFlip(p) : await humanFlip(p);
-    else { k = chooser.cpu ? cpuFlipOther(chooser,p) : await humanFlipOther(chooser,p); log(`${chooser.name} は ${p.name} の${half(k)}を脱がせた`, chooser.cpu?'':'me'); }
+  if(avail.length){
+    let k=avail[0];
+    if(avail.length>1){
+      const chooser = (RULES.attackerChoosesFlip && by && by!==p && by.alive) ? by : p;
+      if(chooser===p) k = p.cpu ? cpuFlip(p) : await humanFlip(p);
+      else { k = chooser.cpu ? cpuFlipOther(chooser,p) : await humanFlipOther(chooser,p); log(`${chooser.name} は ${p.name} の${half(k)}を脱がせた`, chooser.cpu?'':'me'); }
+    }
+    const t=p.triggers[k];
+    SFX.play('rip');
+    await fxFlipCard(p,k);
+    p.boro[k]=true; t.revealed=true;
+    log(`${p.name} の${half(k)}がボロボロに… トリガー「${t.card.name}」：${t.card.text}`, 'sys');
+    render(); fxTrigGlow(p,k);
+    const before=p.hand.length;
+    await cutscene(p, k, t.card);
+    await resolveTrigger(p, t.card, by);
+    if(S.headless) S.acts.push({i:p.i, id:t.card.id, left:before, after:p.hand.length, by:by?by.i:-1});
+  } else {
+    log(`${p.name} はもう脱ぐ服が残っていない`, 'sys'); await wait(300);
   }
-  const t=p.triggers[k];
-  SFX.play('rip');
-  await fxFlipCard(p,k);
-  p.boro[k]=true; t.revealed=true;
-  log(`${p.name} の${half(k)}がボロボロに… トリガー「${t.card.name}」：${t.card.text}`, 'sys');
-  render(); fxTrigGlow(p,k);
-  await cutscene(p, k, t.card);
-  await resolveTrigger(p, t.card, by);
-  if(S.headless) S.acts.push({i:p.i, id:t.card.id, left:p.hand.length, by:by?by.i:-1});
   if(p.hand.length===0){ p.alive=false; p.deadAt=++S.deaths; SFX.play('down'); log(`${p.name} は脱落…`, 'hurt'); }
   render();
 }
@@ -858,12 +872,12 @@ async function loseInfluence(p, by, reason){
 async function resolveTrigger(p, card, by){
   switch(card.id){
     case 't1': {
-      if(p.hearts<4){ log(`${p.name} は4♥持っていないので不発`); return; }
+      if(p.hearts<RULES.punishCost){ log(`${p.name} は${RULES.punishCost}♥持っていないので不発`); return; }
       const cands=othersOf(p).filter(q=>q.hand.length>0);
       if(!cands.length) return;
-      const target = p.cpu ? cpuThreat(p,cands) : await humanPickPlayer(p, cands, '4♥払って即時「ざぁ～こ♥」！ 相手を選んでください');
-      p.hearts-=4; say(p,'ざぁ～こ♥');
-      log(`${p.name} は4♥払って即時「ざぁ～こ♥」 → ${target.name}`, p.cpu?'':'me');
+      const target = p.cpu ? cpuThreat(p,cands) : await humanPickPlayer(p, cands, `${RULES.punishCost}♥払って即時「ざぁ～こ♥」！ 相手を選んでください`);
+      p.hearts-=RULES.punishCost; say(p,'ざぁ～こ♥');
+      log(`${p.name} は${RULES.punishCost}♥払って即時「ざぁ～こ♥」 → ${target.name}`, p.cpu?'':'me');
       const prevAction=S.action; setAction({actor:p, act:'coup', target, phase:'declare'});
       render(); await wait(400);
       await cutin(p, target);
@@ -916,7 +930,7 @@ async function resolveTrigger(p, card, by){
       return;
     }
     case 't8': p.flags.coupTax=true; log(`${p.name} 以外は「ざぁ～こ♥」に8♥必要になった`); return;
-    case 't9': p.flags.win15=true; log(`${p.name} は${RULES.collectorGoal}♥集めても勝利になった${liftNote()}`); return;
+    case 't9': { p.flags.win15=true; const got=shareUp(p); log(`${p.name} は${RULES.collectorGoal}♥集めても勝利になった${liftNote()}。♥の多い相手から1♥ずつもらった（+${got}♥）`); return; }
     case 't10': S.flags.examineMode=true; log(`「ダサすぎ♥」が「相手の手札1枚を見て山札と交換させる」に変わった。幼馴染ガキでブロック可能`, 'sys'); return;
     case 't11': {
       if(!by || by===p || !by.hand.length){ log(`脱がせた相手がいないので不発`); return; }
@@ -933,9 +947,24 @@ async function resolveTrigger(p, card, by){
       log(`${p.name} は ${by.name} から${n}♥奪い返した`);
       return;
     }
+    case 't15': {
+      const cands=othersOf(p).filter(q=>q.alive);
+      if(!p.hearts || !cands.length){ log(`${p.name} は渡す♥がないので不発`); return; }
+      const target = p.cpu ? cpuBequeath(p,cands,by) : await humanPickPlayer(p, cands, `遺言：${p.hearts}♥をすべて渡す相手を選んでください`);
+      const n=p.hearts; target.hearts+=n; p.hearts=0; SFX.play('coin');
+      log(`${p.name} は遺言で ${target.name} に${n}♥すべて渡した`, p.cpu?'':'me');
+      return;
+    }
+    case 't16': {
+      if(p.hand.length>0){ log(`${p.name} はまだプライドが残っているので「着替え」は不発`); return; }
+      if(!S.deck.length){ log(`山札がないので「着替え」は不発`); return; }
+      const c=drawCard(); p.hand.push(c); markFresh(c); SFX.play('chime');
+      say(p, 'まだ終わってないし♥');
+      log(`${p.name} は着替えて立ち直った！ 山札から1枚引いてプライド1で続行`, p.cpu?'sys':'me');
+      return;
+    }
     case 't13': {
-      let got=0; for(const q of othersOf(p)) if(q.hearts>p.hearts+got && q.hearts>0){ q.hearts--; got++; }
-      p.hearts+=got; if(got) SFX.play('coin'); log(`${p.name} は♥の多い相手から1♥ずつもらった（+${got}♥）`);
+      const got=shareUp(p); log(`${p.name} は♥の多い相手から1♥ずつもらった（+${got}♥）`);
       return;
     }
     case 't14': p.flags.coupDiscount=true; log(`${p.name} の「ざぁ～こ♥」は5♥で撃てるようになった`); return;
@@ -1081,7 +1110,7 @@ function cpuLoseCard(p){
 }
 function triggerValue(p, card){
   switch(card.id){
-    case 't1': return p.hearts>=4?9:2;
+    case 't1': return p.hearts>=RULES.punishCost?9:2;
     case 't2': return p.hand.length>0?5:0;
     case 't3': return 2;
     case 't4': return 4;
@@ -1095,6 +1124,8 @@ function triggerValue(p, card){
     case 't12': return 5;
     case 't13': return 3;
     case 't14': return 4;
+    case 't15': return 1;
+    case 't16': return 4;
     default: return 0;
   }
 }

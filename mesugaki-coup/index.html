@@ -393,16 +393,18 @@ const TRIGGERS = [
   { id:'t6',  name:'みかじめ',      text:'全員から1♥ずつもらう' },
   { id:'t7',  name:'まわして',      text:'全員手札を1枚選び、右隣のプレイヤーに渡す。' },
   { id:'t8',  name:'値上げ',        text:'自分以外のプレイヤーは「ざぁ～こ♥」の使用条件が「8♥を支払う」になる', persistent:true },
-  { id:'t9',  name:'♥コレクター',   text:'自分の勝利条件に「15♥集める」を追加する', persistent:true },
+  { id:'t9',  name:'♥コレクター',   text:'自分の勝利条件に「12♥集める」を追加する', persistent:true },
   { id:'t10', name:'ルール改変',    text:'「ダサすぎ♥」の効果を「相手の手札1枚を見て山札と交換させる。」に変える。以降は幼馴染ガキが「ダサすぎ♥」をブロック可能になる。', persistent:true },
 ];
 const NO_TRIGGER = { id:'none', name:'ハズレ', text:'効果なし' };
 
 /* ルールの調整点（早見表に明記がない部分はここで切り替え） */
 const RULES = {
-  peekOwnTriggers: false,  // トリガーは自分のものも裏向き（誰にも見えない）
+  peekOwnTriggers: true,   // 自分のトリガーは自分だけ見える
+  triggerDeal: 3,          // 開始時に配るトリガー枚数。ここから2枚を選んで上下に仕込む
   attackerChoosesFlip: true, // 影響力を失わせた側が、どちらを脱がせるか選ぶ
-  win15LiftsForcedCoup: true, // ♥コレクター所持者は10♥の強制ざぁ～こ♥を免除（でないと15♥に届かない）
+  collectorGoal: 12,       // ♥コレクターの勝利条件
+  win15LiftsForcedCoup: true, // ♥コレクター所持者は10♥の強制ざぁ～こ♥を免除（でないと届かない）
   coupCost: 7,
   dudCount: 5,             // ハズレ（効果なし）トリガーの枚数
   coupCostTaxed: 8,
@@ -480,9 +482,12 @@ function newGame(n, myChar, opts){
     const ch=CHARS[i===0?myChar:others[i-1]];
     S.players.push({ i, name:i===0?`${ch.name}（あなた）`:ch.name, cpu:i>0, ch, hearts:2,
       hand:[{role:deck.pop(),faceUp:false},{role:deck.pop(),faceUp:false}], lost:[],
-      boro:{top:false,bottom:false}, triggers:{top:{card:tdeck.pop(),revealed:false},bottom:{card:tdeck.pop(),revealed:false}},
+      boro:{top:false,bottom:false}, triggers:{top:{card:null,revealed:false},bottom:{card:null,revealed:false}}, trigHand:[],
       flags:{}, alive:true, bluffsCaught:0, claims:0 });
   }
+  const deal=Math.max(2, Math.min(RULES.triggerDeal, Math.floor(tdeck.length/n)));
+  for(const p of S.players) for(let k=0;k<deal;k++) p.trigHand.push(tdeck.pop());
+  S.tdeck=tdeck; S.setupDone=false;
   if(auto){ S.players[0].cpu=true; S.players[0].name=`${S.players[0].ch.name}（おまかせ）`; }
   S.deck=deck; S.turn=rnd(n); S.flags={examineMode:false}; S.winner=null; S.log=[]; S.current=null; S.target=null; S.acts=[]; S.deaths=0;
   TUT.active=false; S.playable=null;
@@ -495,6 +500,7 @@ async function runGame(){
   const gid=S.gameId;
   try{
     log(`ゲーム開始！ ${S.players[S.turn].name} からスタート`, 'sys');
+    await setupTriggers();
     await tutHook('start');
     let guard=0;
     while(!S.winner){
@@ -517,7 +523,7 @@ function checkWin(){
   if(a.length===0){ // 同時に全滅（おしおき返しの相打ちなど）：最後に脱落した人の勝ち
     return S.players.slice().sort((x,y)=>(y.deadAt||0)-(x.deadAt||0))[0];
   }
-  return a.find(p=>p.flags.win15 && p.hearts>=15) || null;
+  return a.find(p=>p.flags.win15 && p.hearts>=RULES.collectorGoal) || null;
 }
 
 async function takeTurn(p){
@@ -565,6 +571,34 @@ async function performAction(p, act, target){
     case 'assassinate': await loseInfluence(target, p, 'まけちゃえ～♥'); break;
   }
   render(); await wait(500);
+}
+
+/* ---- 開始時：配られたトリガーから2枚選び、上半身・下半身に仕込む ---- */
+async function setupTriggers(){
+  if(S.setupDone) return;
+  for(const p of S.players){
+    if(p.trigHand.length<2) continue;
+    let top, bottom;
+    if(p.cpu){ [top,bottom]=cpuPlaceTriggers(p); }
+    else { [top,bottom]=await humanPlaceTriggers(p); }
+    p.triggers.top={card:top,revealed:false}; p.triggers.bottom={card:bottom,revealed:false};
+    const rest=p.trigHand.filter(c=>c!==top&&c!==bottom); S.tdeck.push(...rest); p.trigHand=[];
+    render();
+  }
+  shuffle(S.tdeck);
+  S.setupDone=true;
+  log('全員がトリガーを仕込んだ', 'sys');
+}
+function cpuPlaceTriggers(p){
+  const sorted=p.trigHand.slice().sort((a,b)=>triggerValue(p,b)-triggerValue(p,a));
+  const keep=sorted.slice(0,2); return chance(0.5)?keep:[keep[1],keep[0]];
+}
+async function humanPlaceTriggers(p){
+  const cardEl=c=>{ const el=triggerEl({card:c,revealed:true},'on',false); el.style.width='190px'; el.style.minHeight='84px'; return el; };
+  const top=await askCards(`トリガーを仕込みます。${p.trigHand.length}枚のうち2枚を使います。まず「上半身」の横に置くカードを選んでください`, p.trigHand.map(c=>({el:cardEl(c), value:c})), '残りの1枚は山に戻ります（相手には見えません）', undefined, 'placeTrigger');
+  const rest=p.trigHand.filter(c=>c!==top);
+  const bottom = rest.length===1 ? rest[0] : await askCards('次に「下半身」の横に置くカードを選んでください', rest.map(c=>({el:cardEl(c), value:c})), `上半身：${top.name}`, undefined, 'placeTrigger');
+  return [top,bottom];
 }
 
 /* ---- チャレンジ ---- */
@@ -730,7 +764,7 @@ async function resolveTrigger(p, card, by){
       return;
     }
     case 't8': p.flags.coupTax=true; log(`${p.name} 以外は「ざぁ～こ♥」に8♥必要になった`); return;
-    case 't9': p.flags.win15=true; log(`${p.name} は15♥集めても勝利になった${RULES.win15LiftsForcedCoup?'（10♥の強制ざぁ～こ♥も免除）':''}`); return;
+    case 't9': p.flags.win15=true; log(`${p.name} は${RULES.collectorGoal}♥集めても勝利になった${RULES.win15LiftsForcedCoup?'（10♥の強制ざぁ～こ♥も免除）':''}`); return;
     case 't10': S.flags.examineMode=true; log(`「ダサすぎ♥」が「相手の手札1枚を見て山札と交換させる」に変わった。幼馴染ガキでブロック可能`, 'sys'); return;
     default: log(`ハズレ… 何も起きない`); return;
   }
@@ -770,7 +804,7 @@ async function endGame(){
   const h=document.createElement('h2'); h.textContent='けっか'; box.appendChild(h);
   box.appendChild(figureEl(w.ch, w.boro, 'xl', false)).style.justifyContent='center';
   const big=document.createElement('div'); big.className='big'; big.textContent=`${w.name} の勝ち！`; box.appendChild(big);
-  const sub=document.createElement('p'); sub.textContent = w.i===0 ? 'ざぁこ♡ 全員わからせ完了！' : (w.flags.win15&&w.hearts>=15 ? `${w.hearts}♥集めきった…` : 'わからされちゃった…'); box.appendChild(sub);
+  const sub=document.createElement('p'); sub.textContent = w.i===0 ? 'ざぁこ♡ 全員わからせ完了！' : (w.flags.win15&&w.hearts>=RULES.collectorGoal ? `${w.hearts}♥集めきった…` : 'わからされちゃった…'); box.appendChild(sub);
   if(TUT.active){ const t=document.createElement('p'); t.innerHTML=TUT_END; box.appendChild(t); }
   const row=document.createElement('div'); row.className='close'; row.style.textAlign='center';
   const b=document.createElement('button'); b.className='btn primary'; b.textContent=TUT.active?'本番をはじめる':'もう一度'; b.onclick=()=>{ $('#modalEnd').classList.remove('show'); openStart(); }; row.appendChild(b);
@@ -939,7 +973,8 @@ function blockTileEl(o, c){
 }
 function triggerEl(t, mode, small){
   const d=document.createElement('div');
-  d.className='tc'+(small?' sm':'')+(mode==='back'?' back':mode==='peek'?' peek':' on')+(t.card.id==='none'&&mode!=='back'?' none':'');
+  if(!t.card) mode='back';
+  d.className='tc'+(small?' sm':'')+(mode==='back'?' back':mode==='peek'?' peek':' on')+(t.card&&t.card.id==='none'&&mode!=='back'?' none':'');
   if(mode==='back'){ d.textContent='TRIGGER'; return d; }
   d.innerHTML=`<div class="tn">${t.card.name}</div><span class="tt">${t.card.text}</span>`;
   d.title=t.card.text;
@@ -952,7 +987,7 @@ function playerPanel(p, isMe){
   d.dataset.i=p.i;
   const tags=[];
   if(!p.alive) tags.push('脱落');
-  if(p.flags.win15) tags.push('15♥で勝利');
+  if(p.flags.win15) tags.push(`${RULES.collectorGoal}♥で勝利`);
   if(p.flags.coupTax) tags.push('値上げ中');
   if(p.flags.blockExchange) tags.push('ダサすぎ返し');
   const head=document.createElement('div'); head.className='plhead';
@@ -1259,6 +1294,8 @@ function tutSetup(){
   cpu.hand=[{role:take('succu'),faceUp:false},{role:take('osananajimi'),faceUp:false}];
   shuffle(S.deck);
   const T=id=>id==='none'?NO_TRIGGER:TRIGGERS.find(t=>t.id===id);
+  for(const q of S.players){ S.tdeck.push(...q.trigHand); q.trigHand=[]; }
+  S.setupDone=true;
   me.triggers={top:{card:T('t6'),revealed:false}, bottom:{card:T('t1'),revealed:false}};
   cpu.triggers={top:{card:T('t8'),revealed:false}, bottom:{card:T('none'),revealed:false}};
   S.turn=0;
@@ -1272,14 +1309,14 @@ function tutSetup(){
   };
   const n=cpu.name;
   TUT.beats=[
-    {on:'start', hl:'#meWrap', text:'ようこそ、<b>メスガキ・クー</b>へ。下があなたのパネルです。<b>手札2枚＝ライフ2つ</b>、♥2からスタート。手札のガキカードが「役職」、左のメスガキカード（上半身／下半身）が服、その横の2枚が<b>トリガー</b>です。トリガーは<b>自分にも見えない</b>裏向きのカードです。'},
+    {on:'start', hl:'#meWrap', text:'ようこそ、<b>メスガキ・クー</b>へ。下があなたのパネルです。<b>手札2枚＝ライフ2つ</b>、♥2からスタート。手札のガキカードが「役職」、左のメスガキカード（上半身／下半身）が服、その横の2枚が<b>トリガー</b>です。トリガーは<b>自分だけが見られる</b>カードで、本番では開始時に3枚から2枚を選んで上下に仕込みます。'},
     {on:'start', hl:'#opps', text:`上が相手の ${n}。相手の手札は裏向きで見えません。<b>相手の手札を2枚とも失わせたら勝ち</b>。手札を失うたびに服が1枚ボロになり、両方ボロで脱落です。`},
     {on:'action', only:'tax', text:'あなたの番。手札に<b>メスガキ</b>があるので「<b>よわよわ～♥</b>」で3♥もらいましょう（光っている手札のメスガキをクリックしてもOK）。カードの色とアクションの色は対応しています。役職つきのアクションは<b>持っていなくても宣言できます</b>（ハッタリ、破線のタイル）。そのかわり相手から<b>チャレンジ</b>されることがあります。'},
     {on:'cpuTurn', hl:'#opps', text:`3♥もらって5♥になりました。次は ${n} の番。相手の行動には<b>「は？」ブロック</b>と<b>チャレンジ！</b>で割り込めます。`},
     {on:'challenge', only:false, text:`${n} が<b>メスガキ</b>を主張して「よわよわ～♥」。怪しいですが、チャレンジを外すと<b>自分が影響力を失います</b>。見えているメスガキはあなたの1枚だけで、残り2枚を持っていてもおかしくない……今回は<b>見逃し</b>ましょう。`},
     {on:'action', only:'aid', text:'相手も5♥になりました。今度は「<b>よわ♥</b>」で2♥もらいましょう。誰でも使えますが、<b>メスガキを持っている人にブロックされる</b>ことがあります。'},
     {on:'challenge', only:true, text:`${n} がメスガキで「は？弱くないが？」とブロック。<b>ブロックにもチャレンジできます</b>。さっきもメスガキを主張していた……2回とも本当でしょうか？ ここは<b>チャレンジ！</b>`},
-    {on:'flipOther', only:'top', text:`チャレンジ成功！ ${n} はメスガキを持っていませんでした。相手は手札を1枚失い、服を1枚脱ぎます。<b>どちらを脱がせるかは、失わせた側（あなた）が選びます</b>。トリガーは裏向きなので中身は運だめし。今回は<b>上半身</b>を。`},
+    {on:'flipOther', only:'top', text:`チャレンジ成功！ ${n} はメスガキを持っていませんでした。相手は手札を1枚失い、服を1枚脱ぎます。<b>どちらを脱がせるかは、失わせた側（あなた）が選びます</b>。相手のトリガーは見えないので運だめし。今回は<b>上半身</b>を。`},
     {on:'cpuTurn', hl:'#deckInfo', text:`${n} の上半身がボロ絵に。その下のトリガー「<b>値上げ</b>」が発動して、あなたの「ざぁ～こ♥」は<b>8♥</b>必要になりました（中央の盤面情報を見てください）。`},
     {on:'challenge', only:false, text:`${n} が<b>サキュガキ</b>で「<b>まけちゃえ～♥</b>」（3♥払って暗殺）をあなたに。まずチャレンジするかどうか。相手の残り1枚がサキュガキかどうかは分からない……ここは<b>見逃し</b>ます。`},
     {on:'block', only:null, text:'次にブロック。「まけちゃえ～♥」は<b>わからせおじさん</b>でブロックできますが、あなたは持っていません。ハッタリでブロックもできますが、チャレンジされたら痛い。今回は<b>ブロックしない</b>で、影響力を失う流れを体験しましょう。'},
@@ -1349,9 +1386,9 @@ function buildRules(){
   <h3>チャレンジ</h3>
   <p>役職を主張したアクションやブロックには、ほかのプレイヤーが「チャレンジ！」できる。主張した本人がそのカードを持っていれば公開して山札と入れ替え、チャレンジした側が影響力を失う。持っていなければ主張した側が影響力を失い、アクションは失敗する。</p>
   <h3>この実装での取り決め</h3>
-  <p>・トリガーは自分のものも含めて裏向きで、誰にも中身は見えない。<br>
+  <p>・トリガーは自分のものだけ見える。開始時に${RULES.triggerDeal}枚配られ、2枚を選んで上半身・下半身のどちらに敷くか決める（残りは山に戻す）。<br>
   ・影響力を失わせた側（攻撃した人・チャレンジに勝った人）が、相手の上半身・下半身どちらを脱がせるか選ぶ。<br>
-  ・「♥コレクター」を持つプレイヤーは10♥での強制ざぁ～こ♥を免除する（${RULES.win15LiftsForcedCoup?'ON':'OFF'}。免除しないと15♥に届かないため）。<br>
+  ・「♥コレクター」を持つプレイヤーは10♥での強制ざぁ～こ♥を免除する（${RULES.win15LiftsForcedCoup?'ON':'OFF'}。免除しないと${RULES.collectorGoal}♥に届かないため）。<br>
   ・「ダサすぎ返し」は公開済みのトリガーなので、そのブロックはチャレンジできない。<br>
   ・「まわして」の右隣は、席順で次のプレイヤー。<br>
   ・まけちゃえ～♥の3♥はチャレンジで失敗しても戻らない（クー準拠）。</p>

@@ -490,11 +490,11 @@ const ROLE_IDS = Object.keys(ROLES);
 const ACTIONS = {
   income:      { id:'income',      name:'ふ～ん♥',     desc:'1♥を獲得する' },
   aid:         { id:'aid',         name:'よわ♥',       desc:'2♥を獲得する', blockedBy:['mesugaki'] },
-  coup:        { id:'coup',        name:'ざぁ～こ♥',   desc:'7♥を支払い、相手1人の影響力を失わせる', target:true },
+  coup:        { id:'coup',        name:'ざぁ～こ♥',   desc:'7♥を支払い、相手1人のプライドを失わせる', target:true },
   tax:         { id:'tax',         name:'よわよわ～♥', role:'mesugaki',    desc:'3♥を獲得する' },
   steal:       { id:'steal',       name:'なさけな～い♥', role:'kouhai',    desc:'他プレイヤー1人から2♥を奪う', target:true, blockedBy:['kouhai','osananajimi'] },
   exchange:    { id:'exchange',    name:'ダサすぎ♥',   role:'osananajimi', desc:'山札から2枚引き、手札から2枚戻す' },
-  assassinate: { id:'assassinate', name:'まけちゃえ～♥', role:'succu',     desc:'3♥を支払い、相手1人の影響力を1枚失わせる', target:true, cost:3, blockedBy:['ojisan'] },
+  assassinate: { id:'assassinate', name:'まけちゃえ～♥', role:'succu',     desc:'3♥を支払い、相手1人のプライドを1枚失わせる', target:true, cost:3, blockedBy:['ojisan'] },
 };
 
 // count は山に入れる枚数（0なら使わない）
@@ -530,7 +530,7 @@ const WIN_LINES = [
 const RULES = {
   peekOwnTriggers: true,   // 自分のトリガーは自分だけ見える
   triggerDeal: 2,          // 開始時に配るトリガー枚数。2ならそのまま上下に仕込む（3以上なら選んで残りを山へ）
-  attackerChoosesFlip: true, // 影響力を失わせた側が、どちらを脱がせるか選ぶ
+  attackerChoosesFlip: true, // プライドを失わせた側が、どちらを脱がせるか選ぶ
   collectorGoal: 10,       // ♥コレクターの勝利条件
   win15LiftsForcedCoup: true, // ♥コレクター所持者は10♥の強制ざぁ～こ♥を免除（目標を10♥より上にしたとき用）
   coupCost: 7,
@@ -824,7 +824,7 @@ async function blockWindow(actor, act, target){
   return false;
 }
 
-/* ---- 影響力を失う：手札を1枚失い、服を1枚裏返し、トリガー発動 ---- */
+/* ---- プライドを失う：手札を1枚失い、服を1枚裏返し、トリガー発動 ---- */
 async function loseInfluence(p, by, reason){
   if(!p.alive || p.hand.length===0) return;
   let idx=0;
@@ -993,15 +993,17 @@ async function endGame(){
 /* =====================================================================
  *  CPU の思考
  * ===================================================================== */
-function knownCount(p, role){
+// p が「場に出ている」と知っている role の枚数。except の手札は数えない（主張者本人の手札を疑う材料にしないため）
+function knownCount(p, role, except){
   let n=0;
   for(const q of S.players){
     for(const r of q.lost) if(r===role) n++;
+    if(q===except) continue;
     for(const c of q.hand) if(c.role===role && (q===p || c.faceUp || seenBy(c,p))) n++;
   }
   return n;
 }
-function threatScore(p, q){ return q.hearts + q.hand.length*3 + (q.flags.win15?4:0) + (q.hearts>=coupCost(q)?3:0); }
+function threatScore(p, q){ return q.hearts + q.hand.length*3 + (q.flags.win15?(4+(q.hearts>=RULES.collectorGoal-3?6:0)):0) + (q.hearts>=coupCost(q)?3:0); }
 function cpuThreat(p, cands){
   let best=null, bs=-1;
   for(const q of cands){ const s=threatScore(p,q)+Math.random()*2; if(s>bs){ bs=s; best=q; } }
@@ -1011,6 +1013,13 @@ function cpuChooseAction(p, forced){
   const tv=tutCpu('action'); if(tv!==undefined) return typeof tv==='function'?tv(p):tv;
   const others=othersOf(p), cost=coupCost(p);
   const lives=p.hand.length;
+  // ♥コレクター持ち：この手番で目標に届くなら、ざぁ～こ♥より先にそれで勝ちに行く
+  if(p.flags.win15 && !forced){
+    const need=RULES.collectorGoal-p.hearts;
+    if(need<=1) return {action:'income'};                                  // ふ～ん♥は止められない
+    if(need<=2 && chance(0.85)) return {action:'aid'};                     // よわ♥はメスガキ主張でしか止まらない
+    if(need<=3 && (hasRole(p,'mesugaki') || (lives===2 && knownCount(p,'mesugaki')<2 && chance(0.5)))) return {action:'tax'};
+  }
   if(forced || p.hearts>=cost) return {action:'coup', target:cpuThreat(p,others)};
   const canBluff = lives===2 && chance(0.3);
   if(hasRole(p,'mesugaki') || (canBluff && knownCount(p,'mesugaki')<2 && chance(0.5))) return {action:'tax'};
@@ -1031,9 +1040,11 @@ function cpuChooseAction(p, forced){
 }
 function cpuChallenge(c, claimant, role, what){
   const tv=tutCpu('challenge'); if(tv!==undefined) return tv;
-  if(knownCount(c, role)>=3) return true;
+  if(claimant.hand.some(x=>x.role===role && (x.faceUp || seenBy(x,c)))) return false; // 持っているのを知っている
+  const known=knownCount(c, role, claimant);
+  if(known>=3) return true;
   let pr=0.12;
-  pr += knownCount(c, role)*0.08;
+  pr += known*0.08;
   pr += claimant.bluffsCaught*0.15;
   if(claimant.claims>=4) pr+=0.08;
   if(what.kind==='action' && what.target===c){
@@ -1043,6 +1054,8 @@ function cpuChallenge(c, claimant, role, what){
     } else if(what.action==='steal') pr+=0.1;
   }
   if(what.kind==='block' && what.actor===c){ pr+=0.15; if(what.action==='assassinate') pr+=0.15; }
+  // ♥コレクター持ちの「よわよわ～♥」で目標に届くなら、止めないと負ける
+  if(what.kind==='action' && what.action==='tax' && claimant.flags.win15 && claimant.hearts+3>=RULES.collectorGoal) pr+=0.45;
   if(c.hand.length===1) pr*=0.5;
   return chance(pr);
 }
@@ -1056,7 +1069,7 @@ function cpuBlock(c, actor, act, opts){
   if(!bluff.length) return null;
   if(act==='assassinate'){ if(c.hand.length===1) return pick(bluff); return chance(0.35)?pick(bluff):null; }
   if(act==='steal') return c.hearts>=2 && c.hand.length===2 && chance(0.25) ? pick(bluff) : null;
-  if(act==='aid') return c.hand.length===2 && chance(0.15) ? pick(bluff) : null;
+  if(act==='aid'){ if(actor.flags.win15 && actor.hearts+2>=RULES.collectorGoal) return chance(0.8)?pick(bluff):null; return c.hand.length===2 && chance(0.15) ? pick(bluff) : null; }
   if(act==='exchange') return c.hand.length===2 && chance(0.2) ? pick(bluff) : null;
   return null;
 }
@@ -1149,7 +1162,7 @@ function blockTileEl(o, c){
   const R=ROLES[o.role]; b.style.setProperty('--rcol',R.color); b.dataset.act='block:'+o.role;
   const held=hasRole(c,o.role); if(!held) b.classList.add('bluff');
   b.onmouseenter=()=>linkRole(o.role,true); b.onmouseleave=()=>linkRole(o.role,false);
-  b.innerHTML=`<div class="ah">${R.name}でブロック</div><div class="ar">「${R.line}」</div><div class="ae">${held?'持っているので、チャレンジされても安心':'持っていないのでハッタリ。チャレンジされると影響力を失う'}</div><span class="ast">${held?'✓ 持ってる':'ハッタリ'}</span>`;
+  b.innerHTML=`<div class="ah">${R.name}でブロック</div><div class="ar">「${R.line}」</div><div class="ae">${held?'持っているので、チャレンジされても安心':'持っていないのでハッタリ。チャレンジされるとプライドを失う'}</div><span class="ast">${held?'✓ 持ってる':'ハッタリ'}</span>`;
   return b;
 }
 function triggerEl(t, mode, small){
@@ -1186,7 +1199,7 @@ function playerPanel(p, isMe){
   figrow.appendChild(trigcol);
   body.appendChild(figrow);
   const cards=document.createElement('div'); cards.className='cards';
-  const hl=document.createElement('div'); hl.className='lbl2'; hl.textContent=isMe?'手札（影響力）':'手札';
+  const hl=document.createElement('div'); hl.className='lbl2'; hl.textContent=isMe?'手札（プライド）':'手札';
   const hand=document.createElement('div'); hand.className='hand';
   for(const c of p.hand){
     const el = isMe||c.faceUp ? roleCardEl(c.role,{small:!isMe, faceUp:c.faceUp}) : (S.players[0]&&seenBy(c,S.players[0])) ? roleCardEl(c.role,{small:true, peek:true}) : cardBackEl(true);
@@ -1326,7 +1339,7 @@ function passText(what, claimant, me){
     case 'aid': return `${who(claimant)} が2♥獲得（${claimant.hearts}♥ → ${claimant.hearts+2}♥）`;
     case 'tax': return `${who(claimant)} が3♥獲得（${claimant.hearts}♥ → ${claimant.hearts+3}♥）`;
     case 'steal': { const n=Math.min(2,t.hearts); return `${who(claimant)} が ${who(t)} から${n}♥奪う（${who(t)} ${t.hearts}♥ → ${t.hearts-n}♥、${who(claimant)} ${claimant.hearts}♥ → ${claimant.hearts+n}♥）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと後輩ガキ・幼馴染ガキでブロックできる':''); }
-    case 'assassinate': return `${who(t)} が影響力を1つ失う（手札1枚を捨て、服を1枚脱ぐ）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと わからせおじさん でブロックできる':'');
+    case 'assassinate': return `${who(t)} がプライドを1つ失う（手札1枚を捨て、服を1枚脱ぐ）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと わからせおじさん でブロックできる':'');
     case 'exchange': return (S.flags.examineMode&&t) ? `${who(claimant)} が ${who(t)} の手札1枚を見て、山札と交換させられる`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと幼馴染ガキでブロックできる':'') : `${who(claimant)} が山札から2枚引いて2枚戻す（手札を整えられる）`;
   }
   return '';
@@ -1340,9 +1353,9 @@ async function humanChallenge(c, claimant, role, what){
     msgEl(box, msg+'。チャレンジする？');
     const cl=document.createElement('div'); cl.className='claim';
     cl.appendChild(roleCardEl(role));
-    const t=document.createElement('div'); t.className='cl'; t.innerHTML=`主張しているカード：<b>${rname(role)}</b><br>あなたから見えている${rname(role)}：${knownCount(c,role)}/3枚<br><b>見逃すと：</b>${passText(what, claimant, c)}<br><b>チャレンジすると：</b>持っていればあなたが、持っていなければ相手が影響力を失う`;
+    const t=document.createElement('div'); t.className='cl'; t.innerHTML=`主張しているカード：<b>${rname(role)}</b><br>あなたから見えている${rname(role)}：${knownCount(c,role)}/3枚<br><b>見逃すと：</b>${passText(what, claimant, c)}<br><b>チャレンジすると：</b>持っていればあなたが、持っていなければ相手がプライドを失う`;
     cl.appendChild(t); box.appendChild(cl);
-    buttonsEl(box, [{label:'チャレンジ！', value:true, danger:true, sub:'外れたら自分が影響力を失う'}, {label:'見逃す', value:false, primary:true}], done);
+    buttonsEl(box, [{label:'チャレンジ！', value:true, danger:true, sub:'外れたら自分がプライドを失う'}, {label:'見逃す', value:false, primary:true}], done);
   }, 'challenge');
 }
 async function humanBlock(c, actor, act, opts, target){
@@ -1357,7 +1370,7 @@ async function humanBlock(c, actor, act, opts, target){
     buttonsEl(r, [{label:'ブロックしない', value:null, primary:true}], done);
   }, 'block');
 }
-function humanLoseCard(p, reason){ return askCards(`影響力を失います（${reason}）。失うカードを選んでください`, p.hand.map((c,i)=>({el:roleCardEl(c.role,{faceUp:c.faceUp}), value:i})), undefined, undefined, 'lose'); }
+function humanLoseCard(p, reason){ return askCards(`プライドを失います（${reason}）。失うカードを選んでください`, p.hand.map((c,i)=>({el:roleCardEl(c.role,{faceUp:c.faceUp}), value:i})), undefined, undefined, 'lose'); }
 function humanFlipOther(c,p){
   const opt=k=>({label:`${p.name} の${half(k)}を脱がせる`, value:k, sub:'トリガー：？（裏向き）'});
   return askButtons(`${p.name} の上半身・下半身、どちらを脱がせますか？（下のトリガーが発動します）`, ['top','bottom'].filter(k=>!p.boro[k]).map(opt), undefined, 'flipOther');
@@ -1558,7 +1571,7 @@ function fxBluff(claimant, challenger, role){
     const finish=()=>{ if(done) return; done=true; cut.classList.add('out'); setTimeout(()=>cut.remove(), 320); resolve(); };
     cut.addEventListener('click', finish);
     const step=(ms,fn)=>wait(ms).then(()=>{ if(!done && gid===S.gameId) fn(); });
-    step(700,()=>{ const lb=document.createElement('div'); lb.className='cutlabel'; lb.textContent='ハッタリ！'; box.insertBefore(lb, stage); stage.classList.add('hit'); cap.innerHTML=`持っていなかった → <b>影響力を1つ失う</b>`; SFX.play('buzz'); })
+    step(700,()=>{ const lb=document.createElement('div'); lb.className='cutlabel'; lb.textContent='ハッタリ！'; box.insertBefore(lb, stage); stage.classList.add('hit'); cap.innerHTML=`持っていなかった → <b>プライドを1つ失う</b>`; SFX.play('buzz'); })
       .then(()=>step(1500,finish))
       .catch(()=>{ cut.remove(); resolve(); });
   });
@@ -1652,14 +1665,14 @@ function tutSetup(){
     {on:'start', hl:'#opps', text:`上が相手の ${n}。相手の手札は裏向きで見えません。<b>相手の手札を2枚とも失わせたら勝ち</b>。手札を失うたびに服が1枚ボロになり、両方ボロで脱落です。`},
     {on:'action', only:'tax', text:'あなたの番。手札に<b>メスガキ</b>があるので「<b>よわよわ～♥</b>」で3♥もらいましょう（光っている手札のメスガキをクリックしてもOK）。カードの色とアクションの色は対応しています。役職つきのアクションは<b>持っていなくても宣言できます</b>（ハッタリ、破線のタイル）。そのかわり相手から<b>チャレンジ</b>されることがあります。'},
     {on:'cpuTurn', hl:'#opps', text:`3♥もらって5♥になりました。次は ${n} の番。相手の行動には<b>「は？」ブロック</b>と<b>チャレンジ！</b>で割り込めます。`},
-    {on:'challenge', only:false, text:`${n} が<b>メスガキ</b>を主張して「よわよわ～♥」。怪しいですが、チャレンジを外すと<b>自分が影響力を失います</b>。見えているメスガキはあなたの1枚だけで、残り2枚を持っていてもおかしくない……今回は<b>見逃し</b>ましょう。`},
+    {on:'challenge', only:false, text:`${n} が<b>メスガキ</b>を主張して「よわよわ～♥」。怪しいですが、チャレンジを外すと<b>自分がプライドを失います</b>。見えているメスガキはあなたの1枚だけで、残り2枚を持っていてもおかしくない……今回は<b>見逃し</b>ましょう。`},
     {on:'action', only:'aid', text:'相手も5♥になりました。今度は「<b>よわ♥</b>」で2♥もらいましょう。誰でも使えますが、<b>メスガキを持っている人にブロックされる</b>ことがあります。'},
     {on:'challenge', only:true, text:`${n} がメスガキで「は？弱くないが？」とブロック。<b>ブロックにもチャレンジできます</b>。さっきもメスガキを主張していた……2回とも本当でしょうか？ ここは<b>チャレンジ！</b>`},
     {on:'flipOther', only:'top', text:`チャレンジ成功！ ${n} はメスガキを持っていませんでした。相手は手札を1枚失い、服を1枚脱ぎます。<b>どちらを脱がせるかは、失わせた側（あなた）が選びます</b>。相手のトリガーは見えないので運だめし。今回は<b>上半身</b>を。`},
     {on:'cpuTurn', hl:'#deckInfo', text:`${n} の上半身がボロ絵に。その下のトリガー「<b>値上げ</b>」が発動して、あなたの「ざぁ～こ♥」は<b>8♥</b>必要になりました（中央の盤面情報を見てください）。`},
     {on:'challenge', only:false, text:`${n} が<b>サキュガキ</b>で「<b>まけちゃえ～♥</b>」（3♥払って暗殺）をあなたに。まずチャレンジするかどうか。相手の残り1枚がサキュガキかどうかは分からない……ここは<b>見逃し</b>ます。`},
-    {on:'block', only:null, text:'次にブロック。「まけちゃえ～♥」は<b>わからせおじさん</b>でブロックできますが、あなたは持っていません。ハッタリでブロックもできますが、チャレンジされたら痛い。今回は<b>ブロックしない</b>で、影響力を失う流れを体験しましょう。'},
-    {on:'lose', only:1, text:'影響力を失います。<b>失うカードは自分で選べます</b>。メスガキは「よわよわ～♥」で稼げる強いカードなので、<b>後輩ガキ</b>を捨てましょう。そのあと<b>どちらを脱ぐかは相手が選び</b>、その下のトリガーが発動します。'},
+    {on:'block', only:null, text:'次にブロック。「まけちゃえ～♥」は<b>わからせおじさん</b>でブロックできますが、あなたは持っていません。ハッタリでブロックもできますが、チャレンジされたら痛い。今回は<b>ブロックしない</b>で、プライドを失う流れを体験しましょう。'},
+    {on:'lose', only:1, text:'プライドを失います。<b>失うカードは自分で選べます</b>。メスガキは「よわよわ～♥」で稼げる強いカードなので、<b>後輩ガキ</b>を捨てましょう。そのあと<b>どちらを脱ぐかは相手が選び</b>、その下のトリガーが発動します。'},
     {on:'action', only:'coup', text:'相手に上半身を脱がされ、トリガー「みかじめ」で全員から1♥もらって8♥たまりました。「<b>ざぁ～こ♥</b>」は♥を払うだけで<b>ブロックもチャレンジもされない</b>確実な一撃。相手は残り1枚なので、これで決まりです。<b>10♥以上持っていたら必ずざぁ～こ♥</b>を撃たされることも覚えておいてください。'},
     {on:'target', only:v=>!!v&&v.cpu, text:'相手を選んで、わからせましょう。'},
   ];
@@ -1699,7 +1712,7 @@ function setHighlight(sel){
 function buildRules(){
   return `
   <h2>メスガキ・クー ルール</h2>
-  <p class="rl-lede">クー(Coup)がベース。♥を集め、ハッタリと「は？」で相手の<b>影響力（手札）</b>を削る。<b>最後まで残った1人の勝ち</b>。影響力を失うたびにメスガキカードが裏返ってボロ絵になり、その横のトリガーが発動する。</p>
+  <p class="rl-lede">クー(Coup)がベース。♥を集め、ハッタリと「は？」で相手の<b>プライド（手札）</b>を削る。<b>最後まで残った1人の勝ち</b>。プライドを失うたびにメスガキカードが裏返ってボロ絵になり、その横のトリガーが発動する。</p>
 
   <div class="rl-sec"><h3><span class="no">1</span>準備</h3>
   <ul class="rl-list">
@@ -1714,23 +1727,23 @@ function buildRules(){
     <div class="rl-arrow">→</div>
     <div class="rl-step"><b>② 割り込み</b>ほかの人が止められる<small>「は？」ブロック（役職を主張して止める）／ チャレンジ！（ハッタリだと疑う）。ブロックにもチャレンジできる</small></div>
     <div class="rl-arrow">→</div>
-    <div class="rl-step"><b>③ 解決</b>通れば効果、止まれば不発<small>♥の増減、影響力の喪失。10♥以上で手番が来たら必ず「ざぁ～こ♥」</small></div>
+    <div class="rl-step"><b>③ 解決</b>通れば効果、止まれば不発<small>♥の増減、プライドの喪失。10♥以上で手番が来たら必ず「ざぁ～こ♥」</small></div>
   </div></div>
 
   <div class="rl-sec"><h3><span class="no">3</span>アクション <small>色は使うガキカードの色。「誰でも」は役職なし</small></h3>
   <div class="rl-tiles" id="rlActions"></div></div>
 
-  <div class="rl-sec"><h3><span class="no">4</span>ガキカード（役職） <small>5種×3枚＝15枚。手札2枚が影響力</small></h3>
+  <div class="rl-sec"><h3><span class="no">4</span>ガキカード（役職） <small>5種×3枚＝15枚。手札2枚がプライド</small></h3>
   <div class="rl-roles" id="rlRoles"></div>
   <p class="rl-note">「できる」はそのカードで宣言できるアクション、「ブロック」はそのカードで止められる相手のアクション。</p></div>
 
   <div class="rl-sec"><h3><span class="no">5</span>チャレンジ</h3>
   <div class="rl-two">
-    <div class="rl-box ok"><b>主張が本当だった</b>そのカードを公開して山札と交換し、1枚引き直す。チャレンジした人が影響力を失う。アクションは通る。</div>
-    <div class="rl-box ng"><b>ハッタリだった</b>主張した人が影響力を失い、アクション（またはブロック）は失敗。まけちゃえ～♥で払った3♥は戻らない。</div>
+    <div class="rl-box ok"><b>主張が本当だった</b>そのカードを公開して山札と交換し、1枚引き直す。チャレンジした人がプライドを失う。アクションは通る。</div>
+    <div class="rl-box ng"><b>ハッタリだった</b>主張した人がプライドを失い、アクション（またはブロック）は失敗。まけちゃえ～♥で払った3♥は戻らない。</div>
   </div></div>
 
-  <div class="rl-sec"><h3><span class="no">6</span>影響力を失ったとき</h3>
+  <div class="rl-sec"><h3><span class="no">6</span>プライドを失ったとき</h3>
   <ol class="rl-ol">
     <li><b>手札を1枚</b>、自分で選んで表にして捨てる。</li>
     <li><b>失わせた相手</b>が、メスガキカードの上半身・下半身どちらかを選んで裏返す（ボロ絵）。</li>

@@ -9,8 +9,8 @@ neg_dark = sys.argv[5] if len(sys.argv) > 5 else '#4aa3f0'
 d = json.load(open(src, encoding='utf-8'))
 
 EFF = {'みちづれのキス':'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）','仕返し':'自分を脱がせた相手から3♥奪う','山分け':'自分より♥の多い全員から1♥ずつもらう','値下げ':'以後、自分の「ざぁ～こ♥」は5♥で撃てる','おしおき返し':'5♥持っていたら即時払って「ざぁ～こ♥」を打つ','山札のぞき':'山札を見て1枚選び、手札と入れ替える','ダサすぎ返し':'これを持っていれば「ダサすぎ♥」をブロックできる','まるみえ':'誰か一人の手札を表にする','総入れ替え':'自分以外の全員の手札を山札に戻し、同じ枚数を引き直す','みかじめ':'全員から1♥ずつもらう','まわして':'全員手札を1枚選び、右隣に渡す','値上げ':'自分以外は「ざぁ～こ♥」が8♥になる','♥コレクター':'自分の勝利条件に「9♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう','遺言':'プライドが0になったときだけ発動。自分の♥をすべて好きな相手に渡す','着替え':'プライドが0になったときだけ発動。山札から1枚引いて脱落を免れる。ただし♥は0になる','ルール改変':'「ダサすぎ♥」を審問（相手の手札1枚を見て山札と交換させる）に変える','ハズレ':'効果なし'}
-MEMO = {"みちづれのキス": "脱がせた相手の手札を自分だけ見る。見た相手の主張を無駄に疑わなくなるぶん得をする。2枚にしても両条件で最上位", "値下げ": "自分だけざぁ～こ♥が5♥になる。両条件で最上位", "仕返し": "脱がせた相手から3♥取り返す。両条件でプラス", "おしおき返し": "5♥で中立〜ややプラス。所持時勝率は平均より2ポイント高く、持っているだけで相手の攻撃を抑えている。4♥なら上位、6♥なら中立以下（下の試算）", "みかじめ": "全員から1♥。ほぼ中立", "山札のぞき": "手札の質を上げる。ほぼ中立", "ダサすぎ返し": "中立。ダサすぎ♥を止める機会しだい", "ルール改変": "中立〜やや弱い。全員に効くので自分の得にならない", "♥コレクター": "9♥＋公開時の山分けで中立。4人戦ではややプラス、3〜6人戦ではややマイナス。8♥にすると強い寄り、10♥だと最下位（下の試算）", "まわして": "1枚に減らした。4人戦では中立、3〜6人戦ではやや弱い。全員が1枚ずつ渡すので自分の得にならない", "総入れ替え": "やや弱い。全員に影響する効果で自分の得は安定しない", "遺言": "脱落時のみ発動のキングメーカー札。本人の勝率には効かないので、1枚目でめくれたときの不発と同じ −2pt 前後に出る", "着替え": "プライドが0になる脱ぎでめくれたときだけ発動し、山札から1枚引いて生き残るが♥は0になる。1枚目でめくれると不発なので発動後勝率は低いが、所持時勝率は全カード中トップ（平均 +8pt。♥を残していた版は +9pt）。復活後の勝率は約22%", "まるみえ": "今回は0枚", "値上げ": "今回は0枚", "山分け": "今回は0枚（♥コレクターの公開時効果に統合）", "ハズレ": "今回は0枚"}
-CANDS = [["道連れ", "自分を脱がせた相手はプライドを1つ失う", "脱落時に発動しても意味がある。強すぎるなら「相手が手札2枚のときだけ」"], ["遺言に見返り", "プライドが0になったときだけ発動。自分の♥をすべて好きな相手に渡し、その相手は次の手番までチャレンジできない", "今の遺言は本人の得がゼロ。渡した相手に縛りを付けると駆け引きになる"]]
+MEMO = {"みちづれのキス": "脱がせた相手の手札を自分だけ見る。2枚入り。両条件でややプラス", "値下げ": "自分だけざぁ～こ♥が5♥になる。両条件で1位だが差は +1.6pt と小さい", "仕返し": "脱がせた相手から3♥取り返す。両条件でややプラス", "おしおき返し": "5♥。発動後は中立だが、所持時勝率は平均より2ポイント高く、持っているだけで相手の攻撃を抑えている。4♥なら +1.8pt（下の試算）", "みかじめ": "全員から1♥。両条件でややプラス", "山札のぞき": "手札の質を上げる。中立〜ややプラス", "ダサすぎ返し": "中立", "ルール改変": "中立〜やや弱い。全員に効くので自分の得にならない", "♥コレクター": "9♥＋公開時の山分けでやや弱い寄りの中立。8♥にすると +5pt で強すぎ、10♥だと −4pt で最下位（下の試算）", "まわして": "1枚。中立〜やや弱い。全員が1枚ずつ渡すので自分の得にならない", "総入れ替え": "両条件で最下位（−1.8pt）。全員の手札を引き直させるので自分の得は安定しない。差し替え候補", "遺言": "今回は0枚（外した）", "着替え": "プライドが0になる脱ぎでめくれたときだけ発動し、山札から1枚引いて生き残る（♥は0に）。1枚目でめくれると不発なので発動後勝率は低いが、所持時勝率は全カード中トップ（平均 +7pt）。復活後の勝率は約21%で、「プライド1枚・♥0」の人としてふつうに戦えている", "まるみえ": "今回は0枚", "値上げ": "今回は0枚", "山分け": "今回は0枚（♥コレクターの公開時効果に統合）", "ハズレ": "今回は0枚"}
+CANDS = [["道連れ", "自分を脱がせた相手はプライドを1つ失う", "脱落時に発動しても意味がある。強すぎるなら「相手が手札2枚のときだけ」"]]
 def rows(key):
     return [{'id':r['id'],'name':r['name'],'eff':EFF[r['name']],'held':r['held'],'heldWin':r['heldWin'],'first':r['first'],'firstWin':r['firstWin'],'last':r['last'],'revive':r.get('revive',0),'reviveWin':r.get('reviveWin',0),'evalBy':'held' if r['name']=='着替え' else 'first','memo':MEMO[r['name']]} for r in d[key]['rows']]
 s4, s3, s0 = d['sim_4p_dud5'], d['sim_235_dud5'], d.get('sim_4p_dud0')
@@ -19,8 +19,8 @@ BASELBL = 'ハズレ比' if hasDud else '平均比'
 BASENAME = 'ハズレ' if hasDud else '全カード平均'
 DATA = {
   'conds': {
-    'p4': {'label':'4人戦','sub':('ハズレ2枚・' if hasDud else 'ハズレなし・')+'10,000戦','games':s4['games'],'rows':rows('sim_4p_dud5'),'base':s4.get('base'),'heldBase':s4.get('heldBase'),'avgLog':round(s4['avgLog'],1),'winnerLostLife':round(s4['winnerLostLife'],3),'lifeLoss':round(s4['lifeLoss'],2)},
-    'p3456': {'label':'3〜6人戦','sub':'各3,000戦・'+('ハズレ2枚・' if hasDud else 'ハズレなし・')+'12,000戦','games':s3['games'],'rows':rows('sim_235_dud5'),'base':s3.get('base'),'heldBase':s3.get('heldBase')},
+    'p4': {'label':'4人戦','sub':('ハズレ2枚・' if hasDud else 'ハズレなし・')+f"{s4['games']:,}戦",'games':s4['games'],'rows':rows('sim_4p_dud5'),'base':s4.get('base'),'heldBase':s4.get('heldBase'),'avgLog':round(s4['avgLog'],1),'winnerLostLife':round(s4['winnerLostLife'],3),'lifeLoss':round(s4['lifeLoss'],2)},
+    'p3456': {'label':'3〜6人戦','sub':f"各{s3['games']//4:,}戦・"+('ハズレ2枚・' if hasDud else 'ハズレなし・')+f"{s3['games']:,}戦",'games':s3['games'],'rows':rows('sim_235_dud5'),'base':s3.get('base'),'heldBase':s3.get('heldBase')},
   },
   'hasDud': hasDud,
   'dud': ({'d5':{'label':'ハズレ2枚','games':s4['games'],'avgLog':round(s4['avgLog'],1),'winnerLostLife':round(s4['winnerLostLife'],3),'lifeLoss':round(s4['lifeLoss'],2)},
@@ -145,9 +145,9 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
 </style>
 <main>
 <header>
-  <div class="eyebrow">CPU同士の自動対戦・2026-10-19 第6版・トリガー13種16枚・ハズレなし／配られた2枚をそのまま仕込む／♥コレクター9♥＋公開時に山分け／おしおき返しは5♥／遺言・着替えは脱落時のみ、着替えは♥0に／3〜6人</div>
+  <div class="eyebrow">CPU同士の自動対戦・2026-10-19 第7版・トリガー12種15枚・ハズレなし／配られた2枚をそのまま仕込む／♥コレクター9♥＋公開時に山分け／おしおき返しは5♥／着替えは脱落時のみ・♥0に／3〜6人・計20万戦</div>
   <h1><span class="nb">メスガキ・クー</span> <span class="nb">トリガー分析</span></h1>
-  <p class="lede">トリガーカード13種（計16枚）を、どれが持ち主を勝たせているかで並べた。指標は「1枚目の脱ぎで発動したあとに勝った割合」。プライドを1つ失った状態からの勝率なので、BASENAMEとの差で強さを見る。DUDNOTE</p>
+  <p class="lede">トリガーカード12種（計15枚）を、どれが持ち主を勝たせているかで並べた。指標は「1枚目の脱ぎで発動したあとに勝った割合」。プライドを1つ失った状態からの勝率なので、BASENAMEとの差で強さを見る。DUDNOTE</p>
   <div class="total" id="total"></div>
 </header>
 
@@ -186,7 +186,7 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
 
 <section>
   <h2>調整案と新カード候補</h2>
-  <p>数値を変えた試算（4人戦・各10,000戦）と、次に試す案。</p>
+  <p>数値を変えた試算（4人戦・各WHATIFN戦）と、次に試す案。</p>
   <div id="whatif"></div>
   <div class="grid" id="cands"></div>
 </section>
@@ -198,10 +198,10 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
     <li>発動後勝率：1枚目の脱ぎでそのカードが発動したあと、そのプレイヤーが勝った割合。BASELBLはこの値とBASENAMEの差で、判定は±2ポイントを境にしている。</li>
     <li>脱落時発動率：発動のうち、2枚目の脱ぎ（脱落）で発動した割合。着替え以外は本人にほぼ意味がない発動。</li>
     <li>着替えは発動後勝率ではなく所持時勝率のハズレ比で判定している（復活回数と復活後の勝率はカードに併記）。</li>
-    <li>1枚物は約2,500回、2枚物は約5,000回の発動。1枚物のBASELBLは±2ポイント程度の揺れがあるので、4人戦と3〜6人戦の両方で同じ向きに出ているかを見る。</li>
+    <li>NOISENOTE 4人戦と3〜6人戦の両方で同じ向きに出ているかも見る。</li>
     <li>CPUは♥コレクターを持っていて目標まで3♥以内なら、ざぁ～こ♥より先に♥を集めて勝ちに行く。周りのCPUも目標が近い所持者を優先して狙う。</li>
   </ul>
-  <p class="note">作成日 2026-10-19（第6版）　・　元データ：mesugaki-coup tools/sim.js（ヘッドレス自動対戦）</p>
+  <p class="note">作成日 2026-10-19（第7版）　・　元データ：mesugaki-coup tools/sim.js（ヘッドレス自動対戦）</p>
 </section>
 </main>
 <script>
@@ -236,8 +236,8 @@ function renderMix(){
   const col=r4.find(r=>r.name==='♥コレクター'), col3=r3.find(r=>r.name==='♥コレクター');
   const lastAvg=r4.reduce((a,r)=>a+r.last,0)/r4.reduce((a,r)=>a+r.first+r.last,0);
   const items=[
-    ['強い', top4.join('・'), `4人戦でハズレ比 +${(DATA.thr*100).toFixed(0)}pt 以上で、3〜6人戦でもプラスのカード。`],
-    ['弱い', weak.join('・')||'なし', weak.length?'両条件でマイナスのカード。':'両条件で −2pt を下回るカードはない。遺言は脱落時のみなので本人の得はなく、不発相当の −2pt 前後。'],
+    ['強い', top4.join('・')||'なし', top4.length?`4人戦でBASELBL +${(DATA.thr*100).toFixed(0)}pt 以上で、3〜6人戦でもプラスのカード。`:'+2pt を超えるカードは着替え（所持時）だけ。発動後勝率ではどのカードも +2pt に届かず、かなり平ら。'],
+    ['弱い', weak.join('・')||'なし', weak.length?'両条件でマイナスのカード。':'両条件で −2pt を下回るカードはない。いちばん低い総入れ替えでも −1.8pt で、不発（何も起きない）とほぼ同じ。'],
     ['空撃ち', pct(lastAvg,0), '発動のうち脱落時（2枚目の脱ぎ）に起きた割合。本人には意味のない発動が半分近くある。'],
     ['効果の幅', `${spct(Math.max(...r4.map(r=>r.score)))} 〜 ${spct(Math.min(...r4.map(r=>r.score)))}`, 'トリガーは負けかけた側に起きるので、どれも勝敗を覆すほどの力はない。'],
   ];
@@ -311,7 +311,13 @@ $('#q').oninput=e=>{ state.q=e.target.value.trim(); renderAll(); };
 renderTotal(); renderMix(); renderDud(); renderWhatif(); renderCands(); renderAll();
 </script>
 '''
-page = page.replace('ハズレ比','BASELBL').replace('DUDNOTE', '' if hasDud else '不発（着替え・遺言が1枚目でめくれたとき）は −2ポイント前後に出るので、それが「何も起きない」の目安。').replace('BASELBL', BASELBL).replace('BASENAME', BASENAME).replace('DATAJSON', json.dumps(DATA, ensure_ascii=False)).replace('POSDARK', pos_dark).replace('NEGDARK', neg_dark)
+import math
+_r4=[r for r in d['sim_4p_dud5']['rows'] if r['id']!='none']
+_n1=min(r['first'] for r in _r4); _pbar=d['sim_4p_dud5']['base']
+_se=2*math.sqrt(_pbar*(1-_pbar)/_n1)*100
+NOISENOTE=f"1枚物は約{_n1:,}回、2枚物はその2倍の発動。BASELBLの揺れは1枚物で±{_se:.1f}ポイント程度。判定の±2ポイントは誤差ではなく「効果の大きさ」の線引き。"
+WHATIFN=f"{d['whatif'][0]['rows'][0]['first']*4:,}" if d.get('whatif') else ''
+page = page.replace('NOISENOTE', NOISENOTE).replace('WHATIFN', WHATIFN).replace('ハズレ比','BASELBL').replace('DUDNOTE', '' if hasDud else '不発（着替え・遺言が1枚目でめくれたとき）は −2ポイント前後に出るので、それが「何も起きない」の目安。').replace('BASELBL', BASELBL).replace('BASENAME', BASENAME).replace('DATAJSON', json.dumps(DATA, ensure_ascii=False)).replace('POSDARK', pos_dark).replace('NEGDARK', neg_dark)
 open(out_art, 'w', encoding='utf-8').write(page)
 open(out_repo, 'w', encoding='utf-8').write('<!doctype html>\n<html lang="ja">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n</head>\n<body>\n' + page + '</body>\n</html>\n')
 print('written', len(page))

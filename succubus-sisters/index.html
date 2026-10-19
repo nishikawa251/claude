@@ -1593,23 +1593,25 @@ function heartOKDef(t, c){
 /* ================================================================
    ネットワーク対戦
    部屋を作った人（ホスト）のブラウザがゲームを進め、ほかの人は自分の操作だけを送る。
-   PeerJS（WebRTC）でブラウザどうしを直接つなぐ。部屋コードはホストの Peer ID の末尾。
-   ホストは各プレイヤーに「その人から見える状態」だけを送るので、他人の手札は届かない。
+   やりとりは MQTT の公開中継サーバーを通す（直接つながなくてよいので、回線の種類を選ばない）。
+   ホストは各プレイヤーに「その人から見える状態」だけを、その人だけが読める暗号で送る。
    ================================================================ */
-const NET_PREFIX = 'succsis-v1-';
-const PEERJS_SRC = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
+const MQTT_SRC = ['vendor/mqtt.min.js', 'https://cdn.jsdelivr.net/npm/mqtt@5.16.1/dist/mqtt.min.js'];
+// 中継サーバー（無料の公開サーバー）。ホストは全部につなぎ、参加する側は順に部屋をさがす
+const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt', 'wss://test.mosquitto.org:8081/mqtt'];
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const Net = {
   role:null,          // null＝1人用 / 'host' / 'client'
   seat:0,             // 自分の席（G.players の添字）
-  code:'', peer:null, status:'', error:'',
+  code:'', buses:[], bus:null, room:null, status:'', error:'', token:'', byePkt:'', weak:false,
   members:[],         // ホスト：参加者 { conn, name, char, token }
   lobby:null,         // クライアント：ホストから届いた部屋の情報
   host:null,          // クライアント：ホストへの接続
   pending:new Map(),  // ホスト：返事待ちの問い合わせ
+  askSeen:new Set(), answers:new Map(),   // 参加する側：受けた問い合わせと返した答え（届き直しに備える）
   seq:0, syncTimer:0, joinTimer:0, beat:0, lastHost:0,
 };
-const BEAT_MS = 3000, LOST_MS = 15000;   // 生存確認の間隔と、切れたとみなすまでの時間
+const BEAT_MS = 3000, LOST_MS = 20000, CLIENT_GIVEUP_MS = 60000;   // 生存確認の間隔、ホストが席をCPUに渡すまで、参加側があきらめるまで
 const DEF_BY_ID = Object.fromEntries(CARD_DEFS.map(d => [d.id, d]));
 const CHAR_BY_KEY = Object.fromEntries(CHARACTERS.map(c => [c.key, c]));
 const FACE_REF = new Map();
@@ -1651,73 +1653,136 @@ function dec(v, ctx, key){
   return o;
 }
 
-/* ---------- 接続 ---------- */
-function loadPeerJS(){
-  if (window.Peer) return Promise.resolve();
+/* ---------- 接続 ----------
+   MQTT の公開中継サーバーを通す（WebSocket だけで届くので、スマホ回線やルーターの種類を選ばない）。
+   通り道の名前は部屋コードのハッシュ。ホストへの手紙は部屋コードから作った鍵で、
+   ホストから各プレイヤーへの手紙はその人とだけ共有する鍵（ECDH）で暗号化する。 */
+function loadScript(src){
   return new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = PEERJS_SRC; s.onload = () => res(); s.onerror = () => rej(new Error('load'));
+    s.src = src; s.onload = () => res(); s.onerror = () => { s.remove(); rej(new Error('load')); };
     document.head.appendChild(s);
   });
 }
-function peerOptions(){
-  // ?peerserver=host:port で自前の PeerJS サーバーを使う（動作確認用）
-  const q = new URLSearchParams(location.search).get('peerserver');
-  if (!q) return { debug:0 };
-  const [host, port] = q.split(':');
-  return { host, port:+port || 9000, path:'/', secure:false, debug:0 };
+async function loadMQTT(){
+  if (window.mqtt) return;
+  for (const src of MQTT_SRC){ try { await loadScript(src); if (window.mqtt) return; } catch {} }
+  throw new Error('load');
 }
-function netErrText(e){
-  const t = e && e.type;
-  if (t === 'peer-unavailable') return '部屋が見つからなかった。部屋コードを確かめてほしい。';
-  if (t === 'browser-incompatible') return 'このブラウザはオンライン対戦に対応していない。';
-  if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed') return '接続サーバーにつながらなかった。ネットワークを確かめて、もう一度試してほしい。';
-  return '接続に失敗した。もう一度試してほしい。';
+function brokerList(){
+  // ?mqtt=ws://127.0.0.1:8888（カンマ区切りで複数）で中継サーバーを差し替える（動作確認用）
+  const q = new URLSearchParams(location.search).get('mqtt');
+  return q ? q.split(',').filter(Boolean) : BROKERS;
+}
+const mqttOpts = () => ({ clientId:'ss_' + randToken(), clean:true, keepalive:30, reconnectPeriod:2000, connectTimeout:8000, protocolVersion:4 });
+const b64 = u => { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(String(s)), ch => ch.charCodeAt(0));
+const ECDH = { name:'ECDH', namedCurve:'P-256' };
+async function roomKeys(code){
+  const te = new TextEncoder();
+  const h = new Uint8Array(await crypto.subtle.digest('SHA-256', te.encode('succsis-topic-v1:' + code)));
+  const topic = 'ss1/' + Array.from(h.slice(0, 10), b => b.toString(16).padStart(2, '0')).join('');
+  const base = await crypto.subtle.importKey('raw', te.encode('succsis-key-v1:' + code), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name:'PBKDF2', salt:te.encode('succsis-salt-v1'), iterations:100000, hash:'SHA-256' },
+    base, { name:'AES-GCM', length:256 }, false, ['encrypt', 'decrypt']);
+  const kp = await crypto.subtle.generateKey(ECDH, false, ['deriveKey']);
+  const pub = b64(new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey)));
+  return { topic, key, kp, pub };
+}
+async function sharedKey(priv, pubB64){
+  const pub = await crypto.subtle.importKey('raw', unb64(pubB64), ECDH, false, []);
+  return crypto.subtle.deriveKey({ name:'ECDH', public:pub }, priv, { name:'AES-GCM', length:256 }, false, ['encrypt', 'decrypt']);
+}
+async function seal(key, obj){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(obj))));
+  const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12);
+  return b64(out);
+}
+async function unseal(key, s){
+  const u = unb64(s);
+  return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name:'AES-GCM', iv:u.slice(0, 12) }, key, u.slice(12))));
+}
+const hasCrypto = () => !!(window.crypto && crypto.subtle && window.TextEncoder);
+// 相手1人ぶんの通り道。send / on('data') / close で使う
+class RelayConn {
+  constructor(bus, out, key, head){ Object.assign(this, { bus, out, key, head, open:true, seen:Date.now(), h:{}, q:Promise.resolve(), lastState:'' }); }
+  on(ev, fn){ (this.h[ev] || (this.h[ev] = [])).push(fn); }
+  emit(ev, x){ (this.h[ev] || []).forEach(fn => { try { fn(x); } catch (e){ console.error(e); } }); }
+  send(msg){
+    if (!this.open) return;
+    // 暗号化は非同期なので、順番が入れ替わらないよう1本の列にして送る
+    this.q = this.q.then(async () => {
+      const p = await seal(this.key, msg);
+      if (this.open) this.bus.c.publish(this.out, JSON.stringify({ ...this.head, p }), { qos:1 });
+    }).catch(() => {});
+  }
+  sendRawSync(p){ try { this.bus.c.publish(this.out, JSON.stringify({ ...this.head, p }), { qos:0 }); } catch {} }
+  close(){ if (!this.open) return; this.open = false; this.emit('close'); }
 }
 function netReset(){
   clearTimeout(Net.joinTimer); clearTimeout(Net.syncTimer); clearInterval(Net.beat);
-  try { if (Net.peer) Net.peer.destroy(); } catch {}
-  Object.assign(Net, { role:null, seat:0, code:'', peer:null, status:'', members:[], lobby:null, host:null, syncTimer:0, joinTimer:0, beat:0, lastHost:0 });
-  Net.pending.clear();
+  const buses = [...Net.buses, ...(Net.bus ? [Net.bus] : [])];
+  setTimeout(() => buses.forEach(b => { try { b.c.end(true); } catch {} }), 800);   // 別れのあいさつを送り切ってから閉じる
+  Object.assign(Net, { role:null, seat:0, code:'', buses:[], bus:null, room:null, status:'', members:[], lobby:null, host:null,
+    syncTimer:0, joinTimer:0, beat:0, lastHost:0, weak:false, token:'', byePkt:'' });
+  Net.pending.clear(); Net.askSeen.clear(); Net.answers.clear();
 }
 function netFail(msg){
   netReset(); Net.error = msg;
   gameId++; G = null; UI.mode = 'setup'; UI.setup.online = true;
   render();
 }
-function netLeave(){
-  if (Net.role === 'host') netBroadcast({ t:'bye' });
-  else if (Net.host) send(Net.host, { t:'bye' });
-  netReset(); Net.error = '';
+// ページを閉じるときにも届くよう、用意しておいた「さようなら」をそのまま送る
+function sendBye(){
+  if (Net.role === 'host'){ for (const b of Net.buses) for (const c of b.conns.values()) if (!c.dropped && c.byePkt) c.sendRawSync(c.byePkt); }
+  else if (Net.host && Net.byePkt) Net.host.sendRawSync(Net.byePkt);
 }
+function netLeave(){ sendBye(); netReset(); Net.error = ''; }
 
 /* ---------- ホスト ---------- */
 async function netHost(){
-  netReset(); Net.error = ''; Net.status = '部屋を作っています…'; render();
-  try { await loadPeerJS(); } catch { return netFail('通信ライブラリを読み込めなかった。ネットワークを確かめてほしい。'); }
-  const open = () => {
-    Net.code = makeCode();
-    const peer = new Peer(NET_PREFIX + Net.code, peerOptions());
-    Net.peer = peer; Net.role = 'host'; Net.seat = 0;
-    peer.on('open', () => { Net.status = ''; render(); });
-    peer.on('connection', conn => netAccept(conn));
-    clearInterval(Net.beat);
-    Net.beat = setInterval(netHostBeat, BEAT_MS);
-    peer.on('disconnected', () => { if (Net.peer === peer) setTimeout(() => { try { if (Net.peer === peer && !peer.destroyed) peer.reconnect(); } catch {} }, 1500); });
-    peer.on('error', e => {
-      if (Net.peer !== peer) return;
-      if (e.type === 'unavailable-id'){ peer.destroy(); open(); return; }
-      if (e.type === 'peer-unavailable') return;
-      if (!G) netFail(netErrText(e));
+  netReset(); Net.error = ''; Net.status = '中継サーバーに接続しています…'; render();
+  try { await loadMQTT(); } catch { return netFail('通信ライブラリを読み込めなかった。ネットワークを確かめてほしい。'); }
+  if (!hasCrypto()) return netFail('この開き方では暗号化が使えないため、オンライン対戦ができない。https のページ（GitHub Pages 版）で開いてほしい。');
+  const code = makeCode();
+  const room = await roomKeys(code);
+  if (Net.status !== '中継サーバーに接続しています…' || Net.role) return;   // 待っている間にやめた
+  Object.assign(Net, { code, room, role:'host', seat:0 });
+  Net.buses = brokerList().map(url => {
+    const bus = { url, up:false, conns:new Map(), q:Promise.resolve() };
+    bus.c = mqtt.connect(url, mqttOpts());
+    bus.c.on('connect', () => {
+      bus.c.subscribe(room.topic + '/h', { qos:1 });
+      if (!bus.up){ bus.up = true; if (Net.room === room && Net.status){ Net.status = ''; render(); } }
     });
-  };
-  open();
+    bus.c.on('message', (t, payload) => { bus.q = bus.q.then(() => hostIncoming(bus, room, String(payload))).catch(() => {}); });
+    bus.c.on('error', () => {});
+    return bus;
+  });
+  Net.joinTimer = setTimeout(() => { if (Net.room === room && !Net.buses.some(b => b.up)) netFail('中継サーバーにつながらなかった。ネットワークを確かめて、もう一度試してほしい。'); }, 12000);
+  Net.beat = setInterval(netHostBeat, BEAT_MS);
 }
-function netAccept(conn){
-  conn.seen = Date.now();
-  conn.on('data', d => { conn.seen = Date.now(); netHostData(conn, d); });
-  conn.on('close', () => netDrop(conn));
-  conn.on('error', () => netDrop(conn));
+async function hostIncoming(bus, room, s){
+  if (Net.room !== room) return;
+  let env, msg;
+  try { env = JSON.parse(s); msg = await unseal(room.key, env.p); } catch { return; }
+  const from = String(env.f || '').replace(/[^\w-]/g, '').slice(0, 40);
+  if (!from || !msg || typeof msg !== 'object') return;
+  let conn = bus.conns.get(from);
+  if (!conn){
+    if (msg.t !== 'hello' || typeof msg.pub !== 'string') return;
+    let key;
+    try { key = await sharedKey(room.kp.privateKey, msg.pub); } catch { return; }
+    if (Net.room !== room || bus.conns.has(from)) return;
+    conn = new RelayConn(bus, `${room.topic}/c/${from}`, key, { h:room.pub });
+    conn.byePkt = await seal(key, { t:'bye' });
+    bus.conns.set(from, conn);
+    conn.on('data', d => { conn.seen = Date.now(); netHostData(conn, d); });
+  }
+  // 切れたとみなした人から届いたら、名乗り直してもらう
+  if (conn.dropped && msg.t !== 'hello' && msg.t !== 'bye'){ conn.seen = Date.now(); send(conn, { t:'dropped' }); return; }
+  conn.emit('data', msg);
 }
 function lobbyInfo(){
   return { t:'lobby', code:Net.code, count:UI.setup.count,
@@ -1741,23 +1806,30 @@ function netHostData(conn, d){
     const name = cleanName(d.name) || 'プレイヤー', token = String(d.token || '').slice(0, 32);
     const char = Number.isInteger(d.char) && CHARACTERS[d.char] ? d.char : 0;
     if (M && G){
-      // 対戦中：切れた人の席に戻る
-      const seat = M.players.find(p => p.token && p.token === token && !p.remote);
+      // 対戦中：同じ人（同じ合言葉）なら、その席にもどす。つなぎ直しなら最新の状態と待っている問い合わせを送り直す
+      const seat = token && M.players.find(p => p.token === token);
       if (!seat){ send(conn, { t:'refuse', why:'started' }); setTimeout(() => conn.close(), 300); return; }
-      seat.remote = conn; seat.human = true; seat.name = seat.baseName;
-      Net.members.push({ conn, name:seat.baseName, char:CHARACTERS.indexOf(seat.char), token });
-      log(`${seat.name}がもどってきた`, 'good');
-      send(conn, { t:'start', seat:seat.i }); netSyncNow(); render();
+      const back = !seat.remote;
+      if (seat.remote && seat.remote !== conn) seat.remote.dropped = true;
+      seat.remote = conn; conn.dropped = false; seat.human = true; seat.name = seat.baseName;
+      Net.members = Net.members.filter(m => m.token !== token).concat({ conn, name:seat.baseName, char:CHARACTERS.indexOf(seat.char), token });
+      if (back) log(`${seat.name}がもどってきた`, 'good');
+      conn.lastState = '';
+      send(conn, { t:'start', seat:seat.i }); netSyncNow();
+      for (const [id, e] of Net.pending) if (e.p === seat) send(conn, { t:'ask', id, mode:e.mode, extra:enc(e.extra) });
+      render();
       return;
     }
-    if (Net.members.some(m => m.conn === conn)) return;
+    conn.dropped = false;
+    const same = Net.members.find(m => m.conn === conn || (token && m.token === token));
+    if (same){ Object.assign(same, { conn, name, char, token }); netLobbyBroadcast(); return; }
     if (Net.members.length >= 5){ send(conn, { t:'refuse', why:'full' }); setTimeout(() => conn.close(), 300); return; }
     Net.members.push({ conn, name, char, token });
     if (UI.setup.count < Net.members.length + 1) UI.setup.count = Math.max(3, Net.members.length + 1);
     netLobbyBroadcast();
     return;
   }
-  if (d.t === 'bye'){ netDrop(conn); try { conn.close(); } catch {} return; }
+  if (d.t === 'bye'){ netDrop(conn); return; }
   if (d.t === 'char'){
     const m = Net.members.find(m => m.conn === conn);
     if (m && Number.isInteger(d.char) && CHARACTERS[d.char]){ m.char = d.char; netLobbyBroadcast(); }
@@ -1776,7 +1848,8 @@ function netHostBeat(){
   const conns = new Set(Net.members.map(m => m.conn));
   if (M) M.players.forEach(p => p.remote && conns.add(p.remote));
   for (const c of conns){
-    if (Date.now() - (c.seen || 0) > LOST_MS){ netDrop(c); try { c.close(); } catch {} }
+    if (c.dropped) continue;
+    if (Date.now() - (c.seen || 0) > LOST_MS) netDrop(c);
     else send(c, { t:'ping' });
   }
 }
@@ -1818,7 +1891,7 @@ function snapshotFor(v){
     players:G.players.map(q => ({
       i:q.i, name:q.name, char:q.char.key, human:!!q.human, role:(q === v || q.revealed) ? q.role : null,
       hp:q.hp, alive:q.alive, revealed:q.revealed, manifested:q.manifested, heartSealed:q.heartSealed,
-      vp:q.vp, history:q.history, hitAgo:Date.now() - (q.hitAt || 0),
+      vp:q.vp, history:q.history, hitAgo:Math.min(Date.now() - (q.hitAt || 0), 5000),
       hand:q === v ? q.hand.map(enc) : q.hand.length, field:q.field.map(enc), known:q === v ? q.known : {},
     })),
     stage:enc(G.stage), log:G.log.slice(-80),
@@ -1827,12 +1900,18 @@ function snapshotFor(v){
 }
 function netScheduleSync(){
   if (Net.role !== 'host' || !G || !M || Net.syncTimer) return;
-  Net.syncTimer = setTimeout(netSyncNow, 40);
+  Net.syncTimer = setTimeout(netSyncNow, 100);
 }
 function netSyncNow(){
   clearTimeout(Net.syncTimer); Net.syncTimer = 0;
   if (Net.role !== 'host' || !G || !M) return;
-  for (const p of M.players) if (p.remote) send(p.remote, { t:'state', s:snapshotFor(p) });
+  for (const p of M.players){
+    if (!p.remote || p.remote.dropped) continue;
+    const s = snapshotFor(p), key = JSON.stringify(s);
+    if (key === p.remote.lastState) continue;
+    p.remote.lastState = key;
+    send(p.remote, { t:'state', s });
+  }
 }
 function netNotifyAll(mode){
   if (Net.role !== 'host') return;
@@ -1923,31 +2002,76 @@ function fallbackAnswer(e){
 async function netJoin(code){
   code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (code.length !== 5){ Net.error = '部屋コードは5文字。'; render(); return; }
-  netReset(); Net.error = ''; Net.status = '部屋に接続しています…'; Net.code = code; render();
-  try { await loadPeerJS(); } catch { return netFail('通信ライブラリを読み込めなかった。ネットワークを確かめてほしい。'); }
-  const peer = new Peer(undefined, peerOptions());
-  Net.peer = peer;
-  let token = store.get('ss-token-' + code);
-  if (!token){ token = randToken(); store.set('ss-token-' + code, token); }
-  peer.on('open', () => {
-    const conn = peer.connect(NET_PREFIX + code, { reliable:true });
-    Net.host = conn;
-    conn.on('open', () => {
-      send(conn, { t:'hello', name:myName(), token, char:UI.setup.char });
-      Net.lastHost = Date.now();
-      clearInterval(Net.beat);
-      Net.beat = setInterval(() => {
-        if (Net.host !== conn) return;
-        if (Net.role === 'client' && Date.now() - Net.lastHost > LOST_MS) return netFail('ホストとの接続が切れた。');
-        send(conn, { t:'ping' });
-      }, BEAT_MS);
+  netReset(); Net.error = ''; Net.status = '中継サーバーに接続しています…'; Net.code = code; render();
+  try { await loadMQTT(); } catch { return netFail('通信ライブラリを読み込めなかった。ネットワークを確かめてほしい。'); }
+  if (!hasCrypto()) return netFail('この開き方では暗号化が使えないため、オンライン対戦ができない。https のページ（GitHub Pages 版）で開いてほしい。');
+  const room = await roomKeys(code);
+  if (Net.code !== code || Net.role || Net.error) return;
+  Net.room = room;
+  Net.byePkt = await seal(room.key, { t:'bye' });
+  Net.token = store.get('ss-token-' + code) || randToken();
+  store.set('ss-token-' + code, Net.token);
+  const urls = brokerList();
+  let reached = 0;
+  for (let k = 0; k < urls.length; k++){
+    if (Net.room !== room) return;   // 途中でやめた
+    Net.status = urls.length > 1 ? `部屋をさがしています…（${k + 1}/${urls.length}）` : '部屋をさがしています…'; render();
+    const r = await tryJoin(urls[k], room);
+    if (r === 'found' || Net.room !== room) return;
+    if (r === 'reached') reached++;
+  }
+  netFail(reached ? '部屋が見つからなかった。部屋コードが合っているか、ホストがその画面を開いたままかを確かめてほしい。'
+    : '中継サーバーにつながらなかった。ネットワークを確かめて、もう一度試してほしい。');
+}
+const helloMsg = () => ({ t:'hello', name:myName(), token:Net.token, char:UI.setup.char, pub:Net.room.pub });
+// ひとつの中継サーバーで部屋をさがす。'found'（見つかった）/ 'reached'（つながったが部屋がない）/ 'none'（つながらない）
+function tryJoin(url, room){
+  return new Promise(res => {
+    const me = 'c' + randToken();
+    const bus = { url, c:mqtt.connect(url, mqttOpts()), q:Promise.resolve() };
+    const conn = new RelayConn(bus, room.topic + '/h', room.key, { f:me });
+    let done = false, connected = false, hostKey = null, hostPub = '';
+    const finish = r => {
+      if (done) return;
+      done = true; clearTimeout(timer);
+      if (r === 'found' && Net.room === room){ Net.bus = bus; Net.host = conn; startClientBeat(conn); }
+      else { conn.open = false; try { bus.c.end(true); } catch {} }
+      res(r);
+    };
+    let timer = setTimeout(() => finish('none'), 9000);
+    bus.c.on('connect', () => {
+      // つながるたびに名乗る（つなぎ直したときも、ホストが最新の状態を送り直してくれる）
+      bus.c.subscribe(`${room.topic}/c/${me}`, { qos:1 }, () => { if (Net.room === room) send(conn, helloMsg()); });
+      if (!connected){ connected = true; clearTimeout(timer); timer = setTimeout(() => finish('reached'), 8000); }
     });
-    conn.on('data', d => { Net.lastHost = Date.now(); netClientData(d); });
-    conn.on('close', () => { if (Net.host === conn) netFail('ホストとの接続が切れた。'); });
-    conn.on('error', () => { if (Net.host === conn) netFail('ホストとの接続が切れた。'); });
+    bus.c.on('message', (t, payload) => {
+      bus.q = bus.q.then(async () => {
+        if (Net.room !== room) return;
+        const env = JSON.parse(String(payload));
+        if (env.h !== hostPub){ hostKey = await sharedKey(room.kp.privateKey, env.h); hostPub = env.h; }
+        const d = await unseal(hostKey, env.p);
+        if (!d || typeof d !== 'object') return;
+        if (!done){ if (['lobby', 'start', 'refuse'].includes(d.t)) finish('found'); else return; }
+        if (Net.host !== conn) return;
+        Net.lastHost = Date.now();
+        if (Net.weak){ Net.weak = false; render(); }
+        netClientData(d);
+      }).catch(() => {});
+    });
+    bus.c.on('error', () => {});
   });
-  peer.on('error', e => { if (Net.peer === peer) netFail(netErrText(e)); });
-  Net.joinTimer = setTimeout(() => { if (Net.peer === peer && Net.role !== 'client') netFail('部屋に接続できなかった。部屋コードとネットワークを確かめてほしい。'); }, 15000);
+}
+function startClientBeat(conn){
+  Net.lastHost = Date.now();
+  clearInterval(Net.beat);
+  Net.beat = setInterval(() => {
+    if (Net.host !== conn) return;
+    const quiet = Date.now() - Net.lastHost;
+    if (quiet > CLIENT_GIVEUP_MS) return netFail('ホストとの接続が切れた。');
+    const weak = quiet > 9000;
+    if (weak !== Net.weak){ Net.weak = weak; render(); }
+    send(conn, { t:'ping' });
+  }, BEAT_MS);
 }
 const cardCache = new Map();
 function decCard(uid, id){
@@ -1962,12 +2086,27 @@ function netClientData(d){
     case 'lobby': clearTimeout(Net.joinTimer); Net.role = 'client'; Net.status = ''; Net.lobby = d; render(); break;
     case 'refuse': netFail(d.why === 'full' ? '部屋が満員だった。' : 'この部屋はもう対戦を始めている。'); break;
     case 'bye': netFail('ホストが部屋を閉じた。'); break;
-    case 'start': clearTimeout(Net.joinTimer); Net.role = 'client'; Net.seat = +d.seat || 0; UI.mode = 'wait'; UI.zoom = null; render(); break;
+    case 'start': {
+      // つなぎ直しで届き直したときは、開いている選択画面を閉じない
+      const seat = +d.seat || 0, fresh = !G || Net.seat !== seat || UI.mode === 'setup' || Net.role !== 'client';
+      clearTimeout(Net.joinTimer); Net.role = 'client'; Net.seat = seat; Net.status = '';
+      if (fresh){ UI.mode = 'wait'; UI.zoom = null; }
+      render(); break;
+    }
+    case 'dropped': if (Net.room) send(Net.host, helloMsg()); break;
     case 'state': netApplyState(d.s); break;
     case 'ask': {
       if (!G) return;
       const id = d.id;
-      ask(String(d.mode), decClient(d.extra || {})).then(v => send(Net.host, { t:'answer', id, v:enc(v) })).catch(() => {});
+      if (Net.answers.has(id)){ send(Net.host, { t:'answer', id, v:Net.answers.get(id) }); break; }   // 答えが届かなかった
+      if (Net.askSeen.has(id)) break;   // もう開いている
+      Net.askSeen.add(id);
+      ask(String(d.mode), decClient(d.extra || {})).then(v => {
+        const ev = enc(v);
+        Net.answers.set(id, ev);
+        if (Net.answers.size > 40) Net.answers.delete(Net.answers.keys().next().value);
+        send(Net.host, { t:'answer', id, v:ev });
+      }).catch(() => {});
       break;
     }
     case 'notify':
@@ -1987,7 +2126,7 @@ function netApplyState(s){
       i:k, name:cleanName(x.name) || '？', char:CHAR_BY_KEY[x.char] || CHARACTERS[0], human:!!x.human,
       role:ROLES.includes(x.role) ? x.role : null, hp:+x.hp || 0, alive:!!x.alive, revealed:!!x.revealed, manifested:!!x.manifested,
       heartSealed:!!x.heartSealed, vp:+x.vp || 0, history:Array.isArray(x.history) ? x.history.map(Number) : [],
-      hitAt:Date.now() - (+x.hitAgo || 1e9), sus:{}, known:{},
+      hitAt:Date.now() - (+x.hitAgo || 5000), sus:{}, known:{},
     });
   });
   G = Object.assign(same ? G : {}, { players, round:+s.round || 1, turn:+s.turn || 0, start:+s.start || 0, ending:s.ending || null,
@@ -2208,7 +2347,7 @@ function render(){
   $('#game').hidden = !inGame;
   $('#btnSpeed').hidden = Net.role === 'client';
   if (!inGame){ renderSetup(); $('#meta').textContent = ''; renderModal(); drawArrows(); return; }
-  $('#meta').textContent = `第${M.game}/${GAMES}戦・${G.round}巡目・山札${G.deck.length}`;
+  $('#meta').textContent = `第${M.game}/${GAMES}戦・${G.round}巡目・山札${G.deck.length}${Net.weak ? '・通信待ち…' : ''}`;
   const p0 = me();
   const plan = UI.mode === 'action' ? actionPlan() : null;
   const pickable = q => UI.mode === 'action' && plan && plan.tk && q.alive && (plan.tk === 'any' || q !== p0);
@@ -2366,7 +2505,7 @@ function onlineSetupHTML(){
   }
   const busy = !!Net.status;
   return `<div class="sect"><h2>オンライン対戦</h2>
-      <div class="seg-note">部屋を作った人のブラウザでゲームが進み、ほかの人は自分の番に操作する。空いた席はCPUが入る。手札は本人にしか届かない。</div>
+      <div class="seg-note">部屋を作った人のブラウザでゲームが進み、ほかの人は自分の番に操作する。空いた席はCPUが入る。通信は公開の中継サーバーを通るが、暗号化していて、手札は本人にしか読めない。</div>
       <label class="netlabel">あなたの名前<input id="netName" maxlength="12" autocomplete="nickname" value="${esc(s.name)}" placeholder="プレイヤー"></label>
       <div class="netrow"><button type="button" class="btn" data-host="1" ${busy ? 'disabled' : ''}>部屋を作る</button></div>
       <div class="netrow"><input id="netCode" maxlength="5" autocomplete="off" autocapitalize="characters" value="${esc(s.joinCode)}" placeholder="部屋コード（5文字）" aria-label="部屋コード"><button type="button" class="btn sub" data-join="1" ${busy ? 'disabled' : ''}>部屋に入る</button></div>
@@ -2635,7 +2774,7 @@ document.addEventListener('input', e => {
   if (e.target.id === 'netCode'){ UI.setup.joinCode = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'netCode') netJoin(UI.setup.joinCode); });
-window.addEventListener('beforeunload', () => { if (Net.role === 'host') netBroadcast({ t:'bye' }); else if (Net.host) send(Net.host, { t:'bye' }); });
+window.addEventListener('pagehide', () => sendBye());
 // 招待URL（?room=コード）から開いたら、オンライン対戦の画面にする
 UI.setup.name = cleanName(store.get('ss-name') || '');
 { const room = new URLSearchParams(location.search).get('room'); if (room){ UI.setup.online = true; UI.setup.joinCode = room.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); } }

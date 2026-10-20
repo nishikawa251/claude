@@ -235,6 +235,16 @@ button{font:inherit;color:inherit}
 .figure{perspective:700px}
 .ccard.flipcard{overflow:visible}
 .flipper{position:relative;width:var(--cw);aspect-ratio:416/298;transform-style:preserve-3d;transition:transform .85s cubic-bezier(.3,.1,.2,1)}
+/* ドアップ演出 */
+.zoom{position:fixed;inset:0;z-index:38;display:grid;place-items:center;align-content:center;gap:14px;background:rgba(10,4,14,0);transition:background .35s;cursor:pointer;padding:16px}
+.zoom.in{background:rgba(10,4,14,.72)}
+.zoom.out{animation:cutout .3s ease-in forwards}
+.zoomcard{--cw:100%;width:min(78vw,calc(58vh * 416 / 298));aspect-ratio:416/298;perspective:1400px;transform-origin:center;will-change:transform;filter:drop-shadow(0 24px 50px rgba(0,0,0,.7))}
+.zoomcard .flipper{width:100%;height:100%}
+.zoomcard .face{box-shadow:0 0 0 3px #e9d8ff inset}
+.zoomcard .face.back{box-shadow:0 0 0 3px var(--boro) inset}
+.zoomwho{font-size:15px;color:var(--ink);letter-spacing:.08em;opacity:0;transition:opacity .3s .3s}
+.zoom.in .zoomwho{opacity:1}
 .flipper.go{transform:rotateY(180deg)}
 .flipper .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .flipper .face img{width:100%;height:100%;display:block}
@@ -288,7 +298,7 @@ button{font:inherit;color:inherit}
 @keyframes slam{from{opacity:0;transform:scale(2.2)}to{opacity:1;transform:scale(1)}}
 @keyframes popin{from{opacity:0;transform:scale(.4) rotate(-6deg)}to{opacity:1;transform:none}}
 .cut .fxp{font-size:32px}
-@media (prefers-reduced-motion:reduce){.flipper{transition:none}.cut,.cut.out,.cut .rays,.cutwho,.cutlabel,.cutcard,.cuthint{animation:none}}
+@media (prefers-reduced-motion:reduce){.flipper{transition:none}.zoomcard{transition:none!important}.cut,.cut.out,.cut .rays,.cutwho,.cutlabel,.cutcard,.cuthint{animation:none}}
 
 /* ---------- action arrows & banner ---------- */
 .arrows{position:absolute;left:0;top:0;pointer-events:none;z-index:4;overflow:visible}
@@ -925,7 +935,7 @@ async function loseInfluence(p, by, reason){
       else { k = chooser.cpu ? cpuFlipOther(chooser,p) : await humanFlipOther(chooser,p); log(`${chooser.name} は ${p.name} の${half(k)}を脱がせた`, chooser.cpu?'':'me'); }
     }
     const t=p.triggers[k];
-    SFX.play('rip');
+    SFX.play('tick');
     await fxFlipCard(p,k);
     p.boro[k]=true; t.revealed=true;
     log(`${p.name} の${half(k)}がボロボロに… トリガー「${t.card.name}」：${t.card.text}`, 'sys');
@@ -1726,19 +1736,28 @@ function fxTrigGlow(p,k){
   const ts=el.querySelectorAll('.trigcol .tc'); const t=ts[k==='top'?0:1]; if(t){ t.classList.add('reveal'); setTimeout(()=>t.classList.remove('reveal'), 1100); }
 }
 /* メスガキカードを3Dで裏返す。render() が静的なボロ絵に差し替えるまでのつなぎ */
+/* メスガキカードを裏返す演出：パネルのカードが画面中央にドアップで飛び出してから、くるんと裏返る。クリックで早送り */
 async function fxFlipCard(p,k){
   if(S.headless) return;
-  const el=panelOf(p); if(!el){ await wait(300); return; }
-  const card=el.querySelectorAll('.figure .ccard')[k==='top'?0:1]; if(!card){ await wait(300); return; }
-  const img=card.querySelector('img');
-  const flipper=document.createElement('div'); flipper.className='flipper';
-  const front=document.createElement('div'); front.className='face front'; if(img) front.appendChild(img);
-  const back=document.createElement('div'); back.className='face back'; const bimg=document.createElement('img'); bimg.src=imgSrc(p.ch,k,true); bimg.alt=''; back.appendChild(bimg);
-  flipper.append(front,back); card.classList.add('flipcard'); card.prepend(flipper);
+  const el=panelOf(p); const card=el && el.querySelectorAll('.figure .ccard')[k==='top'?0:1];
+  const from = card ? card.getBoundingClientRect() : null;
+  const ov=document.createElement('div'); ov.className='zoom';
+  ov.innerHTML=`<div class="zoomcard"><div class="flipper"><div class="face front"><img src="${imgSrc(p.ch,k,false)}" alt=""></div><div class="face back"><img src="${imgSrc(p.ch,k,true)}" alt=""></div></div></div><div class="zoomwho">${p.name} の${half(k)}が…</div>`;
+  document.body.appendChild(ov);
+  const zc=ov.querySelector('.zoomcard'), fl=ov.querySelector('.flipper');
+  let skip=false; ov.addEventListener('click', ()=>{ skip=true; });
+  const hold=async ms=>{ const step=60; for(let t=0;t<ms && !skip;t+=step) await wait(step); };
+  // パネル上の位置・大きさから中央へ拡大（FLIP）
+  const to=zc.getBoundingClientRect();
+  if(from && to.width){ const sx=from.width/to.width, sy=from.height/to.height; const dx=(from.left+from.width/2)-(to.left+to.width/2), dy=(from.top+from.height/2)-(to.top+to.height/2); zc.style.transition='none'; zc.style.transform=`translate(${dx}px,${dy}px) scale(${sx},${sy})`; }
   await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-  flipper.classList.add('go');
-  setTimeout(()=>card.classList.add('boro'), 420);
-  await wait(900);
+  ov.classList.add('in'); zc.style.transition='transform .45s cubic-bezier(.2,.9,.3,1)'; zc.style.transform='none';
+  await hold(520);
+  fl.classList.add('go'); SFX.play('rip');
+  await hold(900);
+  await hold(420);
+  ov.classList.add('out'); setTimeout(()=>ov.remove(), 300);
+  if(card) card.classList.add('boro');
 }
 /* トリガー発動の演出：画面中央にトリガーカードをドンと出す。クリックで早送り */
 function cutscene(p, k, card){

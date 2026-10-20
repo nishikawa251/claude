@@ -387,6 +387,8 @@ button{font:inherit;color:inherit}
 .rl-trig{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
 .rl-trig .tc{width:auto;min-height:70px;padding-right:30px}
 .rl-trig .tc .cnt{position:absolute;right:5px;top:4px;font-size:11px;padding:1px 5px;background:rgba(255,255,255,.12);color:#e6ecff}
+.rl-sub{font-size:12px;color:var(--dim);margin:10px 0 4px}
+.rl-trig.bench .tc{opacity:.55;filter:saturate(.5)}
 .rl-note{font-size:13px;color:var(--dim);line-height:1.6;margin:6px 0 0}
 .rl-strip{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
 .rl-strip .figure{--cw:120px}
@@ -527,7 +529,7 @@ const TRIGGERS = [
   { id:'t13', count:0, name:'山分け',        text:'自分より♥の多い全員から1♥ずつもらう' },
   { id:'t14', count:1, name:'値下げ',        text:'以後、自分の「ざぁ～こ♥」は5♥で撃てる', persistent:true },
   { id:'t15', count:0, name:'遺言',          text:'プライドが0になったときだけ発動。自分の♥をすべて好きな相手に渡す' },
-  { id:'t16', count:1, name:'着替え',        text:'プライドが0になったときだけ発動。山札から1枚引いて手札に加え、脱落を免れる。ただし♥は0になる' },
+  { id:'t16', count:0, name:'着替え',        text:'プライドが0になったときだけ発動。山札から1枚引いて手札に加え、脱落を免れる。ただし♥は0になる' },
 ];
 const NO_TRIGGER = { id:'none', name:'ハズレ', text:'効果なし' };
 
@@ -1785,8 +1787,10 @@ function buildRules(){
   <div class="rl-strip" id="rlStrip"></div>
   <p class="rl-note">上下とも裏返ったら脱落。全員同時に脱落したら、最後に脱落した人の勝ち。</p></div>
 
-  <div class="rl-sec"><h3><span class="no">7</span>トリガーカード <small>${TRIGGERS.length}種＋ハズレ${RULES.dudCount}枚</small></h3>
-  <div class="rl-trig" id="rlTrig"></div></div>
+  <div class="rl-sec"><h3><span class="no">7</span>トリガーカード <small>${TRIGGERS.filter(t=>(t.count??1)>0).length}種${TRIGGERS.reduce((a,t)=>a+(t.count??1),0)}枚${RULES.dudCount>0?`＋ハズレ${RULES.dudCount}枚`:''}</small></h3>
+  <div class="rl-trig" id="rlTrig"></div>
+  <p class="rl-sub">2軍（今は山に入れていないカード）</p>
+  <div class="rl-trig bench" id="rlBench"></div></div>
 
   <div class="rl-sec"><h3><span class="no">8</span>細かい決まり</h3>
   <ul class="rl-list">
@@ -1804,9 +1808,12 @@ function fillRules(){
   const roles=$('#rlRoles'); roles.innerHTML='';
   for(const r of ROLE_IDS) roles.appendChild(roleCardEl(r));
   const trig=$('#rlTrig'); trig.innerHTML='';
-  const withCount=(t,n)=>{ const el=triggerEl({card:t,revealed:true},'on',false); const c=document.createElement('span'); c.className='cnt'; c.textContent=`×${n}`; el.appendChild(c); return el; };
+  const withCount=(t,n)=>{ const el=triggerEl({card:t,revealed:true},'on',false); const c=document.createElement('span'); c.className='cnt'; c.textContent=typeof n==='number'?`×${n}`:n; el.appendChild(c); return el; };
   for(const t of TRIGGERS) if((t.count??1)>0) trig.appendChild(withCount(t, t.count??1));
   if(RULES.dudCount>0) trig.appendChild(withCount(NO_TRIGGER, RULES.dudCount));
+  const bench=$('#rlBench'); bench.innerHTML='';
+  for(const t of TRIGGERS) if((t.count??1)===0) bench.appendChild(withCount(t,'2軍'));
+  bench.previousElementSibling.hidden = bench.hidden = !bench.children.length;
   const strip=$('#rlStrip'); strip.innerHTML='';
   const ch=CHARS[0];
   strip.appendChild(figureEl(ch,{top:false,bottom:false},'sm',true,['top']));

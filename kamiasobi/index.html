@@ -1,0 +1,1090 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>カミアソビ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Antique&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#131730; --bg2:#1a1f40; --panel:#20264e; --panel-hi:#2b3264; --line:#3a4380;
+  --ink:#efe8d6; --muted:#a2a7cb; --gold:#dcb65e; --gold-dim:#8c7338;
+  --hp:#e2615a; --mp:#6aa8ff; --good:#7fd38a; --warn:#f0b35a;
+  --el-none:#b9b4a6; --el-fire:#ef7449; --el-water:#4fa7ec; --el-wood:#5fc06a;
+  --el-earth:#c99b58; --el-light:#f2d76a; --el-dark:#a878e6;
+  --t-miracle:#e79ac4; --t-item:#8fd0b0;
+  --display:"Zen Antique","Hiragino Mincho ProN","Yu Mincho",serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{
+  margin:0; color:var(--ink); font-family:var(--body); font-size:14px; line-height:1.5;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -8%, #2c3276 0%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 50% 110%, #2a1f4d 0%, transparent 70%),
+    var(--bg);
+  background-attachment:fixed;
+}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+#app{max-width:1040px;margin:0 auto;padding:12px 16px 24px;display:flex;flex-direction:column;gap:12px}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.top h1{
+  margin:0;font-family:var(--display);font-weight:400;font-size:28px;letter-spacing:.12em;
+  color:var(--gold);text-shadow:0 1px 0 #5a4420,0 0 18px rgba(220,182,94,.25);
+}
+.top h1 small{font-family:var(--body);font-size:11px;letter-spacing:.2em;color:var(--muted);margin-left:10px;text-shadow:none}
+.tools{display:flex;gap:8px;align-items:center}
+.round{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.btn-ghost{background:transparent;border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--muted)}
+.btn-ghost:hover{color:var(--ink);border-color:var(--gold-dim)}
+
+/* opponents */
+.foes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.foe{
+  text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:8px 10px;cursor:default;display:flex;flex-direction:column;gap:5px;position:relative;min-width:0;
+}
+.foe.pickable{cursor:pointer}
+.foe.pickable:hover{border-color:var(--gold-dim)}
+.foe.target{border-color:var(--hp);box-shadow:0 0 0 1px var(--hp),0 0 16px rgba(226,97,90,.35)}
+.foe.target::after{
+  content:"狙い";position:absolute;top:-9px;right:8px;background:var(--hp);color:#1a0d0c;
+  font-size:10px;font-weight:700;padding:0 6px;border-radius:4px;letter-spacing:.1em
+}
+.active{box-shadow:0 0 0 2px var(--gold),0 0 18px rgba(220,182,94,.3)!important}
+.dead{opacity:.38;filter:grayscale(.8)}
+.hit{animation:hit .45s ease}
+@keyframes hit{0%,100%{transform:none}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
+.fhead{display:flex;align-items:center;gap:8px;min-width:0}
+.glyph{
+  flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+  font-family:var(--display);font-size:16px;background:var(--bg2);border:1px solid var(--gold-dim);color:var(--gold)
+}
+.fname{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{position:relative;height:16px;border-radius:4px;background:#0e1126;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#b8403a,var(--hp));transition:width .4s ease}
+.bar b{position:relative;display:block;font-size:11px;line-height:16px;padding-left:6px;font-variant-numeric:tabular-nums;text-shadow:0 1px 1px #000}
+.stats{display:flex;gap:10px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.stats .mp{color:var(--mp)} .stats .gd{color:var(--gold)}
+.badges{display:flex;gap:4px;min-height:0}
+.badge{font-size:10px;padding:0 6px;border-radius:4px;background:#3b2a52;color:#d9b8ff}
+.badge.poison{background:#2f4a2a;color:#aef29b}
+
+/* field */
+.field{display:grid;grid-template-columns:1.6fr 1fr;gap:8px}
+.stage{
+  position:relative;min-height:190px;border-radius:12px;padding:14px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(220,182,94,.07), transparent 65%),
+    var(--bg2);
+  border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;overflow:hidden
+}
+.stage .cycle{position:absolute;right:8px;bottom:6px;width:92px;opacity:.75}
+.stage .cycle text{font-family:var(--display);font-size:13px}
+.duel{display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap}
+.who{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;max-width:110px}
+.who .glyph{width:40px;height:40px;font-size:20px}
+.arrow{font-family:var(--display);color:var(--gold);font-size:22px}
+.stitle{font-family:var(--display);font-size:22px;letter-spacing:.08em}
+.chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.chip{
+  --elc:var(--el-none);
+  border:1px solid var(--elc);color:var(--elc);background:color-mix(in srgb,var(--elc) 12%,transparent);
+  border-radius:6px;padding:1px 8px;font-size:12px;white-space:nowrap
+}
+.power{font-size:13px;color:var(--muted)}
+.power b{font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums}
+.result{font-family:var(--display);font-size:26px;letter-spacing:.06em;animation:pop .35s ease}
+.result.bad{color:var(--hp)} .result.ok{color:var(--good)} .result.gold{color:var(--gold)}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+
+.log{
+  margin:0;padding:10px 12px;list-style:none;border-radius:12px;background:var(--bg2);border:1px solid var(--line);
+  height:190px;overflow-y:auto;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px
+}
+.log li.turn{color:var(--gold);margin-top:4px}
+.log li.hit{color:#f3b2ad}
+.log li.ko{color:var(--hp);font-weight:700}
+.log li.good{color:var(--good)}
+
+/* me */
+.me{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.mepanel{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-radius:10px;padding:4px}
+.mepanel .bar{flex:1 1 160px;height:20px}
+.mepanel .bar b{line-height:20px;font-size:12px}
+.mepanel .stats{font-size:13px}
+.prompt{font-size:14px;min-height:21px}
+.prompt strong{color:var(--gold);font-weight:700}
+.info{font-size:12px;color:var(--muted);min-height:18px;padding:6px 10px;border-radius:8px;background:#171b3a}
+.info b{color:var(--ink)}
+.controls{display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  border:1px solid var(--gold-dim);background:linear-gradient(#e5c26c,#c79a3f);color:#2a1d05;font-weight:700;
+  padding:9px 16px;border-radius:8px;cursor:pointer;letter-spacing:.04em
+}
+.btn:disabled{background:#3a3f63;border-color:#3a3f63;color:#8a8fb3;cursor:not-allowed}
+.btn.sub{background:var(--panel-hi);border-color:var(--line);color:var(--ink);font-weight:400}
+.btn.sub:hover:not(:disabled){border-color:var(--gold-dim)}
+
+.hand{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:8px}
+.card{
+  --elc:var(--el-none);
+  position:relative;aspect-ratio:3/4;max-width:100%;border-radius:8px;cursor:pointer;padding:18px 5px 6px;
+  background:linear-gradient(170deg,var(--panel-hi),#1a1f44 70%);
+  border:2px solid color-mix(in srgb,var(--elc) 70%,transparent);
+  display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  transition:transform .12s ease, box-shadow .12s ease, opacity .12s;
+}
+.card:hover{transform:translateY(-2px)}
+.card.sel{transform:translateY(-6px);box-shadow:0 0 0 2px var(--gold),0 6px 18px rgba(220,182,94,.35)}
+.card.off{opacity:.35}
+.card.usable{box-shadow:0 0 0 1px var(--elc),0 0 12px color-mix(in srgb,var(--elc) 50%,transparent)}
+.ctype{position:absolute;top:3px;left:5px;font-size:10px;color:var(--muted)}
+.cel{
+  position:absolute;top:3px;right:4px;width:16px;height:16px;border-radius:50%;font-size:10px;line-height:16px;text-align:center;
+  background:var(--elc);color:#161a33;font-weight:700
+}
+.cname{font-family:var(--display);font-size:12px;line-height:1.25;text-align:center;word-break:keep-all;overflow-wrap:anywhere}
+.cval{font-size:13px;font-weight:700;color:var(--elc);font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);font-size:12px;padding:12px 0}
+
+.el-none{--elc:var(--el-none)} .el-fire{--elc:var(--el-fire)} .el-water{--elc:var(--el-water)}
+.el-wood{--elc:var(--el-wood)} .el-earth{--elc:var(--el-earth)} .el-light{--elc:var(--el-light)} .el-dark{--elc:var(--el-dark)}
+.t-miracle{--elc:var(--t-miracle)} .t-item{--elc:var(--t-item)} .t-add{--elc:var(--gold)}
+b.el{color:var(--elc);font-weight:700}
+
+/* floating numbers */
+#fx{position:fixed;inset:0;pointer-events:none;z-index:40}
+.float{position:fixed;transform:translate(-50%,0);font-weight:700;font-size:20px;text-shadow:0 2px 4px #000;animation:rise 1.1s ease forwards}
+.float.hp{color:var(--hp)} .float.heal{color:var(--good)} .float.mp{color:var(--mp)} .float.gold{color:var(--gold)} .float.draw{color:var(--ink);font-size:14px}
+@keyframes rise{from{opacity:0;transform:translate(-50%,6px)}15%{opacity:1}to{opacity:0;transform:translate(-50%,-38px)}}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:50;background:rgba(8,10,24,.72);display:grid;place-items:center;padding:16px}
+.sheet{
+  width:min(560px,100%);max-height:calc(100% - 32px);overflow-y:auto;background:var(--bg2);border:1px solid var(--gold-dim);
+  border-radius:14px;padding:18px 18px 16px;display:flex;flex-direction:column;gap:12px
+}
+.sheet h2{margin:0;font-family:var(--display);font-weight:400;color:var(--gold);font-size:24px;letter-spacing:.08em;text-wrap:balance}
+.sheet p,.sheet li{margin:0;font-size:13px;color:var(--ink);max-width:62ch}
+.sheet ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
+.sheet .muted{color:var(--muted)}
+.shop{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.offer{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.offer .card{cursor:default}
+.offer .price{font-size:12px;text-align:center;color:var(--gold);font-variant-numeric:tabular-nums}
+.offer .btn{padding:6px 8px;font-size:12px}
+.sheet .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+table.aff{border-collapse:collapse;font-size:13px}
+table.aff td,table.aff th{border:1px solid var(--line);padding:4px 10px;text-align:left}
+table.aff th{color:var(--muted);font-weight:400}
+
+@media (max-width:720px){
+  .field{grid-template-columns:1fr}
+  .log{height:120px}
+  .stage{min-height:170px}
+  .top h1{font-size:24px}
+  .top h1 small{display:none}
+}
+@media (max-width:440px){
+  .foes{gap:6px}
+  .foe{padding:6px 7px}
+  .glyph{width:24px;height:24px;font-size:13px}
+  .fname{font-size:11px}
+  .stats{gap:6px;font-size:10px}
+  .shop{grid-template-columns:repeat(3,1fr);gap:6px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <h1>カミアソビ<small>神々のカード決闘</small></h1>
+    <div class="tools">
+      <span class="round" id="round"></span>
+      <button class="btn-ghost" id="btnRules" type="button">遊び方</button>
+      <button class="btn-ghost" id="btnSpeed" type="button">速度：普通</button>
+      <button class="btn-ghost" id="btnRestart" type="button">最初から</button>
+    </div>
+  </header>
+
+  <section class="foes" id="foes" aria-label="相手"></section>
+
+  <section class="field">
+    <div class="stage" id="stage" aria-live="polite"></div>
+    <ol class="log" id="log" aria-label="記録"></ol>
+  </section>
+
+  <section class="me" aria-label="あなた">
+    <div class="mepanel" id="mePanel"></div>
+    <div class="prompt" id="prompt"></div>
+    <div class="info" id="info"></div>
+    <div class="controls" id="controls"></div>
+    <div class="hand" id="hand"></div>
+  </section>
+</div>
+<div id="fx"></div>
+<div class="modal" id="modal" hidden></div>
+
+<script>
+'use strict';
+/* ================================================================
+   カード定義
+   ================================================================ */
+const EL = { none:'無', fire:'火', water:'水', wood:'木', earth:'土', light:'光', dark:'闇' };
+// 攻撃の属性 → それを防げる防具の属性（水は火を、火は木を、木は土を、土は水を防ぐ）
+const COUNTER = { fire:'water', wood:'fire', earth:'wood', water:'earth' };
+const BLOCKS  = { water:'fire', fire:'wood', wood:'earth', earth:'water' };
+const TYPE = { weapon:'武器', armor:'防具', miracle:'奇跡', item:'道具', add:'紋章' };
+const HAND_MAX = 12, HP_MAX = 60, MP_MAX = 40, START_HAND = 8;
+
+const CARDS = [
+  // 武器
+  { id:'club',    name:'木の棍棒',   type:'weapon', atk:3,  el:'none',  w:7 },
+  { id:'sword',   name:'銅の剣',     type:'weapon', atk:5,  el:'none',  w:8 },
+  { id:'spear',   name:'鉄の槍',     type:'weapon', atk:7,  el:'none',  w:6 },
+  { id:'axe',     name:'戦斧',       type:'weapon', atk:9,  el:'none',  w:4 },
+  { id:'giant',   name:'巨人の大剣', type:'weapon', atk:13, el:'none',  w:2 },
+  { id:'flame',   name:'炎の剣',     type:'weapon', atk:6,  el:'fire',  w:4 },
+  { id:'inferno', name:'業火の槌',   type:'weapon', atk:10, el:'fire',  w:2 },
+  { id:'ice',     name:'氷の槍',     type:'weapon', atk:6,  el:'water', w:4 },
+  { id:'tide',    name:'大波の杖',   type:'weapon', atk:10, el:'water', w:2 },
+  { id:'thorn',   name:'茨の鞭',     type:'weapon', atk:6,  el:'wood',  w:4 },
+  { id:'treebow', name:'大樹の弓',   type:'weapon', atk:10, el:'wood',  w:2 },
+  { id:'rock',    name:'岩砕きの槌', type:'weapon', atk:6,  el:'earth', w:4 },
+  { id:'quake',   name:'地割れの斧', type:'weapon', atk:10, el:'earth', w:2 },
+  { id:'holybow', name:'聖なる弓',   type:'weapon', atk:5,  el:'light', w:3 },
+  { id:'godlance',name:'神槍',       type:'weapon', atk:11, el:'light', w:1 },
+  { id:'scythe',  name:'死神の鎌',   type:'weapon', atk:0,  el:'dark',  w:1, special:'death' },
+  { id:'dagger',  name:'盗賊の短剣', type:'weapon', atk:3,  el:'none',  w:3, special:'steal' },
+  { id:'needle',  name:'毒針',       type:'weapon', atk:2,  el:'none',  w:3, special:'poison' },
+  // 紋章（武器に重ねる）
+  { id:'whet',    name:'砥石',       type:'add', w:4, special:'plus', val:3 },
+  { id:'double',  name:'倍撃の紋章', type:'add', w:3, special:'double' },
+  { id:'storm',   name:'旋風の紋章', type:'add', w:2, special:'all' },
+  // 防具
+  { id:'wshield', name:'木の盾',     type:'armor', def:3,  el:'none',  w:8 },
+  { id:'leather', name:'革の鎧',     type:'armor', def:5,  el:'none',  w:7 },
+  { id:'iron',    name:'鉄の盾',     type:'armor', def:7,  el:'none',  w:4 },
+  { id:'knight',  name:'騎士の鎧',   type:'armor', def:10, el:'none',  w:2 },
+  { id:'veil',    name:'水の羽衣',   type:'armor', def:6,  el:'water', w:4 },
+  { id:'cloak',   name:'炎の外套',   type:'armor', def:6,  el:'fire',  w:4 },
+  { id:'mantle',  name:'森の外套',   type:'armor', def:6,  el:'wood',  w:4 },
+  { id:'wall',    name:'岩の盾',     type:'armor', def:6,  el:'earth', w:4 },
+  { id:'aegis',   name:'聖なる盾',   type:'armor', def:9,  el:'light', w:2 },
+  { id:'mirror',  name:'反射の鏡',   type:'armor', def:0,  el:'none',  w:2, special:'reflect' },
+  // 奇跡（MPを使う）
+  { id:'heal',    name:'癒しの光',   type:'miracle', mp:3,  w:5, effect:'heal', val:12 },
+  { id:'fireball',name:'火球',       type:'miracle', mp:4,  w:3, effect:'attack', atk:9, el:'fire' },
+  { id:'blizzard',name:'氷嵐',       type:'miracle', mp:4,  w:3, effect:'attack', atk:9, el:'water' },
+  { id:'thunder', name:'裁きの雷',   type:'miracle', mp:7,  w:2, effect:'attack', atk:8, el:'light' },
+  { id:'meteor',  name:'星落とし',   type:'miracle', mp:10, w:1, effect:'attack', atk:10, el:'earth', all:true },
+  { id:'drain',   name:'生命吸収',   type:'miracle', mp:5,  w:2, effect:'attack', atk:7, el:'none', special:'drain' },
+  { id:'curse',   name:'呪毒',       type:'miracle', mp:3,  w:3, effect:'poison' },
+  { id:'purify',  name:'浄化',       type:'miracle', mp:2,  w:3, effect:'cure', val:5 },
+  { id:'alchemy', name:'錬金術',     type:'miracle', mp:2,  w:2, effect:'gold', val:15 },
+  // 道具
+  { id:'herb',    name:'薬草',       type:'item', w:6, effect:'heal', val:8 },
+  { id:'elixir',  name:'霊薬',       type:'item', w:2, effect:'heal', val:20 },
+  { id:'ether',   name:'魔法の水',   type:'item', w:4, effect:'mp',   val:6 },
+  { id:'coins',   name:'金貨袋',     type:'item', w:3, effect:'gold', val:15 },
+  { id:'antidote',name:'解毒草',     type:'item', w:2, effect:'cure', val:0 },
+];
+CARDS.forEach(c => { c.price = priceOf(c); });
+const TOTAL_W = CARDS.reduce((s, c) => s + c.w, 0);
+
+function priceOf(c){
+  switch (c.type){
+    case 'weapon':  return c.special === 'death' ? 45 : 4 + c.atk * 3 + (c.special ? 4 : 0);
+    case 'armor':   return c.special === 'reflect' ? 30 : 4 + c.def * 3;
+    case 'miracle': return 6 + c.mp * 3;
+    case 'add':     return c.special === 'plus' ? 12 : 20;
+    default:        return 6 + Math.round((c.val || 8) * 1.2);
+  }
+}
+
+let uidSeq = 0;
+function drawCard(){
+  let r = Math.random() * TOTAL_W;
+  for (const c of CARDS){ r -= c.w; if (r < 0) return { ...c, uid: ++uidSeq }; }
+  return { ...CARDS[0], uid: ++uidSeq };
+}
+
+function canBlock(armor, atkEl){
+  if (armor.type !== 'armor') return false;
+  if (armor.special === 'reflect') return true;
+  if (armor.el === 'light') return true;
+  if (atkEl === 'light' || atkEl === 'dark') return false;
+  if (atkEl === 'none') return true;
+  return armor.el === COUNTER[atkEl];
+}
+
+function guardText(el){
+  if (el === 'none') return 'どの防具でも防げる。';
+  if (el === 'light') return '光の防具か鏡でしか防げない。';
+  return `防げるのは無属性以外では${EL[COUNTER[el]]}と光の防具。`;
+}
+
+function describe(c){
+  const e = EL[c.el];
+  switch (c.type){
+    case 'weapon':
+      if (c.special === 'death') return '闇属性。光の防具か鏡で防がれなければ、相手は即死する。';
+      return `${e}属性・攻撃力${c.atk}。` + (c.el === 'none' ? 'どの防具でも防がれる。' : guardText(c.el)) +
+        (c.special === 'steal' ? '当たると相手の所持金を半分奪う。' : '') +
+        (c.special === 'poison' ? '当たると毒にする（3ターン、毎ターン3ダメージ）。' : '');
+    case 'add':
+      return { plus:'武器の攻撃力を+3する。', double:'武器の攻撃力を2倍にする。', all:'攻撃が相手全員に届く。' }[c.special] + '武器と一緒に選んで使う。';
+    case 'armor':
+      if (c.special === 'reflect') return '受けた攻撃をまるごと相手に跳ね返す。闇の即死も返せる。';
+      if (c.el === 'light') return `守備力${c.def}。どの属性の攻撃も防ぎ、闇の即死も打ち消す。`;
+      if (c.el === 'none') return `守備力${c.def}。無属性の攻撃だけ防げる。`;
+      return `守備力${c.def}。無属性と${EL[BLOCKS[c.el]]}属性の攻撃を防げる。`;
+    case 'miracle':
+      switch (c.effect){
+        case 'heal':   return `MP${c.mp}。HPを${c.val}回復する。`;
+        case 'attack': return `MP${c.mp}。${e}属性・攻撃力${c.atk}の魔法攻撃` + (c.all ? 'を相手全員に放つ。' : '。') + guardText(c.el) +
+                              (c.special === 'drain' ? '与えたダメージの分だけHPを回復する。' : '');
+        case 'poison': return `MP${c.mp}。相手ひとりを毒にする（3ターン、毎ターン3ダメージ）。防御できない。`;
+        case 'cure':   return `MP${c.mp}。毒を治し、HPを${c.val}回復する。`;
+        case 'gold':   return `MP${c.mp}。お金を${c.val}得る。`;
+      }
+      break;
+    case 'item':
+      return { heal:`HPを${c.val}回復する。`, mp:`MPを${c.val}回復する。`, gold:`お金を${c.val}得る。`, cure:'毒を治す。' }[c.effect];
+  }
+  return '';
+}
+
+function valueLabel(c){
+  switch (c.type){
+    case 'weapon':  return c.special === 'death' ? '即死' : `攻${c.atk}`;
+    case 'armor':   return c.special === 'reflect' ? '反射' : `守${c.def}`;
+    case 'miracle': return `MP${c.mp}`;
+    case 'add':     return { plus:'+3', double:'×2', all:'全体' }[c.special];
+    case 'item':    return { heal:`HP+${c.val}`, mp:`MP+${c.val}`, gold:`金+${c.val}`, cure:'解毒' }[c.effect];
+  }
+}
+function colorClass(c){ return c.el ? `el-${c.el}` : `t-${c.type}`; }
+
+/* ================================================================
+   状態
+   ================================================================ */
+const ROSTER = [
+  { name:'あなた',       glyph:'汝', human:true },
+  { name:'炎神イグニス', glyph:'焔', ai:'aggro' },
+  { name:'海神マリナ',   glyph:'潮', ai:'balanced' },
+  { name:'地神ガルド',   glyph:'岩', ai:'careful' },
+];
+const ABORT = Symbol('abort');
+let G = null, gameId = 0, speed = 1;
+const UI = { mode:'wait', sel:new Set(), target:null, extra:{}, resolve:null, focus:null, rules:false };
+
+const me = () => G.players[0];
+const alive = () => G.players.filter(p => p.alive);
+const foesOf = p => G.players.filter(q => q !== p && q.alive);
+
+function newGame(){
+  gameId++;
+  UI.mode = 'wait'; UI.sel.clear(); UI.target = null; UI.focus = null; UI.resolve = null;
+  G = {
+    players: ROSTER.map((o, i) => ({ i, ...o, hp:40, mp:10, gold:20, hand:[], poison:0, alive:true, rank:0, hitAt:0 })),
+    turn: 0, round: 1, over: false, stage: null, log: [],
+  };
+  G.players.forEach(p => { for (let k = 0; k < START_HAND; k++) p.hand.push(drawCard()); });
+  log('四柱の神が卓についた。最後まで立っていた者の勝ち。', 'turn');
+  render();
+  loop();
+}
+
+async function wait(ms){
+  const id = gameId;
+  await new Promise(r => setTimeout(r, ms * speed));
+  if (id !== gameId) throw ABORT;
+}
+
+function log(text, cls = ''){
+  G.log.push({ text, cls });
+  if (G.log.length > 120) G.log.shift();
+}
+
+/* ================================================================
+   ゲーム進行
+   ================================================================ */
+async function loop(){
+  try {
+    while (!G.over){
+      const p = G.players[G.turn];
+      if (p.alive) await takeTurn(p);
+      if (checkEnd()) break;
+      do {
+        G.turn = (G.turn + 1) % G.players.length;
+        if (G.turn === 0) G.round++;
+      } while (!G.players[G.turn].alive);
+    }
+  } catch (e){ if (e !== ABORT) console.error(e); }
+}
+
+function checkEnd(){
+  const a = alive();
+  if (!me().alive || a.length <= 1){
+    G.over = true;
+    if (a.length === 1) a[0].rank = 1;
+    UI.mode = 'wait';
+    render();
+    return true;
+  }
+  return false;
+}
+
+async function takeTurn(p){
+  G.stage = { src:p, title:`${p.name}の番` };
+  log(`― ${p.name}の番 ―`, 'turn');
+  render();
+  await wait(p.human ? 250 : 550);
+
+  if (p.poison > 0){
+    p.poison--;
+    damage(p, 3);
+    log(`${p.name}は毒で3ダメージ`, 'hit');
+    G.stage = { src:p, title:'毒がまわる', result:{ text:'-3', cls:'bad' } };
+    render(); await wait(700);
+    if (!p.alive) return;
+  }
+
+  if (draw(p, 1) && p.human) log('カードを1枚引いた');
+  render();
+
+  if (Math.random() < 0.15) await merchant(p);
+  if (checkEnd()) return;
+
+  const act = p.human ? await askHuman('action') : cpuChoose(p);
+  await perform(p, act);
+}
+
+function draw(p, n){
+  let got = 0;
+  for (let k = 0; k < n; k++){
+    if (p.hand.length >= HAND_MAX) break;
+    p.hand.push(drawCard()); got++;
+  }
+  if (got) fx(p, `+${got}枚`, 'draw');
+  return got;
+}
+
+function removeCards(p, cards){
+  const ids = new Set(cards.map(c => c.uid));
+  p.hand = p.hand.filter(c => !ids.has(c.uid));
+}
+
+function damage(p, n){
+  if (n <= 0 || !p.alive) return;
+  p.hp = Math.max(0, p.hp - n);
+  p.hitAt = Date.now();
+  fx(p, `-${n}`, 'hp');
+  if (p.hp === 0) kill(p);
+}
+function heal(p, n){
+  const before = p.hp;
+  p.hp = Math.min(HP_MAX, p.hp + n);
+  if (p.hp > before) fx(p, `+${p.hp - before}`, 'heal');
+  return p.hp - before;
+}
+function kill(p){
+  p.alive = false; p.hp = 0; p.poison = 0; p.hand = [];
+  p.rank = alive().length + 1;
+  log(`${p.name}は倒れた！`, 'ko');
+  if (UI.target === p) UI.target = null;
+}
+
+function calcPower(weapon, adds){
+  let power = weapon.atk;
+  adds.forEach(a => { if (a.special === 'plus') power += a.val; });
+  adds.forEach(a => { if (a.special === 'double') power *= 2; });
+  return power;
+}
+
+async function perform(p, act){
+  if (act.type === 'pray'){
+    const n = draw(p, 2);
+    log(n ? `${p.name}は祈り、カードを${n}枚授かった` : `${p.name}は祈ったが、手札がいっぱいだった`);
+    G.stage = { src:p, title:'祈り', result:{ text: n ? `+${n}枚` : '何も起きない', cls:'gold' } };
+    render(); await wait(800);
+    return;
+  }
+
+  if (act.type === 'attack'){
+    const w = act.cards.find(c => c.type === 'weapon');
+    const adds = act.cards.filter(c => c.type === 'add');
+    removeCards(p, act.cards);
+    const atk = { name:w.name, power:calcPower(w, adds), el:w.el, special:w.special, cards:act.cards };
+    const targets = adds.some(a => a.special === 'all') ? foesOf(p) : [act.target];
+    await resolveAttack(p, atk, targets);
+    return;
+  }
+
+  const c = act.card;
+  removeCards(p, [c]);
+  if (c.type === 'miracle'){ p.mp -= c.mp; fx(p, `MP-${c.mp}`, 'mp'); }
+
+  if (c.effect === 'attack'){
+    const atk = { name:c.name, power:c.atk, el:c.el, special:c.special, cards:[c] };
+    await resolveAttack(p, atk, c.all ? foesOf(p) : [act.target]);
+    return;
+  }
+
+  let result, cls = 'ok', dst = null;
+  switch (c.effect){
+    case 'heal': { const h = heal(p, c.val); result = `HP+${h}`; log(`${p.name}は${c.name}でHPを${h}回復`, 'good'); break; }
+    case 'mp':   { const b = p.mp; p.mp = Math.min(MP_MAX, p.mp + c.val); result = `MP+${p.mp - b}`; fx(p, result, 'mp'); log(`${p.name}は${c.name}でMPを${p.mp - b}回復`, 'good'); break; }
+    case 'gold': { p.gold += c.val; result = `金+${c.val}`; cls = 'gold'; fx(p, result, 'gold'); log(`${p.name}は${c.name}でお金を${c.val}得た`); break; }
+    case 'cure': {
+      p.poison = 0; const h = c.val ? heal(p, c.val) : 0;
+      result = h ? `解毒・HP+${h}` : '解毒'; log(`${p.name}は${c.name}で毒を治した`, 'good'); break;
+    }
+    case 'poison': {
+      dst = act.target; dst.poison = 3; result = '毒'; cls = 'bad';
+      log(`${p.name}の${c.name}！${dst.name}は毒に侵された`, 'hit'); break;
+    }
+  }
+  G.stage = { src:p, dst, title:c.name, cards:[c], result:{ text:result, cls } };
+  render(); await wait(900);
+}
+
+async function resolveAttack(src, atk, targets){
+  for (const t of targets){
+    if (!t || !t.alive) continue;
+    G.stage = { src, dst:t, title:atk.name, cards:atk.cards, atk };
+    log(`${src.name} → ${t.name}：${atk.name}（${EL[atk.el]}${atk.special === 'death' ? '・即死' : ' ' + atk.power}）`);
+    render();
+    await wait(t.human ? 300 : 800);
+
+    const armors = t.human ? await askHuman('defend', { atk, src }) : cpuDefend(t, atk);
+    removeCards(t, armors);
+    G.stage.def = armors;
+    if (armors.length) log(`${t.name}は${armors.map(a => a.name).join('と')}で守る`);
+    const r = computeHit(atk, armors);
+
+    if (r.reflect){
+      G.stage.result = { text:'反射！', cls:'gold' };
+      log(`${t.name}は攻撃を跳ね返した！`, 'good');
+      render(); await wait(800);
+      if (src.alive){
+        applyHit(t, src, atk, r.dmg, r.death);
+        G.stage.result = r.death ? { text:`${src.name}が即死`, cls:'bad' } : { text:`${src.name}に ${r.dmg}`, cls:'bad' };
+      }
+    } else {
+      applyHit(src, t, atk, r.dmg, r.death);
+      G.stage.result = r.death ? { text:'即死！', cls:'bad' }
+        : r.dmg > 0 ? { text:`${r.dmg} ダメージ`, cls:'bad' }
+        : { text:'防いだ！', cls:'ok' };
+    }
+    render();
+    await wait(1000);
+    if (G.over || !me().alive) return;
+  }
+}
+
+function computeHit(atk, armors){
+  if (armors.some(a => a.special === 'reflect')) return { reflect:true, dmg:atk.power, death:atk.special === 'death' };
+  if (atk.special === 'death') return armors.some(a => a.el === 'light') ? { dmg:0 } : { death:true, dmg:0 };
+  const def = armors.filter(a => canBlock(a, atk.el)).reduce((s, a) => s + a.def, 0);
+  return { dmg: Math.max(0, atk.power - def), def };
+}
+
+function applyHit(from, to, atk, dmg, death){
+  if (death){
+    log(`${to.name}は闇に呑まれた`, 'hit');
+    to.hitAt = Date.now(); fx(to, '即死', 'hp');
+    kill(to);
+    return;
+  }
+  if (dmg <= 0){ log(`${to.name}は攻撃を防ぎきった`, 'good'); return; }
+  damage(to, dmg);
+  log(`${to.name}に${dmg}ダメージ`, 'hit');
+  if (!to.alive) return;
+  if (atk.special === 'poison'){ to.poison = 3; log(`${to.name}は毒に侵された`, 'hit'); }
+  if (atk.special === 'steal'){
+    const g = Math.floor(to.gold / 2);
+    if (g > 0){ to.gold -= g; from.gold += g; fx(from, `金+${g}`, 'gold'); log(`${from.name}はお金を${g}奪った`); }
+  }
+  if (atk.special === 'drain' && from.alive){ const h = heal(from, dmg); if (h) log(`${from.name}はHPを${h}吸い取った`, 'good'); }
+}
+
+async function merchant(p){
+  const offers = [drawCard(), drawCard(), drawCard()];
+  log(`旅の商人が${p.name}のもとに現れた`);
+  if (p.human){
+    await askHuman('shop', { offers, bought:new Set() });
+    return;
+  }
+  G.stage = { src:p, title:'旅の商人', cards:offers };
+  render(); await wait(700);
+  const pick = offers
+    .filter(c => c.price <= p.gold && p.hand.length < HAND_MAX)
+    .sort((a, b) => cardScore(p, b) - cardScore(p, a))[0];
+  if (pick && Math.random() < 0.75){
+    p.gold -= pick.price; p.hand.push(pick);
+    log(`${p.name}は${pick.name}を${pick.price}で買った`);
+    G.stage.result = { text:`${pick.name}を購入`, cls:'gold' };
+    render(); await wait(700);
+  }
+}
+
+/* ================================================================
+   CPU
+   ================================================================ */
+function cardScore(p, c){
+  switch (c.type){
+    case 'weapon':  return c.special === 'death' ? 30 : c.atk * 1.4;
+    case 'armor':   return c.special === 'reflect' ? 14 : c.def * 1.2;
+    case 'miracle': return c.effect === 'attack' ? c.atk * (c.all ? 2 : 1.1) : c.effect === 'heal' ? (p.hp < 25 ? 16 : 6) : 5;
+    case 'add':     return c.special === 'double' ? 14 : c.special === 'all' ? 12 : 6;
+    default:        return c.effect === 'heal' ? (p.hp < 25 ? c.val : c.val / 3) : 4;
+  }
+}
+
+function pickTarget(p){
+  const foes = foesOf(p);
+  if (p.ai === 'aggro')   return foes.slice().sort((a, b) => a.hp - b.hp)[0];
+  if (p.ai === 'careful') return foes.slice().sort((a, b) => b.hp - a.hp)[0];
+  const hu = foes.find(f => f.human);
+  if (hu && Math.random() < 0.45) return hu;
+  return foes[Math.floor(Math.random() * foes.length)];
+}
+
+function cpuChoose(p){
+  const h = p.hand;
+  const foes = foesOf(p);
+  const target = pickTarget(p);
+  const usable = h.filter(c => c.type !== 'miracle' || c.mp <= p.mp);
+  const heals = usable.filter(c => c.effect === 'heal').sort((a, b) => b.val - a.val);
+  const lowLine = p.ai === 'careful' ? 22 : p.ai === 'aggro' ? 12 : 16;
+
+  if (p.hp <= lowLine && heals.length) return { type:'use', card:heals[0] };
+  const cure = usable.find(c => c.effect === 'cure');
+  if (p.poison && cure) return { type:'use', card:cure };
+
+  const weapons = h.filter(c => c.type === 'weapon');
+  const scythe = weapons.find(c => c.special === 'death');
+  const adds = h.filter(c => c.type === 'add');
+  const storm = adds.find(c => c.special === 'all');
+  if (scythe && Math.random() < 0.8){
+    const cards = [scythe]; if (storm && foes.length > 1) cards.push(storm);
+    return { type:'attack', cards, target };
+  }
+
+  const best = weapons.filter(c => c.special !== 'death').sort((a, b) => b.atk - a.atk)[0];
+  const spells = usable.filter(c => c.type === 'miracle' && c.effect === 'attack').sort((a, b) => b.atk - a.atk);
+  const bestSpell = spells[0];
+
+  if (best){
+    const use = adds.filter(a => a.special !== 'all');
+    if (storm && foes.length > 1 && best.atk >= 5) use.push(storm);
+    const power = calcPower(best, use);
+    if (bestSpell && bestSpell.atk > power + 2) return { type:'use', card:bestSpell, target };
+    return { type:'attack', cards:[best, ...use], target };
+  }
+  if (bestSpell) return { type:'use', card:bestSpell, target };
+
+  const curse = usable.find(c => c.effect === 'poison');
+  if (curse && !target.poison) return { type:'use', card:curse, target };
+  if (p.hp < 34 && heals.length) return { type:'use', card:heals[0] };
+  const ether = h.find(c => c.effect === 'mp');
+  if (ether && p.mp < 8) return { type:'use', card:ether };
+  const money = usable.find(c => c.effect === 'gold');
+  if (money && Math.random() < 0.5) return { type:'use', card:money };
+  return { type:'pray' };
+}
+
+function cpuDefend(t, atk){
+  const valid = t.hand.filter(c => canBlock(c, atk.el));
+  const mirror = valid.find(c => c.special === 'reflect');
+  const normal = valid.filter(c => c.special !== 'reflect').sort((a, b) => a.def - b.def);
+
+  if (atk.special === 'death'){
+    const lightArmor = normal.find(c => c.el === 'light');
+    if (lightArmor) return [lightArmor];
+    return mirror ? [mirror] : [];
+  }
+  if (atk.power <= 0) return [];
+  if (t.ai === 'aggro' && atk.power <= 3 && t.hp > 20) return [];
+
+  const single = normal.find(a => a.def >= atk.power);
+  if (single && !(mirror && atk.power >= 14)) return [single];
+
+  const chosen = []; let sum = 0;
+  for (const a of normal.slice().reverse()){
+    chosen.push(a); sum += a.def;
+    if (sum >= atk.power) break;
+  }
+  const rest = atk.power - sum;
+  if (mirror && (rest >= t.hp || rest >= 7 || atk.power >= 14)) return [mirror];
+  return chosen;
+}
+
+/* ================================================================
+   プレイヤー入力
+   ================================================================ */
+function askHuman(mode, extra = {}){
+  const id = gameId;
+  return new Promise(res => {
+    UI.mode = mode; UI.sel = new Set(); UI.extra = extra;
+    UI.resolve = v => { UI.mode = 'wait'; UI.resolve = null; UI.sel.clear(); res(v); };
+    if (mode === 'action' && (!UI.target || !UI.target.alive)) UI.target = pickDefaultTarget();
+    if (mode === 'defend') UI.focus = null;
+    render();
+  }).then(v => { if (id !== gameId) throw ABORT; return v; });
+}
+function pickDefaultTarget(){ return foesOf(me()).sort((a, b) => a.hp - b.hp)[0] || null; }
+
+const selCards = () => me().hand.filter(c => UI.sel.has(c.uid));
+
+function needsTarget(c){
+  return (c.type === 'miracle' && ((c.effect === 'attack' && !c.all) || c.effect === 'poison'));
+}
+
+function actionPlan(){
+  const p = me();
+  const cards = selCards();
+  const weapons = cards.filter(c => c.type === 'weapon');
+  const adds = cards.filter(c => c.type === 'add');
+  const other = cards.find(c => c.type === 'miracle' || c.type === 'item');
+  const tgt = UI.target;
+
+  if (weapons.length === 1){
+    const w = weapons[0];
+    const all = adds.some(a => a.special === 'all');
+    const pow = w.special === 'death' ? '即死' : calcPower(w, adds);
+    if (all) return { ok:true, label:`全員に攻撃（${pow}）`, act:{ type:'attack', cards } };
+    if (!tgt) return { ok:false, label:'相手をタップして狙いを決める' };
+    return { ok:true, label:`${tgt.name}に攻撃（${pow}）`, act:{ type:'attack', cards, target:tgt } };
+  }
+  if (adds.length) return { ok:false, label:'紋章は武器と一緒に使う' };
+  if (other){
+    if (other.type === 'miracle' && p.mp < other.mp) return { ok:false, label:'MPが足りない' };
+    if (needsTarget(other)){
+      if (!tgt) return { ok:false, label:'相手をタップして狙いを決める' };
+      return { ok:true, label:`${tgt.name}に${other.name}`, act:{ type:'use', card:other, target:tgt } };
+    }
+    return { ok:true, label:`${other.name}を使う`, act:{ type:'use', card:other } };
+  }
+  return { ok:false, label:'カードを選ぶ' };
+}
+
+function onCard(uid){
+  if (!G || G.over) return;
+  const p = me();
+  const c = p.hand.find(x => x.uid === uid);
+  if (!c) return;
+  UI.focus = c;
+  const sel = UI.sel;
+
+  if (UI.mode === 'action'){
+    if (c.type === 'armor'){ render(); return; }
+    if (c.type === 'miracle' && p.mp < c.mp){ render(); return; }
+    if (sel.has(uid)) sel.delete(uid);
+    else {
+      const cur = selCards();
+      if (c.type === 'weapon') cur.filter(x => x.type !== 'add').forEach(x => sel.delete(x.uid));
+      else if (c.type === 'add') cur.filter(x => x.type === 'miracle' || x.type === 'item').forEach(x => sel.delete(x.uid));
+      else sel.clear();
+      sel.add(uid);
+    }
+  } else if (UI.mode === 'defend'){
+    if (canBlock(c, UI.extra.atk.el)){
+      if (sel.has(uid)) sel.delete(uid); else sel.add(uid);
+    }
+  }
+  render();
+}
+
+function onFoe(pid){
+  if (!G || G.over || UI.mode !== 'action') return;
+  const f = G.players[pid];
+  if (!f || !f.alive || f.human) return;
+  UI.target = f;
+  render();
+}
+
+function onControl(kind){
+  if (!UI.resolve) return;
+  if (UI.mode === 'action'){
+    if (kind === 'pray') return UI.resolve({ type:'pray' });
+    const plan = actionPlan();
+    if (plan.ok) UI.resolve(plan.act);
+  } else if (UI.mode === 'defend'){
+    UI.resolve(selCards());
+  } else if (UI.mode === 'shop' && kind === 'leave'){
+    closeModal(); UI.resolve(null);
+  }
+}
+
+function buy(uid){
+  const p = me();
+  const { offers, bought } = UI.extra;
+  const c = offers.find(o => o.uid === uid);
+  if (!c || bought.has(uid) || p.gold < c.price || p.hand.length >= HAND_MAX) return;
+  p.gold -= c.price; p.hand.push(c); bought.add(uid);
+  log(`${c.name}を${c.price}で買った`);
+  fx(p, `金-${c.price}`, 'gold');
+  render();
+}
+
+/* ================================================================
+   描画
+   ================================================================ */
+const $ = s => document.querySelector(s);
+
+function cardHTML(c, cls = ''){
+  return `<button type="button" class="card ${colorClass(c)} ${cls}" data-uid="${c.uid}" aria-label="${c.name}">
+    <span class="ctype">${TYPE[c.type]}</span>${c.el ? `<span class="cel">${EL[c.el]}</span>` : ''}
+    <span class="cname">${c.name}</span><span class="cval">${valueLabel(c)}</span></button>`;
+}
+function chip(c){ return `<span class="chip ${colorClass(c)}">${c.name} ${valueLabel(c)}</span>`; }
+function glyph(p){ return `<span class="glyph">${p.glyph}</span>`; }
+
+function statsHTML(p){
+  return `<div class="stats"><span class="mp">MP ${p.mp}</span><span class="gd">金 ${p.gold}</span><span>手札 ${p.hand.length}</span></div>`;
+}
+function barHTML(p){
+  return `<div class="bar"><i style="width:${(p.hp / HP_MAX) * 100}%"></i><b>HP ${p.hp}</b></div>`;
+}
+function badgesHTML(p){
+  const b = [];
+  if (p.poison) b.push(`<span class="badge poison">毒 残り${p.poison}</span>`);
+  if (!p.alive) b.push(`<span class="badge">脱落</span>`);
+  return `<div class="badges">${b.join('')}</div>`;
+}
+function isActive(p){ return !G.over && G.players[G.turn] === p && p.alive; }
+function isHit(p){ return Date.now() - p.hitAt < 500; }
+
+function render(){
+  if (!G) return;
+  const p0 = me();
+  $('#round').textContent = `第${G.round}巡`;
+
+  // 相手
+  $('#foes').innerHTML = G.players.filter(p => !p.human).map(p => {
+    const cls = ['foe'];
+    if (!p.alive) cls.push('dead');
+    if (isActive(p)) cls.push('active');
+    if (isHit(p)) cls.push('hit');
+    if (UI.mode === 'action' && p.alive) cls.push('pickable');
+    if (UI.mode === 'action' && UI.target === p) cls.push('target');
+    return `<button type="button" class="${cls.join(' ')}" data-pid="${p.i}">
+      <div class="fhead">${glyph(p)}<span class="fname">${p.name}</span></div>
+      ${barHTML(p)}${statsHTML(p)}${badgesHTML(p)}</button>`;
+  }).join('');
+
+  // 自分
+  const mp = $('#mePanel');
+  mp.className = 'mepanel' + (isActive(p0) ? ' active' : '') + (isHit(p0) ? ' hit' : '');
+  mp.dataset.pid = 0;
+  mp.innerHTML = `${glyph(p0)}${barHTML(p0)}${statsHTML(p0)}${badgesHTML(p0)}`;
+
+  renderStage();
+  renderLog();
+  renderControls();
+  renderHand();
+  renderModal();
+}
+
+function renderStage(){
+  const s = G.stage;
+  const cycle = `<svg class="cycle" viewBox="0 0 100 100" aria-label="防御の相性：水は火を、火は木を、木は土を、土は水を防ぐ">
+    <circle cx="50" cy="50" r="30" fill="none" stroke="#3a4380" stroke-width="1.5" stroke-dasharray="3 4"/>
+    <text x="50" y="18" text-anchor="middle" fill="var(--el-water)">水</text>
+    <text x="86" y="55" text-anchor="middle" fill="var(--el-fire)">火</text>
+    <text x="50" y="92" text-anchor="middle" fill="var(--el-wood)">木</text>
+    <text x="14" y="55" text-anchor="middle" fill="var(--el-earth)">土</text>
+    <path d="M66 26 l6 2 l-2 -6" fill="none" stroke="#8c7338" stroke-width="1.5"/>
+    <path d="M74 66 l-2 6 l6 -2" fill="none" stroke="#8c7338" stroke-width="1.5"/>
+    <path d="M34 74 l-6 -2 l2 6" fill="none" stroke="#8c7338" stroke-width="1.5"/>
+    <path d="M26 34 l2 -6 l-6 2" fill="none" stroke="#8c7338" stroke-width="1.5"/>
+    <text x="50" y="54" text-anchor="middle" fill="#a2a7cb" style="font-size:9px;font-family:var(--body)">防ぐ</text>
+  </svg>`;
+  if (!s){ $('#stage').innerHTML = `<div class="stitle">開戦</div>${cycle}`; return; }
+  let h = '';
+  if (s.dst){
+    h += `<div class="duel"><div class="who">${glyph(s.src)}<span>${s.src.name}</span></div>
+      <span class="arrow">➝</span><div class="who">${glyph(s.dst)}<span>${s.dst.name}</span></div></div>`;
+  } else {
+    h += `<div class="duel"><div class="who">${glyph(s.src)}</div><div class="stitle">${s.title}</div></div>`;
+  }
+  if (s.cards && s.cards.length) h += `<div class="chips">${s.cards.map(chip).join('')}</div>`;
+  if (s.atk){
+    const el = s.atk.el;
+    h += `<div class="power"><b class="el el-${el}">${EL[el]}</b>属性 ${s.atk.special === 'death' ? '<b>即死</b>' : `攻撃力 <b>${s.atk.power}</b>`}</div>`;
+  }
+  if (s.def){
+    h += s.def.length ? `<div class="chips"><span class="power">防御</span>${s.def.map(chip).join('')}</div>`
+                      : `<div class="power">防御なし</div>`;
+  }
+  if (s.result) h += `<div class="result ${s.result.cls}">${s.result.text}</div>`;
+  $('#stage').innerHTML = h + cycle;
+}
+
+function renderLog(){
+  const el = $('#log');
+  el.innerHTML = G.log.slice(-60).map(l => `<li class="${l.cls}">${l.text}</li>`).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function renderControls(){
+  const p = me();
+  let prompt = '', ctrl = '', info = '';
+  if (G.over){
+    prompt = p.alive ? '<strong>勝利！</strong>' : `<strong>敗北</strong>（${p.rank}位）`;
+  } else if (UI.mode === 'action'){
+    const plan = actionPlan();
+    prompt = '<strong>あなたの番</strong>　武器・奇跡・道具を選んで行動するか、祈ってカードを2枚もらう。';
+    ctrl = `<button type="button" class="btn" data-ctl="go" ${plan.ok ? '' : 'disabled'}>${plan.label}</button>
+            <button type="button" class="btn sub" data-ctl="pray">祈る（2枚引く）</button>`;
+  } else if (UI.mode === 'defend'){
+    const { atk, src } = UI.extra;
+    const r = computeHit(atk, selCards());
+    const what = atk.special === 'death' ? '即死攻撃' : `${EL[atk.el]}属性 ${atk.power}`;
+    prompt = `<strong>${src.name}の${atk.name}</strong>（${what}）があなたを狙う！ 光っている防具が使える。`;
+    const preview = r.reflect ? '跳ね返す' : r.death ? '即死する' : r.dmg ? `${r.dmg}ダメージ受ける` : 'ダメージ0';
+    ctrl = `<button type="button" class="btn" data-ctl="def">${UI.sel.size ? `防御する（${preview}）` : `そのまま受ける（${preview}）`}</button>`;
+  } else if (UI.mode === 'shop'){
+    prompt = '<strong>旅の商人</strong>が来ている。';
+  } else {
+    const cur = G.players[G.turn];
+    prompt = cur && !cur.human ? `${cur.name}が考えている…` : '';
+  }
+  const f = UI.focus && p.hand.includes(UI.focus) ? UI.focus : null;
+  if (f) info = `<b>${f.name}</b>（${TYPE[f.type]}）　${describe(f)}`;
+  else if (UI.mode === 'defend') info = '防具を複数重ねると守備力が合計される。属性が合わない防具は使えない。';
+  else info = 'カードをタップすると説明が出る。';
+  $('#prompt').innerHTML = prompt;
+  $('#controls').innerHTML = ctrl;
+  $('#info').innerHTML = info;
+}
+
+function renderHand(){
+  const p = me();
+  if (!p.alive){ $('#hand').innerHTML = '<div class="empty">あなたは倒れた。</div>'; return; }
+  if (!p.hand.length){ $('#hand').innerHTML = '<div class="empty">手札がない。祈ってカードをもらおう。</div>'; return; }
+  const order = { weapon:0, add:1, miracle:2, item:3, armor:4 };
+  const cards = p.hand.slice().sort((a, b) => order[a.type] - order[b.type]);
+  $('#hand').innerHTML = cards.map(c => {
+    const cls = [];
+    if (UI.sel.has(c.uid)) cls.push('sel');
+    if (UI.mode === 'action'){
+      if (c.type === 'armor' || (c.type === 'miracle' && p.mp < c.mp)) cls.push('off');
+    } else if (UI.mode === 'defend'){
+      if (canBlock(c, UI.extra.atk.el)) cls.push('usable'); else cls.push('off');
+    }
+    return cardHTML(c, cls.join(' '));
+  }).join('');
+}
+
+function renderModal(){
+  const m = $('#modal');
+  let h = '';
+  if (UI.rules){
+    h = `<div class="sheet"><h2>遊び方</h2>
+      <p>4柱の神でのバトルロイヤル。HPが0になると脱落し、最後まで残った者が勝つ。</p>
+      <ul>
+        <li>自分の番のはじめにカードを1枚引く。そのあと行動をひとつ選ぶ。</li>
+        <li><b>攻撃</b>：武器を1枚選び、狙う相手をタップ。紋章（砥石・倍撃・旋風）を重ねると強くなる。</li>
+        <li><b>奇跡</b>：MPを払って魔法を使う。回復や属性攻撃など。</li>
+        <li><b>道具</b>：薬草や金貨袋などをその場で使う。</li>
+        <li><b>祈る</b>：何もしない代わりにカードを2枚もらう（手札は最大${HAND_MAX}枚）。</li>
+        <li>攻撃されたら防具を選んで守る。守備力の合計だけダメージが減る。使ったカードはなくなる。</li>
+        <li>ときどき旅の商人が現れ、お金でカードを売ってくれる。</li>
+      </ul>
+      <p><b>属性の相性</b>（攻撃 → 防げる防具）</p>
+      <div style="overflow-x:auto"><table class="aff">
+        <tr><th>無</th><td>どの防具でも</td></tr>
+        <tr><th class="el-fire"><b class="el">火</b></th><td>水・光</td></tr>
+        <tr><th class="el-wood"><b class="el">木</b></th><td>火・光</td></tr>
+        <tr><th class="el-earth"><b class="el">土</b></th><td>木・光</td></tr>
+        <tr><th class="el-water"><b class="el">水</b></th><td>土・光</td></tr>
+        <tr><th class="el-light"><b class="el">光</b></th><td>光だけ</td></tr>
+        <tr><th class="el-dark"><b class="el">闇</b></th><td>光で防がないと即死</td></tr>
+      </table></div>
+      <p class="muted">反射の鏡はどの攻撃でも、そのまま相手に跳ね返す。</p>
+      <div class="row"><button type="button" class="btn" data-modal="close">閉じる</button></div></div>`;
+  } else if (G.over){
+    const p = me();
+    const winner = G.players.find(q => q.rank === 1);
+    h = `<div class="sheet"><h2>${p.alive ? '勝利' : '敗北'}</h2>
+      <p>${p.alive ? `第${G.round}巡、あなたが最後まで立っていた。` : `あなたは${p.rank}位で脱落した。${winner ? `勝者は${winner.name}。` : ''}`}</p>
+      <div class="row"><button type="button" class="btn" data-modal="again">もう一度</button></div></div>`;
+  } else if (UI.mode === 'shop'){
+    const p = me();
+    const { offers, bought } = UI.extra;
+    h = `<div class="sheet"><h2>旅の商人</h2>
+      <p class="muted">所持金 ${p.gold}。欲しいカードがあれば買っていける（手札 ${p.hand.length}/${HAND_MAX}）。</p>
+      <div class="shop">${offers.map(c => {
+        const sold = bought.has(c.uid);
+        const can = !sold && p.gold >= c.price && p.hand.length < HAND_MAX;
+        return `<div class="offer">${cardHTML(c)}<div class="price">${c.price} 金</div>
+          <button type="button" class="btn" data-buy="${c.uid}" ${can ? '' : 'disabled'}>${sold ? '購入済み' : '買う'}</button></div>`;
+      }).join('')}</div>
+      <p class="muted" id="shopInfo">カード名をタップすると説明が出る。</p>
+      <div class="row"><button type="button" class="btn sub" data-ctl="leave">立ち去る</button></div></div>`;
+  }
+  m.hidden = !h;
+  if (h) m.innerHTML = h;
+}
+function closeModal(){ $('#modal').hidden = true; }
+
+function fx(p, text, cls){
+  const el = document.querySelector(p.human ? '#mePanel' : `.foe[data-pid="${p.i}"]`);
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  const s = document.createElement('span');
+  s.className = `float ${cls}`;
+  s.textContent = text;
+  s.style.left = `${r.left + r.width / 2 + (Math.random() * 30 - 15)}px`;
+  s.style.top = `${r.top + Math.min(r.height / 2, 30)}px`;
+  $('#fx').appendChild(s);
+  setTimeout(() => s.remove(), 1200);
+}
+
+/* ================================================================
+   イベント
+   ================================================================ */
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-uid],[data-pid],[data-ctl],[data-modal],[data-buy]');
+  if (!t) return;
+  if (t.dataset.buy){ buy(Number(t.dataset.buy)); return; }
+  if (t.dataset.ctl){ onControl(t.dataset.ctl); return; }
+  if (t.dataset.modal === 'close'){ UI.rules = false; render(); return; }
+  if (t.dataset.modal === 'again'){ newGame(); return; }
+  if (t.closest('#modal') && t.dataset.uid){
+    const c = UI.extra.offers && UI.extra.offers.find(o => o.uid === Number(t.dataset.uid));
+    const info = $('#shopInfo');
+    if (c && info) info.innerHTML = `<b>${c.name}</b>　${describe(c)}`;
+    return;
+  }
+  if (t.dataset.uid){ onCard(Number(t.dataset.uid)); return; }
+  if (t.dataset.pid && t.classList.contains('foe')) onFoe(Number(t.dataset.pid));
+});
+$('#btnRules').addEventListener('click', () => { UI.rules = true; render(); });
+$('#btnSpeed').addEventListener('click', e => {
+  speed = speed === 1 ? 0.45 : 1;
+  e.currentTarget.textContent = speed === 1 ? '速度：普通' : '速度：速い';
+});
+$('#btnRestart').addEventListener('click', newGame);
+
+newGame();
+</script>
+</body>
+</html>

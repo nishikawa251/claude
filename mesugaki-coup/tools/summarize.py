@@ -1,12 +1,15 @@
 """raw sim JSON -> summary JSON for build_analysis.py
-usage: summarize.py key=sim.json [key=sim.json ...] out.json
+usage: summarize.py key=sim.json [key=sim.json ...] [whatif=old_summary.json] out.json
   key は build_analysis.py が参照する条件名（例 basic_p4, basic_p3456, fresh_p4, fresh_p3456, basic_p4_dud0）
 ハズレが山に無いときは全カード平均を基準にする"""
 import json, sys
-names={'t1':'おしおき返し','t2':'山札のぞき','t3':'ダサすぎ返し','t4':'まるみえ','t5':'総入れ替え','t6':'みかじめ','t7':'まわして','t8':'値上げ','t9':'♥コレクター','t10':'ルール改変','t11':'みちづれのキス','t12':'仕返し','t13':'山分け','t14':'値下げ','t15':'遺言','t16':'着替え','t17':'トリガーチェック','t18':'かくれんぼ','t19':'無敵宣言','t20':'口止め料','t21':'おねだり','t22':'ボディガード','t23':'人気者','t24':'復讐の誓い','t25':'ごほうび','t26':'内緒話','t27':'お色直し','t28':'道連れ','t29':'はね返し','t30':'身代わり','t31':'返金','t32':'盾の値段','t33':'安売り','t34':'連射','t35':'強制徴収','t36':'ざこ免除','t37':'よわよわ税','t38':'疑いの目','t39':'は？よわ','t40':'一人占め','none':'ハズレ'}
+import re, os
+_idx=open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','index.html'),encoding='utf-8').read()
+names={m.group(1):m.group(2) for m in re.finditer(r"\{ id:'(t\d+)',\s*name:'([^']+)'", _idx)}; names['none']='ハズレ'
 out={}
 for arg in sys.argv[1:-1]:
     key,f=arg.split('=',1)
+    if key=='whatif': out['whatif']=json.load(open(f))['whatif']; continue   # 前回の summary から what-if をそのまま引き継ぐ
     d=json.load(open(f)); st=d['st']; o=d['out']
     hasDud=st['none']['first']>0
     base=(st['none']['firstWin']/st['none']['first']) if hasDud else (sum(s['firstWin'] for s in st.values())/sum(s['first'] for s in st.values()))

@@ -3,11 +3,11 @@
 usage: python3 -I print_cards.py --out <dir> [--art <元立ち絵dir>] [--size 91x55] [--bleed 1.5] [--dpi 350]
                                 [--chars shiro,momoko,emera,oren,aqua,asagi] [--index ../index.html] [--lion]
 
---size は仕上がりの「長辺x短辺」でも「幅x高さ」でもよい。文字もののカードは短辺を幅にした縦型、メスガキカードは横型で作る。
+--size は仕上がりの「長辺x短辺」でも「幅x高さ」でもよい。文字もののカードは短辺を幅にした縦型、キャラカードは横型で作る。
 --lion を付けると、ライオン名刺「異種（21面テンプレート）」用に、テンプレートへ貼る向きに回転した各面の画像
 （lion/T<n>_<A-U>_front/back.png）と、参考の面付けシート（lion/T<n>_front.png / _back.png、A3・3列×7行・裏面は鏡合わせ）を出す。
   ・縦型のカード：表は左へ90度、裏は右へ90度回転（マニュアル「表裏共に縦型」）
-  ・横型（メスガキカード）：回転なし
+  ・横型（キャラカード）：回転なし
   ・裁ち落としは塗り足し1.5mm、文字は仕上がりから3mm内側
 
 出力（<dir>/）
@@ -16,10 +16,10 @@ usage: python3 -I print_cards.py --out <dir> [--art <元立ち絵dir>] [--size 9
   preview.png                                     … 全カードの表裏一覧
   README.txt                                      … 仕様とカード一覧
 
-・ガキカード15（表5種×3、裏共通）、メスガキカード12（6キャラ×上下。表＝通常絵、裏＝ボロ絵の両面）、
+・ガキカード15（表5種×3、裏共通）、キャラカード12（6キャラ×上下。表＝通常絵、裏＝ボロ絵の両面）、
   トリガー18（基本12＋おすすめデッキの新カード6。裏共通）、早見表6（表裏別）、タイトル1（表裏別）
 ・カード文言と枚数は index.html の定義（ROLES / ACTIONS / TRIGGERS / DECK_PRESETS）から読む。
-・メスガキカードは横長（63×88 を横に使う）。元立ち絵（--art）が無いときはゲーム用 img/*.webp から作る（低解像度）。
+・キャラカードは横長（63×88 を横に使う）。元立ち絵（--art）が無いときはゲーム用 img/*.webp から作る（低解像度）。
 """
 import sys, os, re, json, math, argparse, glob
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -54,7 +54,7 @@ B_MM = args.bleed
 PW, PH = round((TW_MM + 2 * B_MM) * MM), round((TH_MM + 2 * B_MM) * MM)
 BL = round(B_MM * MM)            # 塗り足し幅 px
 SAFE = round(3 * MM)             # 仕上がり線から内側の安全マージン
-# 横向きカード（メスガキカード）
+# 横向きカード（キャラカード）
 LW, LH = PH, PW
 
 
@@ -111,7 +111,7 @@ TRIGGERS = {}
 for m in re.finditer(r"\{ id:'(t\d+)',\s*name:'([^']+)',\s*text:(?:'([^']*)'|`([^`]*)`)(.*?)\}", js_block('const TRIGGERS = [', '];')):
     text = m.group(3) if m.group(3) is not None else m.group(4)
     text = re.sub(r'\$\{RULES\.(\w+)\}', lambda mm: str(RULES.get(mm.group(1), '?')), text)
-    TRIGGERS[m.group(1)] = dict(name=m.group(2), text=text, persistent='persistent:true' in m.group(5))
+    TRIGGERS[m.group(1)] = dict(name=m.group(2), text=text, persistent='persistent:true' in m.group(5), retired='retired:true' in m.group(5))
 PRESETS = {}
 for m in re.finditer(r"(basic|fresh|mix):\s*\[([^\]]*)\]", js_block('const DECK_PRESETS', 'const DECK_SIZE')):
     PRESETS[m.group(1)] = re.findall(r"'(t\d+)'", m.group(2))
@@ -123,8 +123,8 @@ TRIG18 = []
 for i in PRESETS['basic'] + PRESETS['mix']:
     if i not in TRIG18:
         TRIG18.append(i)
-if args.all_triggers:   # 基本 → 新カード → 2軍 の順に全部
-    TRIG18 = PRESETS['basic'] + [i for i in PRESETS['fresh'] if i not in PRESETS['basic']] + [i for i in TRIGGERS if i not in PRESETS['basic'] and i not in PRESETS['fresh']]
+if args.all_triggers:   # 基本 → 新カード → 2軍 の順に全部（見送り札は除く）
+    TRIG18 = PRESETS['basic'] + [i for i in PRESETS['fresh'] if i not in PRESETS['basic']] + [i for i in TRIGGERS if i not in PRESETS['basic'] and i not in PRESETS['fresh'] and not TRIGGERS[i]['retired']]
 
 # ---------------------------------------------------------------- 描画ユーティリティ
 INK = (40, 22, 48)
@@ -310,7 +310,7 @@ def trigger_back():
     return im
 
 
-# ---------------------------------------------------------------- メスガキカード（横長・両面）
+# ---------------------------------------------------------------- キャラカード（横長・両面）
 # 立ち絵の腰の高さ（人物範囲の上端=0, 下端=1）とボロ絵の腰（クロップ後）。split_cards.py と同じ値
 WAIST = {'aqua': 0.46, 'asagi': 0.44, 'emera': 0.45, 'grimaloe': 0.46, 'momoko': 0.47, 'oren': 0.48,
          'papuru': 0.50, 'sepia': 0.45, 'shiro': 0.47, 'tsugaru': 0.47, 'urushi': 0.50, 'pin': 0.43, 'kuro': 0.40}
@@ -438,17 +438,18 @@ def quick_front():
         y += rh + int(0.3 * MM)
 
     section('だれでもできる')
-    general('ふ～ん♥', '1♥もらう', '止められない')
-    general('よわ♥', '2♥もらう', 'は？：メスガキ')
-    general('ざぁ～こ♥', f'{RULES.get("coupCost", 7)}♥で相手のプライドを1つ奪う', f'止められない。{RULES.get("forcedCoupAt", 10)}♥以上は必須')
+    AN = {k: v['name'] for k, v in ACTIONS.items()}
+    general(AN['income'], '1♥もらう', '止められない')
+    general(AN['aid'], '2♥もらう', 'は？：メスガキ')
+    general(AN['coup'], f'{RULES.get("coupCost", 7)}♥で相手のプライドを1つ奪う', f'止められない。{RULES.get("forcedCoupAt", 10)}♥以上は必須')
     y += int(0.4 * MM)
     section('ガキカード（持ってなくても宣言OK＝ハッタリ）')
     rows = [
-        ('mesugaki',    'よわよわ～♥',   '3♥もらう',                      '',                           'よわ♥ を止める'),
-        ('kouhai',      'なさけな～い♥', '相手1人から2♥奪う',             'は？：後輩ガキ・幼馴染ガキ', 'なさけな～い♥ を止める'),
-        ('osananajimi', 'ダサすぎ♥',     '山札から2枚引き、2枚捨てる',    '',                           'なさけな～い♥ を止める'),
-        ('succu',       'まけちゃえ～♥', '3♥払って相手のプライドを1つ奪う', 'は？：わからせおじさん',   ''),
-        ('ojisan',      '（アクションなし）', '',                           '',                           'まけちゃえ～♥ を止める'),
+        ('mesugaki',    AN['tax'],      '3♥もらう',                      '',                           f"{AN['aid']} を止める"),
+        ('kouhai',      AN['steal'],    '相手1人から2♥奪う',             'は？：後輩ガキ・幼馴染ガキ', f"{AN['steal']} を止める"),
+        ('osananajimi', AN['exchange'], '山札から2枚引き、2枚捨てる',    '',                           f"{AN['steal']} を止める"),
+        ('succu',       AN['assassinate'], '3♥払って相手のプライドを1つ奪う', 'は？：わからせおじさん', ''),
+        ('ojisan',      '（アクションなし）', '',                           '',                           f"{AN['assassinate']} を止める"),
     ]
     for rid, act, eff, stop, blocks in rows:
         col = hexrgb(ROLES[rid]['color'])
@@ -481,10 +482,10 @@ def quick_back():
     x0 = inner[0] + int(1.6 * MM); x1 = inner[2] - int(1.6 * MM); wdt = x1 - x0 - int(6 * MM); y = inner[1] + hb + int(1.6 * MM)
     secs = [
         ('1', '宣言', 'アクションを1つ宣言する。ガキカードのアクションは持っていなくても宣言できる（ハッタリ）。'),
-        ('2', '割り込み', 'ほかの人は「チャレンジ！」か「は？」ができる。チャレンジ：ハッタリならその人、本物ならチャレンジした人がプライドを1つ失う。は？：ガキカードでブロック（これにもチャレンジできる）。'),
-        ('3', '解決', '通れば効果。止められたら不発。10♥以上なら手番で必ず ざぁ～こ♥。'),
+        ('2', '割り込み', 'ほかの人は「ダウト！」か「は？」ができる。ダウト：ハッタリならその人、本物ならダウトした人がプライドを1つ失う。は？：ガキカードでブロック（これにもダウトできる）。'),
+        ('3', '解決', f"通れば効果。止められたら不発。10♥以上なら手番で必ず {ACTIONS['coup']['name']}。"),
         ('♥', 'プライドを失ったら', '手札のガキカードを1枚捨てる → 失わせた相手が上半身・下半身どちらを脱がせるか選んで裏返す → その横のトリガーを表にして発動。'),
-        ('★', '勝ち', '上下とも裏返ったら脱落。最後の1人が勝ち。♥コレクターを持つ人は9♥集めても勝ち。'),
+        ('★', '勝ち', f"上下とも裏返ったら脱落。最後の1人が勝ち。{TRIGGERS['t9']['name']}を持つ人は{RULES.get('collectorGoal', 9)}♥集めても勝ち。"),
     ]
     for no, h, body in secs:
         d.ellipse((x0, y, x0 + int(4.6 * MM), y + int(4.6 * MM)), fill=navy)
@@ -498,9 +499,11 @@ def quick_back():
 def title_front():
     im = stripes(PW, PH, (56, 22, 60), (44, 16, 48), step=int(2.4 * MM)); d = ImageDraw.Draw(im)
     d.rounded_rectangle((BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE), radius=int(3 * MM), outline=(255, 95, 168), width=int(0.8 * MM))
-    text_center(d, PW / 2, PH / 2 - int(22 * MM), '♥', font(30), fill=(255, 95, 168))
-    text_center(d, PW / 2, PH / 2 - int(9 * MM), 'メスガキ・クー', font(15, 'head'), fill=(255, 255, 255))
-    text_center(d, PW / 2, PH / 2 + int(1 * MM), 'MESUGAKI COUP', font(7), fill=(217, 184, 230))
+    text_center(d, PW / 2, PH / 2 - int(26 * MM), '♥', font(26), fill=(255, 95, 168))
+    text_center(d, PW / 2, PH / 2 - int(14 * MM), 'メスガキに「は？」', font(10.5, 'head'), fill=(255, 255, 255))
+    text_center(d, PW / 2, PH / 2 - int(8 * MM), 'って言うゲーム', font(10.5, 'head'), fill=(255, 255, 255))
+    text_center(d, PW / 2, PH / 2 - int(0.5 * MM), '～メスガキ・クー～', font(8.5, 'head'), fill=(255, 209, 102))
+    text_center(d, PW / 2, PH / 2 + int(5.5 * MM), 'MESUGAKI COUP', font(6), fill=(217, 184, 230))
     text_center(d, PW / 2, PH / 2 + int(12 * MM), '3〜6人 ／ 15〜30分', font(7, 'black'), fill=(255, 209, 102))
     text_center(d, PW / 2, PH / 2 + int(18 * MM), 'ハッタリと「は？」でわからせ合う', font(6), fill=(217, 184, 230))
     return im
@@ -512,7 +515,7 @@ def title_back():
     d.rounded_rectangle(inner, radius=int(3 * MM), outline=(255, 95, 168), width=int(0.6 * MM))
     text_center(d, PW / 2, inner[1] + int(2.5 * MM), '内容物', font(9.5, 'head'), fill=(184, 48, 106))
     x0 = inner[0] + int(3 * MM); y = inner[1] + int(11 * MM)
-    items = [('ガキカード', f'{len(ROLES) * 3}枚（5種×3）'), ('メスガキカード', f'{len(PRINT_CHARS) * 2}枚（{len(PRINT_CHARS)}キャラ×上下・両面）'),
+    items = [('ガキカード', f'{len(ROLES) * 3}枚（5種×3）'), ('キャラカード', f'{len(PRINT_CHARS) * 2}枚（{len(PRINT_CHARS)}キャラ×上下・両面）'),
              ('トリガーカード', f'{len(TRIG18)}枚'), ('早見表', '6枚'), ('タイトルカード', '1枚（この札）'), ('♥トークン', '50個（別途用意）'), ('ルールブック', '別紙')]
     vx = x0 + int(22 * MM); vw = inner[2] - int(3 * MM) - vx
     for n, v in items:
@@ -595,9 +598,9 @@ readme = f"""メスガキ・クー 物理版 印刷データ
 仕上がり {TW_MM:g}×{TH_MM:g}mm、塗り足し各{B_MM:g}mm（データは {TW_MM + 2 * B_MM:g}×{TH_MM + 2 * B_MM:g}mm）、{args.dpi}dpi、RGB PNG。
 cards/ に1枚ずつ、ファイル名の末尾 _front が表、_back が裏。mesugaki-coup_cards.pdf は同じ内容を1ページ1面で表→裏の順に並べたもの。
 仕上がり線から内側 3mm に文字と枠を収めてある。preview.png の赤線が仕上がり線（印刷データには入っていない）。
-メスガキカード（{len(PRINT_CHARS) * 2}枚）だけ横長。表裏は上下が同じ向き（長辺でめくる想定）。
+キャラカード（{len(PRINT_CHARS) * 2}枚）だけ横長。表裏は上下が同じ向き（長辺でめくる想定）。
 
-枚数：ガキカード {len(ROLES) * 3}、メスガキカード {len(PRINT_CHARS) * 2}、トリガー {len(TRIG18)}{f'、ハズレ {args.dud}' if args.dud else ''}、早見表 {args.ref}{f'、白紙トリガー {args.blank}' if args.blank else ''}、タイトル 1 ＝ {len(cards)}枚
+枚数：ガキカード {len(ROLES) * 3}、キャラカード {len(PRINT_CHARS) * 2}、トリガー {len(TRIG18)}{f'、ハズレ {args.dud}' if args.dud else ''}、早見表 {args.ref}{f'、白紙トリガー {args.blank}' if args.blank else ''}、タイトル 1 ＝ {len(cards)}枚
 キャラ：{'・'.join(CHAR_NAME[c] for c in PRINT_CHARS)}
 トリガー：{'・'.join(TRIGGERS[t]['name'] for t in TRIG18)}
 """
@@ -690,7 +693,7 @@ if args.lion:
 '''
     readme += f"""
 [ライオン名刺 異種テンプレート用] lion/
-  T<n>_<A-U>_front.png / _back.png：テンプレートの面 A〜U に貼る画像。縦型のカードは表を左90度・裏を右90度に回転済み、横型（メスガキカード）はそのまま。
+  T<n>_<A-U>_front.png / _back.png：テンプレートの面 A〜U に貼る画像。縦型のカードは表を左90度・裏を右90度に回転済み、横型（キャラカード）はそのまま。
   いずれも塗り足し{B_MM:g}mm込みの {TH_MM + 2 * B_MM:g}×{TW_MM + 2 * B_MM:g}mm（横）。仕上がり線の内側3mmに文字を収めてある。
   T<n>_front.png / T<n>_back.png（lion_sheets.pdf）：参考の面付け（A3・3列×7行・ピッチ {TH_MM + 2 * B_MM:g}×{TW_MM + 2 * B_MM:g}mm・裏面は中央で鏡合わせ）。
   公式テンプレートの面の位置とは一致しない可能性があるので、入稿は公式テンプレートに T<n>_<面>_front/back.png を貼る形が確実。

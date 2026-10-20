@@ -13,22 +13,28 @@ _idx = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'inde
 CNAME = {}
 for _m in _re.finditer(r"\{ id:'(t\d+)',\s*name:'([^']+)'", _idx):
     CNAME[_m.group(1)] = _m.group(2)
+RETIRED = [_m.group(1) for _m in _re.finditer(r"\{ id:'(t\d+)',[^\n]*retired:true", _idx)]
+_rules = {k: v for k, v in _re.findall(r"(\w+):\s*(\d+),", _idx[_idx.find('const RULES = {'):_idx.find('};', _idx.find('const RULES = {'))])}
+TEXT = {}
+for _m in _re.finditer(r"\{ id:'(t\d+)',\s*name:'([^']+)',\s*text:(?:'([^']*)'|`([^`]*)`)", _idx):
+    _t = _m.group(3) if _m.group(3) is not None else _m.group(4)
+    TEXT[_m.group(1)] = _re.sub(r'\$\{RULES\.(\w+)\}', lambda mm: _rules.get(mm.group(1), '?'), _t)
 _dud = int(_re.search(r"dudCount:\s*(\d+)", _idx).group(1))
 PRESETS = {}
 for _m in _re.finditer(r"(basic|fresh|mix):\s*\[([^\]]*)\]", _idx[_idx.find('const DECK_PRESETS'):_idx.find('const DECK_SIZE')]):
     PRESETS[_m.group(1)] = _re.findall(r"'(t\d+)'", _m.group(2))
 _inpreset = {i for v in PRESETS.values() for i in v}
-DECK = {'dud': _dud, 'presets': {k: [CNAME[i] for i in v] for k, v in PRESETS.items()}, 'bench': [CNAME[i] for i in CNAME if i not in _inpreset]}
+DECK = {'dud': _dud, 'presets': {k: [CNAME[i] for i in v] for k, v in PRESETS.items()}, 'bench': [CNAME[i] for i in CNAME if i not in _inpreset and i not in RETIRED], 'retired': [CNAME[i] for i in RETIRED]}
 # 物理版の枚数（index.html の定義から数える）
 _chars = _re.findall(r"\{ id:'([a-z]+)',\s*name:'([^']+)' \}", _idx[_idx.find('const CHARS'):_idx.find('const CHARS')+2000])
 N_CHARS = len(_chars); N_ROLES = 5; N_TRIG = len(CNAME); N_PRESET = sum(len(v) for v in PRESETS.values())
 
-EFF = {'みちづれのキス':'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）','仕返し':'自分を脱がせた相手から3♥奪う','山分け':'自分より♥の多い全員から1♥ずつもらう','値下げ':'以後、自分の「ざぁ～こ♥」は5♥で撃てる','おしおき返し':'5♥持っていたら即時払って「ざぁ～こ♥」を打つ','山札のぞき':'山札を見て1枚選び、手札と入れ替える','ダサすぎ返し':'これを持っていれば「ダサすぎ♥」をブロックできる','まるみえ':'誰か一人の手札を表にする','総入れ替え':'全員が手札を1枚伏せて出す。自分だけ全部を見て欲しい1枚をもらい、残りはランダムに1枚ずつ配り戻す','みかじめ':'全員から1♥ずつもらう','まわして':'全員手札を1枚選び、右隣に渡す','値上げ':'自分以外は「ざぁ～こ♥」が8♥になる','♥コレクター':'自分の勝利条件に「9♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう','遺言':'プライドが0になったときだけ発動。自分の♥をすべて好きな相手に渡す','着替え':'プライドが0になったときだけ発動。山札から1枚引いて脱落を免れる。ただし♥は0になり、次の手番を1回飛ばす','トリガーチェック':'自分を脱がせた相手の伏せたトリガーを1枚こっそり見る（自分だけ見える）','かくれんぼ':'次の自分の手番まで、自分は「ざぁ～こ♥」「まけちゃえ～♥」の対象にならない','無敵宣言':'次の自分の手番のアクションは、チャレンジもブロックもされない','口止め料':'自分を脱がせた相手は、次の手番を1回飛ばす','おねだり':'ほかの全員は「自分に1♥渡す」か「手札1枚を自分にこっそり見せる」かを選ぶ','ボディガード':'以後、自分を対象にした ざぁ～こ♥・まけちゃえ～♥・なさけな～い♥ は、使った人が追加で2♥を自分に払う','人気者':'以後、自分の「よわ♥」はブロックされない','復讐の誓い':'以後、自分を脱がせた相手に対する自分のアクションは、チャレンジもブロックもされない','ごほうび':'以後、自分がチャレンジに成功するたびに2♥もらう','内緒話':'相手1人を選び、互いに手札1枚をこっそり見せ合う','お色直し':'自分の手札をすべて山札に戻し、同じ枚数を引き直す','道連れ':'自分を脱がせた相手の手札が2枚なら、その相手もプライドを1つ失う','はね返し':'次に自分が ざぁ～こ♥ の対象になったとき、無効にして撃った人がプライドを1つ失う（1回）','身代わり':'次に自分が ざぁ～こ♥ の対象になったとき、自分が選んだ別の相手が代わりに脱ぐ（1回）','返金':'以後、自分が ざぁ～こ♥ で脱がされるたび、撃った人から4♥もらう','盾の値段':'以後、自分を対象にする ざぁ～こ♥ は2♥高くなる','安売り':'以後、自分の ざぁ～こ♥ は4♥。ただし上下どちらを脱がせるかは相手が選ぶ','連射':'次に自分が ざぁ～こ♥ を撃った手番、続けてもう1アクションできる（1回）','強制徴収':'♥が7以上の相手全員は、次の自分の手番に必ず ざぁ～こ♥ を撃つ','ざこ免除':'以後、自分は10♥以上でも ざぁ～こ♥ を強制されない','よわよわ税':'以後、ほかの人が よわよわ～♥ で♥を得るたび、そのうち1♥を自分がもらう','疑いの目':'以後、自分が よわよわ～♥ にチャレンジして外れても、プライドの代わりに2♥を払う','は？よわ':'以後、自分はメスガキを主張して よわよわ～♥ をブロックできる（チャレンジ可）','一人占め':'以後、自分の よわよわ～♥ は4♥、ほかの人の よわよわ～♥ は2♥','ルール改変':'以後、自分の「ダサすぎ♥」は通常か審問（相手の手札1枚を見て山札と交換させる）かを選べる。審問は幼馴染ガキでブロック可','ハズレ':'効果なし'}
-MEMO = {"みちづれのキス": "脱がせた相手の手札を自分だけ見る。ややプラス（+0.9pt / +0.3pt）", "値下げ": "自分だけざぁ～こ♥が5♥。ややプラス（+1.2pt / +1.3pt）", "仕返し": "脱がせた相手から3♥。ややプラス（+0.9pt / +0.6pt）", "おしおき返し": "5♥。中立（+0.3pt / +0.6pt）。所持時勝率は平均より +2.7pt で、持っているだけで攻撃を抑えている", "みかじめ": "全員から1♥。ややプラス（+1.3pt / +1.0pt）", "山札のぞき": "ややプラス（+1.2pt / +0.6pt）", "ダサすぎ返し": "やや弱い（-0.6pt / -0.6pt）", "ルール改変": "自分だけに効き、通常と審問を選べる。やや弱い（-1.2pt / -1.2pt）。CPUは審問をあまり使わないので低く出る", "♥コレクター": "9♥＋公開時の山分け。中立（+0.0pt / -0.8pt）", "まわして": "2軍（0枚）。全員が1枚ずつ渡すので自分の得にならなかった", "総入れ替え": "交換会。やや弱い（-1.0pt / -0.6pt）", "遺言": "今回は0枚（外した）", "着替え": "新カードデッキに弱体版（♥0＋手番1回スキップ）で収録。1枚目は不発なので発動後勝率は低いが、所持時勝率は +7pt。復活は4人戦10万戦で25,561回", "まるみえ": "今回は0枚", "値上げ": "やや弱い（-1.0pt / -0.3pt）。自分以外のざぁ～こ♥が8♥になる", "山分け": "今回は0枚（♥コレクターの公開時効果に統合）", "ハズレ": "今回は0枚", "トリガーチェック": "やや弱い（-1.8pt / -0.9pt）。情報だけの札。見た側は次にその相手を脱がせるとき、おしおき返しや仕返しを避けられる", "道連れ": "「相手の手札が2枚のときだけ」に制限。ややプラス（+1.4pt / +0.9pt、所持時 +0.5pt）。制限前は +6.8pt / 所持時 +10.8pt だった", "ボディガード": "上位（+3.3pt / +2.3pt）。狙われると♥が入り、狙われにくくもなる", "おねだり": "上位（+2.9pt / +2.0pt）。CPUは♥が3以上なら払う", "人気者": "ややプラス（+1.1pt / +1.7pt）。よわ♥が確定2♥になる地味な経済札", "かくれんぼ": "ややプラス（+0.7pt / +0.4pt）。1周の防御。脱落時は不発", "口止め料": "中立（+0.4pt / +0.2pt）。相手の手番を1回飛ばす", "お色直し": "やや弱い（-1.1pt / -0.6pt）。手札の引き直し。CPU同士では得にならない", "ごほうび": "やや弱い（-0.8pt / -0.7pt）。CPUのチャレンジ成功回数が少ないので低く出る", "無敵宣言": "やや弱い（-1.5pt / -1.0pt）。次の1アクションがノーリスク。CPUはハッタリに合わせて使わないので低く出る。人間向け", "復讐の誓い": "弱い（-1.8pt / -1.5pt）。相手1人限定の無敵。脱落時は不発", "内緒話": "弱い（-2.7pt / -2.4pt）。相手にも情報を渡すぶん損。新カードデッキの最下位", "はね返し": "2軍の候補。ざぁ～こ♥を1回跳ね返す。撃った側が7♥払ったうえで脱ぐので突出して強い。入れるなら「無効にするだけ」か「相手の手札が2枚のときだけ」に。上位（+15.3pt / +13.8pt。候補12枚だけのデッキで計測しているので、はね返しの分だけほかが低く出る）", "身代わり": "2軍の候補。第三者に押し付ける。撃った側の♥は消える。上位（+2.3pt / +1.8pt。候補12枚だけのデッキで計測しているので、はね返しの分だけほかが低く出る）", "返金": "2軍の候補。脱がされるたび4♥。候補だけのデッキでは はね返し に食われて低い。弱い（-3.0pt / -2.7pt。候補12枚だけのデッキで計測しているので、はね返しの分だけほかが低く出る）", "盾の値段": "2軍の候補。自分だけ値上げ。地味だが確実に効く。上位（+3.1pt / +2.2pt。候補12枚だけのデッキで計測しているので、はね返しの分だけほかが低く出る）", "安売り": "2軍の候補。4♥で撃てるが上下は相手が選ぶ。中立（+0.6pt / -0.2pt。候補12枚だけのデッキで計測しているので、はね返しの分だけほかが低く出る）", "連射": "2軍の候補。ざぁ～こ♥のあとにもう1アクション。14♥貯まる場面が少ない。弱い（-3.0pt / -2.3pt。候補12枚だけのデッキで計測しているので、はね返しの分だけほかが低く出る）", "強制徴収": "2軍の候補。7♥以上の相手を一斉に動かす。本人の得にならない。弱い（-3.7pt / -3.5pt。候補12枚だけのデッキで計測しているので、はね返しの分だけほかが低く出る）", "ざこ免除": "2軍の候補。10♥でも撃たなくていい。CPUは7♥で撃つので効かない。弱い（-3.8pt / -3.3pt。候補12枚だけのデッキで計測しているので、はね返しの分だけほかが低く出る）", "よわよわ税": "2軍の候補。ほかの人のよわよわ～♥から1♥。中立。中立（-0.1pt / -0.2pt。候補12枚だけのデッキで計測しているので、はね返しの分だけほかが低く出る）", "疑いの目": "2軍の候補。よわよわ～♥へのチャレンジ失敗が2♥で済む。弱い（-2.9pt / -2.1pt。候補12枚だけのデッキで計測しているので、はね返しの分だけほかが低く出る）", "は？よわ": "2軍の候補。メスガキ主張でよわよわ～♥をブロック。弱い（-2.3pt / -1.6pt。候補12枚だけのデッキで計測しているので、はね返しの分だけほかが低く出る）", "一人占め": "2軍の候補。自分のよわよわ～♥は4♥、ほかは2♥。弱い（-2.8pt / -2.1pt。候補12枚だけのデッキで計測しているので、はね返しの分だけほかが低く出る）"}
+EFF = TEXT   # id -> カードの文言（index.html から）
+
 CANDS = [["デッキ混成", "基本と新カードから6枚ずつ", "開始画面のカスタムで試せる。両デッキの上位札を混ぜると強い札が増えるので、下位どうしを混ぜるのも一案"], ["ハズレ1枚", "効果なしの札を1枚だけ入れる", "「脱いだのに何も起きない」場面を1割弱混ぜる。RULES.dudCount で切り替え"]]
 # 「使っておもしろいか」の主観点（1〜5）。決断・駆け引き・派手さ・巻き込みで採点
-FUN = {'t29':5,'t30':4,'t31':3,'t32':2,'t33':4,'t34':4,'t35':4,'t36':2,'t37':3,'t38':3,'t39':3,'t40':3,'t1':5,'t2':2,'t3':2,'t5':5,'t6':3,'t8':3,'t9':4,'t10':3,'t11':3,'t12':3,'t14':3,'t17':4,'t18':3,'t19':5,'t20':3,'t21':5,'t22':4,'t23':2,'t24':4,'t25':3,'t26':3,'t27':2,'t28':5,'t16':5,'t4':2,'t7':3,'t13':2,'t15':3}
-FUN_WHY = {'t29':'ざぁ～こ♥が跳ね返る大逆転','t30':'第三者を巻き込む','t31':'狙われるほど儲かる','t32':'地味な値上げ','t33':'安いが精度が落ちる駆け引き','t34':'2連撃の爆発力','t35':'貯め込み勢を一斉に動かす','t36':'貯め込み用','t37':'よわよわに税金','t38':'気軽にチャレンジできる','t39':'よわよわにブロックが生える','t40':'自分だけ得する税','t1':'即時ざぁ～こ♥で相打ちのドラマ','t2':'地味で本人にしか見えない','t3':'出番が少ない条件ブロック','t5':'全員を巻き込む交換会。選ぶ楽しさ','t6':'単純だが全員から取る','t8':'全体への縛り','t9':'勝利条件が増えて狙われる緊張','t10':'審問は面白いが機会が少ない','t11':'こっそり情報','t12':'単純な取り返し','t14':'地味だが強い','t17':'トリガーを覗いて脱がせ方を考える','t18':'消極的な防御','t19':'ハッタリを1回通し放題','t20':'相手の手番を飛ばす','t21':'全員に選択を迫る','t22':'狙われたら儲かる駆け引き','t23':'地味','t24':'因縁の対人ドラマ','t25':'チャレンジを誘発','t26':'見せ合い','t27':'地味な引き直し','t28':'相打ちのドラマ','t16':'復活のドラマ','t4':'全員が得する公開','t7':'全員が1枚渡す','t13':'地味','t15':'キングメーカー'}
+FUN = {'t41':3,'t29':5,'t30':4,'t31':3,'t32':2,'t33':4,'t34':4,'t35':4,'t36':2,'t37':3,'t38':3,'t39':3,'t40':3,'t1':5,'t2':2,'t3':2,'t5':5,'t6':3,'t8':3,'t9':4,'t10':3,'t11':3,'t12':3,'t14':3,'t17':4,'t18':3,'t19':5,'t20':3,'t21':5,'t22':4,'t23':2,'t24':4,'t25':3,'t26':3,'t27':2,'t28':5,'t16':5,'t4':2,'t7':3,'t13':2,'t15':3}
+FUN_WHY = {'t41':'まけちゃえ～♥を封じる保険。公開後は狙われなくなる','t29':'ばいば～い♥が跳ね返る大逆転','t30':'第三者を巻き込む','t31':'狙われるほど儲かる','t32':'自分へのばいば～い♥だけ2♥高くなる地味な守り','t33':'安いが精度が落ちる駆け引き','t34':'2連撃の爆発力','t35':'貯め込み勢を一斉に動かす','t36':'貯め込み用','t37':'ざぁ～こ♥に税金','t38':'気軽にダウトできる','t39':'ざぁ～こ♥にブロックが生える','t40':'自分だけ得する税','t1':'即時ばいば～い♥で相打ちのドラマ','t2':'地味で本人にしか見えない','t3':'出番が少ない条件ブロック','t5':'全員を巻き込む交換会。選ぶ楽しさ','t6':'単純だが全員から取る','t8':'全体への縛り','t9':'勝利条件が増えて狙われる緊張','t10':'みせて♥は面白いが機会が少ない','t11':'こっそり情報','t12':'単純な取り返し','t14':'地味だが強い','t17':'トリガーを覗いて脱がせ方を考える','t18':'消極的な防御','t19':'ハッタリを1回通し放題','t20':'相手の手番を飛ばす','t21':'全員に選択を迫る','t22':'狙われたら儲かる駆け引き','t23':'地味','t24':'因縁の対人ドラマ','t25':'ダウトを誘発','t26':'見せ合い','t27':'地味な引き直し','t28':'相打ちのドラマ','t16':'復活のドラマ','t4':'全員が得する公開','t7':'全員が1枚渡す','t13':'地味','t15':'キングメーカー'}
 def balance_pt(a):
     a=abs(a); return 5 if a<=1 else 4 if a<=2 else 3 if a<=3 else 2 if a<=5 else 1
 def rating_rows(d, keys):
@@ -38,8 +44,8 @@ def rating_rows(d, keys):
         if not c: continue
         for r in c['rows']:
             if r['id']=='none': continue
-            v = r['delta'] if r['name']!='着替え' else 100*(r['heldWin']/r['held']-c['heldBase'])
-            acc.setdefault(r['id'],{'id':r['id'],'name':r['name'],'d':[]})['d'].append(v)
+            v = r['delta'] if r['id']!='t16' else 100*(r['heldWin']/r['held']-c['heldBase'])
+            acc.setdefault(r['id'],{'id':r['id'],'name':CNAME.get(r['id'],r['name']),'d':[]})['d'].append(v)
     out=[]
     for id,v in acc.items():
         avg=sum(v['d'])/len(v['d']); b=balance_pt(avg); f=FUN.get(id,3)
@@ -47,7 +53,7 @@ def rating_rows(d, keys):
     out.sort(key=lambda r:(-r['total'],-r['fun'],abs(r['avg'])))
     return out
 def rows(key):
-    return [{'id':r['id'],'name':r['name'],'eff':EFF[r['name']],'held':r['held'],'heldWin':r['heldWin'],'first':r['first'],'firstWin':r['firstWin'],'last':r['last'],'revive':r.get('revive',0),'reviveWin':r.get('reviveWin',0),'count':1 if r['id']!='none' else d[key].get('dud',0),'evalBy':'held' if r['name']=='着替え' else 'first','memo':MEMO[r['name']]} for r in d[key]['rows']]
+    return [{'id':r['id'],'name':CNAME.get(r['id'],r['name']),'eff':EFF.get(r['id'],''),'held':r['held'],'heldWin':r['heldWin'],'first':r['first'],'firstWin':r['firstWin'],'last':r['last'],'revive':r.get('revive',0),'reviveWin':r.get('reviveWin',0),'count':1 if r['id']!='none' else d[key].get('dud',0),'evalBy':'held' if r['id']=='t16' else 'first','memo':''} for r in d[key]['rows']]
 s4, s3, s0 = d['basic_p4'], d['basic_p3456'], d.get('basic_p4_dud0')
 f4, f3 = d.get('fresh_p4'), d.get('fresh_p3456')
 m4, m3 = d.get('mix_p4'), d.get('mix_p3456')
@@ -65,14 +71,14 @@ PHYS = {
   'chars': [n for _, n in _chars],
   'rows': [
     ['ガキカード（役職）', N_ROLES*3, f'{N_ROLES}種×3枚。メスガキ・後輩ガキ・幼馴染ガキ・サキュガキ・わからせおじさん', '裏面は共通の裏柄。表に「できる／ブロック」を印刷しておくと早見表が要らない'],
-    ['メスガキカード（キャラ）', N_PRINT_CHARS*2, f'{N_PRINT_CHARS}キャラ×上半身・下半身の2枚。表＝通常絵、裏＝ボロ絵の両面印刷', '基本形はモモコ・グリムアロエ・アクア・パイン・シロ・クロ。横長（名刺91×55mm）で、上下を縦に並べると全身'],
+    ['キャラカード（キャラ）', N_PRINT_CHARS*2, f'{N_PRINT_CHARS}キャラ×上半身・下半身の2枚。表＝通常絵、裏＝ボロ絵の両面印刷', '基本形はモモコ・グリムアロエ・アクア・パイン・シロ・クロ。横長（名刺91×55mm）で、上下を縦に並べると全身'],
     ['トリガーカード', len(TRIG20), f'{len(TRIG20)}種×1枚：' + '・'.join(TRIG20), f'基本デッキ12枚とおすすめデッキ12枚の両方がそのまま遊べる組（重なりを除いて{len(TRIG20)}枚）。ハズレは入れない。新カードデッキを丸ごと遊ぶには {"・".join(_notin)} も要る'],
     ['♥トークン', 50, '1♥×40、5♥×10 くらい', '6人戦でも50あれば足りる（クーのコイン50枚と同じ）'],
-    ['早見表', 6, 'アクション7種と「は？」ブロック・チャレンジの表。1人1枚', 'ゲーム画面の「ルール」の①〜③をそのまま'],
+    ['早見表', 6, 'アクション7種と「は？」ブロック・ダウトの表。1人1枚', 'ゲーム画面の「ルール」の①〜③をそのまま'],
     ['タイトルカード', 1, 'ゲーム名と人数・時間。裏に内容物一覧', '合計を52枚にそろえる1枚'],
   ],
   'rulebook': 'ルールブック：別紙（準備・手番・プライド喪失とトリガー・勝利条件・トリガー一覧）。カード枚数には含めない',
-  'per_player': '1人ぶん：メスガキカード2枚（上・下）、ガキカード2枚（伏せ）、トリガー2枚（伏せて上下に1枚ずつ）、2♥',
+  'per_player': '1人ぶん：キャラカード2枚（上・下）、ガキカード2枚（伏せ）、トリガー2枚（伏せて上下に1枚ずつ）、2♥',
   'min4': f'4人戦の最小セット：ガキ{N_ROLES*3}＋キャラ8＋トリガー12＋早見表4 ＝ {N_ROLES*3+8+12+4}枚と♥トークン',
 }
 hasDud = bool(s4.get('hasDud', True))
@@ -86,8 +92,8 @@ DATA = {
         'fresh_p3456': {'label':'新カード・3〜6人戦','deck':'fresh','sub':f"新カードデッキ・各{f3['games']//4:,}戦・{f3['games']:,}戦",'games':f3['games'],'rows':rows('fresh_p3456'),'base':f3.get('base'),'heldBase':f3.get('heldBase')}} if f4 and f3 else {}),
     **({'mix_p4': {'label':'おすすめ・4人戦','deck':'mix','sub':f"おすすめデッキ・{m4['games']:,}戦",'games':m4['games'],'rows':rows('mix_p4'),'base':m4.get('base'),'heldBase':m4.get('heldBase')},
         'mix_p3456': {'label':'おすすめ・3〜6人戦','deck':'mix','sub':f"おすすめデッキ・各{m3['games']//4:,}戦・{m3['games']:,}戦",'games':m3['games'],'rows':rows('mix_p3456'),'base':m3.get('base'),'heldBase':m3.get('heldBase')}} if m4 and m3 else {}),
-    **({'bench_p4': {'label':'2軍案・4人戦','deck':'bench','sub':f"2軍の候補12枚（ざぁ～こ♥系8＋よわよわ～♥系4）・{n4['games']:,}戦",'games':n4['games'],'rows':rows('bench_p4'),'base':n4.get('base'),'heldBase':n4.get('heldBase')},
-        'bench_p3456': {'label':'2軍案・3〜6人戦','deck':'bench','sub':f"2軍の候補12枚・各{n3['games']//4:,}戦・{n3['games']:,}戦",'games':n3['games'],'rows':rows('bench_p3456'),'base':n3.get('base'),'heldBase':n3.get('heldBase')}} if n4 and n3 else {}),
+    **({'bench_p4': {'label':'2軍・4人戦','deck':'bench','sub':f"2軍10枚（採用9枚＋魔除け）・{n4['games']:,}戦",'games':n4['games'],'rows':rows('bench_p4'),'base':n4.get('base'),'heldBase':n4.get('heldBase')},
+        'bench_p3456': {'label':'2軍・3〜5人戦','deck':'bench','sub':f"2軍10枚・各{n3['games']//3:,}戦・{n3['games']:,}戦（10枚なので6人戦は回していない）",'games':n3['games'],'rows':rows('bench_p3456'),'base':n3.get('base'),'heldBase':n3.get('heldBase')}} if n4 and n3 else {}),
   },
   'rating': RATING,
   'phys': PHYS,
@@ -218,8 +224,8 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
 </style>
 <main>
 <header>
-  <div class="eyebrow">CPU同士の自動対戦・2026-10-19 第14版・基本／新カード／おすすめ の3デッキ（各12枚・ハズレなし）＋2軍候補12枚（ざぁ～こ♥系・よわよわ～♥系）／総合評価＝おもしろさ＋バランス／配られた2枚をそのまま仕込む／♥コレクター9♥＋公開時に山分け／おしおき返しは5♥／3〜6人・各デッキ20万戦</div>
-  <h1><span class="nb">メスガキ・クー</span> <span class="nb">トリガー分析</span></h1>
+  <div class="eyebrow">CPU同士の自動対戦・2026-10-20 第15版（用語・カード名改定後）・基本／新カード／おすすめ の3デッキ（各12枚・ハズレなし）＋2軍10枚（採用9枚＋魔除け）／総合評価＝おもしろさ＋バランス／配られた2枚をそのまま仕込む／メンヘラ9♥＋公開時に山分け／わからせ返しは5♥／3〜6人・各デッキ20万戦</div>
+  <h1><span class="nb">メスガキに「は？」って言うゲーム</span> <span class="nb">トリガー分析</span></h1>
   <p class="lede">基本・新カード・おすすめの3デッキを、どれが持ち主を勝たせているかで並べた。条件チップでデッキと人数を切り替えられる。下の「総合評価」では、使っておもしろいかの点を足して12枚を選んでいる。指標は「1枚目の脱ぎで発動したあとに勝った割合」。プライドを1つ失った状態からの勝率なので、BASENAMEとの差で強さを見る。DUDNOTE</p>
   <p class="lede" id="deckline"></p>
   <div class="total" id="total"></div>
@@ -260,7 +266,7 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
 
 <section>
   <h2>総合評価 <small>おもしろさ ＋ バランス</small></h2>
-  <p>「使っておもしろいか」を5点満点で採点し（決断・駆け引き・派手さ・巻き込みがあるほど高い）、BASELBLの近さをバランス点（±1pt以内＝5、±2＝4、±3＝3、±5＝2、それ以上＝1。着替えは所持時勝率）にして足した。上位12枚が「おすすめデッキ」。同点はおもしろさ、次にBASELBLの小ささで並べている。</p>
+  <p>「使っておもしろいか」を5点満点で採点し（決断・駆け引き・派手さ・巻き込みがあるほど高い）、BASELBLの近さをバランス点（±1pt以内＝5、±2＝4、±3＝3、±5＝2、それ以上＝1。おきがえしま～す！は所持時勝率）にして足した。上位12枚が「おすすめデッキ」。同点はおもしろさ、次にBASELBLの小ささで並べている。</p>
   <div class="tbl"><table id="rating"></table></div>
 </section>
 
@@ -283,9 +289,9 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
   <ul class="plain">
     <li>所持時勝率：そのカードを仕込んでいたプレイヤーの勝率。発動しなかった場合も含む。4人戦の平均は25%、3〜6人戦の平均は約22%。</li>
     <li>発動後勝率：1枚目の脱ぎでそのカードが発動したあと、そのプレイヤーが勝った割合。BASELBLはこの値とBASENAMEの差で、判定は±2ポイントを境にしている。</li>
-    <li>脱落時発動率：発動のうち、2枚目の脱ぎ（脱落）で発動した割合。着替え以外は本人にほぼ意味がない発動。</li>
+    <li>脱落時発動率：発動のうち、2枚目の脱ぎ（脱落）で発動した割合。おきがえしま～す！以外は本人にほぼ意味がない発動。</li>
     HELDLI    <li>NOISENOTE 4人戦と3〜6人戦の両方で同じ向きに出ているかも見る。</li>
-    <li>CPUは♥コレクターを持っていて目標まで3♥以内なら、ざぁ～こ♥より先に♥を集めて勝ちに行く。周りのCPUも目標が近い所持者を優先して狙う。</li>
+    <li>CPUはメンヘラを持っていて目標まで3♥以内なら、ばいば～い♥より先に♥を集めて勝ちに行く。周りのCPUも目標が近い所持者を優先して狙う。</li>
   </ul>
   <p class="note">作成日 2026-10-20（第14版）　・　元データ：mesugaki-coup tools/sim.js（ヘッドレス自動対戦）</p>
 </section>
@@ -315,7 +321,8 @@ function renderDeck(){
   if(k.presets.basic) lines.push(`<b>基本デッキ</b>（${k.presets.basic.length}枚・各1枚）：${esc(k.presets.basic.join('・'))}`);
   if(k.presets.fresh) lines.push(`<b>新カードデッキ</b>（${k.presets.fresh.length}枚・各1枚）：${esc(k.presets.fresh.join('・'))}`);
   if(k.presets.mix) lines.push(`<b>おすすめデッキ</b>（総合評価の上位${k.presets.mix.length}枚）：${esc(k.presets.mix.join('・'))}`);
-  if(k.bench.length) lines.push(`2軍（候補・未採用。カスタムで使える）：${esc(k.bench.join('・'))}`);
+  if(k.bench.length) lines.push(`2軍（デッキ外。カスタムで使える）：${esc(k.bench.join('・'))}`);
+  if(k.retired&&k.retired.length) lines.push(`見送り（ゲーム・印刷から外した）：${esc(k.retired.join('・'))}`);
   $('#deckline').innerHTML=lines.join('<br>')+'<br>開始画面でどちらかのデッキ、または好きな12枚を選べる。各プレイヤーに2枚配り、そのまま上半身・下半身に仕込む。';
 }
 function renderTotal(){
@@ -329,10 +336,10 @@ function renderMix(){
   const both=r4.filter(r=>r.id!=='none' && r.score>=DATA.thr && d3[r.name]>=0).map(r=>r.name);
   const top4=both.length?both:r4.filter(r=>r.tier==='強い').map(r=>r.name);
   const weak=r4.filter(r=>r.tier==='弱い' && d3[r.name]<0).map(r=>r.name);
-  const col=r4.find(r=>r.name==='♥コレクター'), col3=r3.find(r=>r.name==='♥コレクター');
+  const col=r4.find(r=>r.id==='t9'), col3=r3.find(r=>r.id==='t9');
   const lastAvg=r4.reduce((a,r)=>a+r.last,0)/r4.reduce((a,r)=>a+r.first+r.last,0);
   const items=[
-    [({fresh:'新カード・',mix:'おすすめ・',bench:'2軍案・'}[DATA.conds[state.cond].deck]||'基本・')+'強い', top4.join('・')||'なし', top4.length?`4人戦でBASELBL +${(DATA.thr*100).toFixed(0)}pt 以上で、3〜6人戦でもプラスのカード。`:`+2pt を超えるカードはない。いちばん高い${r4[0].name}でも ${spct(r4[0].score)} で、かなり平ら。`],
+    [({fresh:'新カード・',mix:'おすすめ・',bench:'2軍・'}[DATA.conds[state.cond].deck]||'基本・')+'強い', top4.join('・')||'なし', top4.length?`4人戦でBASELBL +${(DATA.thr*100).toFixed(0)}pt 以上で、3〜6人戦でもプラスのカード。`:`+2pt を超えるカードはない。いちばん高い${r4[0].name}でも ${spct(r4[0].score)} で、かなり平ら。`],
     ['弱い', weak.join('・')||'なし', weak.length?'両条件でマイナスのカード。':`両条件で −2pt を下回るカードはない。いちばん低い${r4[r4.length-1].name}でも ${spct(r4[r4.length-1].score)} で、不発（何も起きない）とほぼ同じ。`],
     ['空撃ち', pct(lastAvg,0), '発動のうち脱落時（2枚目の脱ぎ）に起きた割合。本人には意味のない発動が半分近くある。'],
     ['効果の幅', `${spct(Math.max(...r4.map(r=>r.score)))} 〜 ${spct(Math.min(...r4.map(r=>r.score)))}`, 'トリガーは負けかけた側に起きるので、どれも勝敗を覆すほどの力はない。'],
@@ -427,9 +434,9 @@ _se=2*math.sqrt(_pbar*(1-_pbar)/_n1)*100
 NOISENOTE=f"1枚物は約{_n1:,}回、2枚物はその2倍の発動。BASELBLの揺れは1枚物で±{_se:.1f}ポイント程度。判定の±2ポイントは誤差ではなく「効果の大きさ」の線引き。"
 WHATIFN=f"{d['whatif'][0]['rows'][0]['first']*4:,}" if d.get('whatif') else ''
 _held=any(r.get('evalBy')=='held' for c in DATA['conds'].values() for r in c['rows'])
-HELDNOTE='着替えだけは脱落時にしか効かないので、所持時勝率の差（◆）で見る。' if _held else ''
-HELDLI='    <li>着替えは発動後勝率ではなく所持時勝率の差で判定している（復活回数と復活後の勝率はカードに併記）。</li>\n' if _held else ''
-page = page.replace('HELDNOTE', HELDNOTE).replace('HELDLI', HELDLI).replace('NOISENOTE', NOISENOTE).replace('WHATIFN', WHATIFN).replace('ハズレ比','BASELBL').replace('DUDNOTE', '' if hasDud else '不発（着替え・遺言が1枚目でめくれたとき）は −2ポイント前後に出るので、それが「何も起きない」の目安。').replace('BASELBL', BASELBL).replace('BASENAME', BASENAME).replace('DATAJSON', json.dumps(DATA, ensure_ascii=False)).replace('POSDARK', pos_dark).replace('NEGDARK', neg_dark)
+HELDNOTE='おきがえしま～す！だけは脱落時にしか効かないので、所持時勝率の差（◆）で見る。' if _held else ''
+HELDLI='    <li>おきがえしま～す！は発動後勝率ではなく所持時勝率の差で判定している（復活回数と復活後の勝率はカードに併記）。</li>\n' if _held else ''
+page = page.replace('HELDNOTE', HELDNOTE).replace('HELDLI', HELDLI).replace('NOISENOTE', NOISENOTE).replace('WHATIFN', WHATIFN).replace('ハズレ比','BASELBL').replace('DUDNOTE', '' if hasDud else '不発（おきがえしま～す！・花束が1枚目でめくれたとき）は −2ポイント前後に出るので、それが「何も起きない」の目安。').replace('BASELBL', BASELBL).replace('BASENAME', BASENAME).replace('DATAJSON', json.dumps(DATA, ensure_ascii=False)).replace('POSDARK', pos_dark).replace('NEGDARK', neg_dark)
 open(out_art, 'w', encoding='utf-8').write(page)
 open(out_repo, 'w', encoding='utf-8').write('<!doctype html>\n<html lang="ja">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n</head>\n<body>\n' + page + '</body>\n</html>\n')
 print('written', len(page))

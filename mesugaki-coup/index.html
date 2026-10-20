@@ -522,10 +522,10 @@ const TRIGGERS = [
   { id:'t4',  count:0, name:'まるみえ',      text:'誰か一人の手札を表にする。効果で山札からカードを入れ替えた時点で、裏向きにして良い。' },
   { id:'t5',  count:1, name:'総入れ替え',    text:'全員が手札を1枚伏せて出す。自分だけ全部を見て欲しい1枚をもらい、残りはランダムに1枚ずつ配り戻す' },
   { id:'t6',  count:1, name:'みかじめ',      text:'全員から1♥ずつもらう' },
-  { id:'t7',  count:1, name:'まわして',      text:'全員手札を1枚選び、右隣のプレイヤーに渡す。' },
-  { id:'t8',  count:0, name:'値上げ',        text:'自分以外のプレイヤーは「ざぁ～こ♥」の使用条件が「8♥を支払う」になる', persistent:true },
+  { id:'t7',  count:0, name:'まわして',      text:'全員手札を1枚選び、右隣のプレイヤーに渡す。' },
+  { id:'t8',  count:1, name:'値上げ',        text:'自分以外のプレイヤーは「ざぁ～こ♥」の使用条件が「8♥を支払う」になる', persistent:true },
   { id:'t9',  count:1, name:'♥コレクター',   text:`自分の勝利条件に「${RULES.collectorGoal}♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう`, persistent:true },
-  { id:'t10', count:1, name:'ルール改変',    text:'「ダサすぎ♥」の効果を「相手の手札1枚を見て山札と交換させる。」に変える。以降は幼馴染ガキが「ダサすぎ♥」をブロック可能になる。', persistent:true },
+  { id:'t10', count:1, name:'ルール改変',    text:'以後、自分の「ダサすぎ♥」は通常か審問（相手の手札1枚を見て山札と交換させる）かを宣言時に選べる。審問は幼馴染ガキでブロック可', persistent:true },
   { id:'t11', count:1, name:'みちづれのキス', text:'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）' },
   { id:'t12', count:1, name:'仕返し',        text:'自分を脱がせた相手から3♥奪う' },
   { id:'t13', count:0, name:'山分け',        text:'自分より♥の多い全員から1♥ずつもらう' },
@@ -629,7 +629,7 @@ function newGame(n, myChar, opts){
   for(const p of S.players) for(let k=0;k<deal;k++) p.trigHand.push(tdeck.pop());
   S.tdeck=tdeck; S.setupDone=false;
   if(auto){ S.players[0].cpu=true; S.players[0].name=`${S.players[0].ch.name}（おまかせ）`; }
-  S.deck=deck; S.turn=rnd(n); S.flags={examineMode:false}; S.winner=null; S.log=[]; S.current=null; S.target=null; S.acts=[]; S.deaths=0;
+  S.deck=deck; S.turn=rnd(n); S.flags={}; S.winner=null; S.log=[]; S.current=null; S.target=null; S.acts=[]; S.deaths=0;
   TUT.active=false; S.playable=null; S.targetable=null; S.action=null;
   if(opts.tutorial) tutSetup();
   if(!S.headless){ setHighlight(null); document.querySelectorAll('#cut,.cutin').forEach(e=>e.remove()); $('#modalEnd').classList.remove('show'); render(); }
@@ -715,7 +715,7 @@ async function performActionInner(p, act, target){
     case 'aid': p.hearts+=2; SFX.play('coin'); log(`${p.name} は2♥獲得`); break;
     case 'tax': p.hearts+=3; SFX.play('coin'); log(`${p.name} は3♥獲得`); break;
     case 'steal': { const n=Math.min(2,target.hearts); target.hearts-=n; p.hearts+=n; SFX.play('coin'); log(`${p.name} は ${target.name} から${n}♥奪った`); break; }
-    case 'exchange': if(S.flags.examineMode && target) await doExamine(p,target); else await doExchange(p); break; // 宣言後にルール改変が起きた場合は宣言時の効果で解決
+    case 'exchange': if(target) await doExamine(p,target); else await doExchange(p); break; // 相手を指定していれば審問（ルール改変持ちのみ）
     case 'assassinate': await loseInfluence(target, p, 'まけちゃえ～♥'); break;
   }
   render(); await wait(500);
@@ -802,7 +802,7 @@ function blockOptions(c, actor, act, target){
   const A=ACTIONS[act], opts=[];
   if(c===actor || !c.alive) return opts;
   let roles=A.blockedBy||[];
-  if(act==='exchange') roles=S.flags.examineMode?['osananajimi']:[];
+  if(act==='exchange') roles=target?['osananajimi']:[];
   const canRole = A.target||act==='exchange' ? c===target : true;
   if(canRole) for(const r of roles) opts.push({kind:'role', role:r});
   if(act==='exchange' && c.flags.blockExchange) opts.push({kind:'trigger'});
@@ -953,7 +953,7 @@ async function resolveTrigger(p, card, by){
     }
     case 't8': p.flags.coupTax=true; log(`${p.name} 以外は「ざぁ～こ♥」に8♥必要になった`); return;
     case 't9': { p.flags.win15=true; const got=shareUp(p); log(`${p.name} は${RULES.collectorGoal}♥集めても勝利になった${liftNote()}。♥の多い相手から1♥ずつもらった（+${got}♥）`); return; }
-    case 't10': S.flags.examineMode=true; log(`「ダサすぎ♥」が「相手の手札1枚を見て山札と交換させる」に変わった。幼馴染ガキでブロック可能`, 'sys'); return;
+    case 't10': p.flags.examine=true; log(`${p.name} の「ダサすぎ♥」は、通常か審問（相手の手札1枚を見て山札と交換させる）かを選べるようになった。審問は幼馴染ガキでブロック可`, 'sys'); return;
     case 't11': {
       if(!by || by===p || !by.hand.length){ log(`脱がせた相手がいないので不発`); return; }
       const hidden=by.hand.filter(c=>!c.faceUp && !seenBy(c,p));
@@ -1097,8 +1097,9 @@ function cpuChooseAction(p, forced){
     return {action:'steal', target: rich.sort((a,b)=>b.hearts-a.hearts)[0]};
   }
   if(hasRole(p,'osananajimi')){
-    if(S.flags.examineMode){ if(chance(0.5)) return {action:'exchange', target:cpuThreat(p,others.filter(q=>q.hand.length>0))}; }
-    else if(!hasRole(p,'mesugaki') && !hasRole(p,'succu') && chance(0.6)) return {action:'exchange'};
+    const cands=others.filter(q=>q.hand.length>0);
+    if(p.flags.examine && cands.length && chance(0.5)) return {action:'exchange', target:cpuThreat(p,cands)};   // 審問
+    if(!hasRole(p,'mesugaki') && !hasRole(p,'succu') && chance(0.6)) return {action:'exchange'};
   }
   if(chance(0.7)) return {action:'aid'};
   return {action:'income'};
@@ -1221,9 +1222,9 @@ function actionTileEl(id, p, cost){
   if(A.role){ const R=ROLES[A.role]; b.style.setProperty('--rcol',R.color); const held=p?hasRole(p,A.role):null; if(held===false) b.classList.add('bluff'); state=held===null?'':(held?'✓ 持ってる':'ハッタリ'); if(p){ b.onmouseenter=()=>linkRole(A.role,true); b.onmouseleave=()=>linkRole(A.role,false); } }
   else b.classList.add('basic');
   const costTxt = id==='coup'?`${cost}♥払う`: id==='assassinate'?'3♥払う':'';
-  const effect = (id==='exchange'&&S.flags.examineMode) ? '相手の手札1枚を見て山札と交換させる' : A.desc.replace(/^\d♥を支払い、/,'');
-  let blockers=A.blockedBy||[]; if(id==='exchange') blockers=S.flags.examineMode?['osananajimi']:[];
-  const blk = blockers.length ? `は？：${blockers.map(r=>ROLES[r].name).join('・')}がブロック可` : (id==='coup'||id==='income'?'ブロック不可・チャレンジ不可':'ブロック不可');
+  const effect = (id==='exchange'&&p&&p.flags.examine) ? '山札から2枚引いて2枚戻す／審問：相手の手札1枚を見て山札と交換させる（選べる）' : A.desc.replace(/^\d♥を支払い、/,'');
+  let blockers=A.blockedBy||[]; if(id==='exchange') blockers=[];
+  const blk = blockers.length ? `は？：${blockers.map(r=>ROLES[r].name).join('・')}がブロック可` : (id==='coup'||id==='income'?'ブロック不可・チャレンジ不可':(id==='exchange'&&p&&p.flags.examine)?'通常はブロック不可・審問は幼馴染ガキがブロック可':'ブロック不可');
   b.innerHTML=`<div class="ah">${A.name}</div><div class="ar">${A.role?`<b>${ROLES[A.role].name}</b> のアクション`:'誰でも'}${costTxt?`・${costTxt}`:''}</div><div class="ae">${effect}</div><div class="ab">${blk}</div>${state?`<span class="ast">${state}</span>`:''}`;
   return b;
 }
@@ -1309,7 +1310,7 @@ function render(){
   const info=$('#deckInfo');
   if(S.players.length){
     const cur=S.current?S.current.name:'—';
-    info.innerHTML=`<span>山札 <b>${S.deck.length}</b>枚</span><span>手番 <b>${cur}</b></span><span>ざぁ～こ♥ <b>${S.players[0]?coupCost(S.players[0]):7}♥</b></span><span>ダサすぎ♥ <b>${S.flags.examineMode?'改変中':'通常'}</b></span>`;
+    info.innerHTML=`<span>山札 <b>${S.deck.length}</b>枚</span><span>手番 <b>${cur}</b></span><span>ざぁ～こ♥ <b>${S.players[0]?coupCost(S.players[0]):7}♥</b></span><span>ダサすぎ♥ <b>${S.players[0]&&S.players[0].flags.examine?'審問も可':'通常'}</b></span>`;
   }
   renderEffects();
   renderAction();
@@ -1322,9 +1323,9 @@ function renderEffects(){
     if(p.flags.coupTax) items.push(['値上げ', `${p.name} 以外の「ざぁ～こ♥」は8♥`]);
     if(p.flags.coupDiscount) items.push(['値下げ', `${p.name} の「ざぁ～こ♥」は5♥`]);
     if(p.flags.blockExchange) items.push(['ダサすぎ返し', `${p.name} は「ダサすぎ♥」をブロックできる`]);
+    if(p.flags.examine) items.push(['ルール改変', `${p.name} の「ダサすぎ♥」は通常か審問かを選べる（審問は幼馴染ガキでブロック可）`]);
     if(p.flags.win15) items.push(['♥コレクター', `${p.name} は${RULES.collectorGoal}♥集めた時点で勝ち${liftNote()}`]);
   }
-  if(S.flags.examineMode) items.push(['ルール改変', '「ダサすぎ♥」は審問（相手の手札1枚を見て山札と交換させる）。幼馴染ガキでブロック可']);
   if(!items.length){ el.hidden=true; el.innerHTML=''; return; }
   el.hidden=false; el.innerHTML='<span class="elbl">場の効果</span>'+items.map(([n,t])=>`<span class="ef"><b>${n}</b>${t}</span>`).join('');
 }
@@ -1388,7 +1389,16 @@ async function humanChooseAction(p, forced){
       S.playable={can:canUse, done}; render();
     }, 'action');
     const A=ACTIONS[act];
-    if(!(A.target || (act==='exchange'&&S.flags.examineMode))) return {action:act};
+    if(act==='exchange' && p.flags.examine){   // ルール改変持ち：通常か審問かを選ぶ
+      const mode=await askButtons('「ダサすぎ♥」の効果を選んでください', [{label:'通常', value:'normal', primary:true, sub:'山札から2枚引いて2枚戻す（ブロック不可）'},{label:'審問', value:'examine', sub:'相手の手札1枚を見て山札と交換させる（幼馴染ガキでブロック可）'},{label:'もどる', value:null}], undefined, 'examineMode');
+      if(mode===null) continue;
+      if(mode==='normal') return {action:act};
+      const ec=others.filter(q=>q.hand.length>0);
+      const et=await askPlayer('「審問」の相手を選んでください', ec, [{label:'もどる', value:null}], 'target');
+      if(et) return {action:act, target:et};
+      continue;
+    }
+    if(!A.target) return {action:act};
     const cands=others.filter(q=>q.hand.length>0);
     const t=await askPlayer(`「${A.name}」の相手を選んでください`, cands, [{label:'もどる', value:null}], 'target');
     if(t) return {action:act, target:t};
@@ -1411,7 +1421,7 @@ function passText(what, claimant, me){
     case 'tax': return `${who(claimant)} が3♥獲得（${claimant.hearts}♥ → ${claimant.hearts+3}♥）`;
     case 'steal': { const n=Math.min(2,t.hearts); return `${who(claimant)} が ${who(t)} から${n}♥奪う（${who(t)} ${t.hearts}♥ → ${t.hearts-n}♥、${who(claimant)} ${claimant.hearts}♥ → ${claimant.hearts+n}♥）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと後輩ガキ・幼馴染ガキでブロックできる':''); }
     case 'assassinate': return `${who(t)} がプライドを1つ失う（手札1枚を捨て、服を1枚脱ぐ）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと わからせおじさん でブロックできる':'');
-    case 'exchange': return (S.flags.examineMode&&t) ? `${who(claimant)} が ${who(t)} の手札1枚を見て、山札と交換させられる`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと幼馴染ガキでブロックできる':'') : `${who(claimant)} が山札から2枚引いて2枚戻す（手札を整えられる）`;
+    case 'exchange': return t ? `${who(claimant)} が ${who(t)} の手札1枚を見て、山札と交換させられる（審問）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと幼馴染ガキでブロックできる':'') : `${who(claimant)} が山札から2枚引いて2枚戻す（手札を整えられる）`;
   }
   return '';
 }
@@ -1431,7 +1441,7 @@ async function humanChallenge(c, claimant, role, what){
 }
 async function humanBlock(c, actor, act, opts, target){
   const A=ACTIONS[act];
-  const tgt=(A.target||(act==='exchange'&&S.flags.examineMode))?' → あなた':'';
+  const tgt=(A.target||(act==='exchange'&&target))?' → あなた':'';
   return await prompt((box,done)=>{
     msgEl(box, `${actor.name} の「${A.name}」${tgt}。ブロックする？`, `ブロックしないと：${passText({kind:'action', action:act, target, atBlock:true}, actor, c)}`);
     const row=document.createElement('div'); row.className='atiles';

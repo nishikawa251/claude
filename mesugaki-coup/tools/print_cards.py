@@ -370,48 +370,87 @@ def char_cards(cid):
 
 # ---------------------------------------------------------------- 早見表・タイトル
 def quick_front():
+    """クーの早見表にならった構成：上＝だれでもできる3アクション、下＝ガキカードごとのアクションと「は？」"""
     im = Image.new('RGB', (PW, PH), PAPER); d = ImageDraw.Draw(im)
+    pink = (184, 48, 106)
     inner = (BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE)
-    d.rounded_rectangle(inner, radius=int(3 * MM), outline=(255, 95, 168), width=int(0.6 * MM))
-    text_center(d, PW / 2, inner[1] + int(2.5 * MM), 'アクション早見表', font(9.5, 'head'), fill=(184, 48, 106))
-    y = inner[1] + int(9 * MM); x0 = inner[0] + int(2 * MM); wdt = inner[2] - inner[0] - int(4 * MM)
+    d.rounded_rectangle(inner, radius=int(2.5 * MM), outline=pink, width=int(0.5 * MM))
+    # 見出し帯
+    hb = int(6 * MM)
+    d.rounded_rectangle((inner[0], inner[1], inner[2], inner[1] + hb), radius=int(2.5 * MM), fill=pink)
+    d.rectangle((inner[0], inner[1] + hb // 2, inner[2], inner[1] + hb), fill=pink)
+    text_center(d, PW / 2, inner[1] + int(1.2 * MM), 'アクション早見表', font(8.5, 'head'), fill=(255, 255, 255))
+    x0 = inner[0] + int(1.6 * MM); x1 = inner[2] - int(1.6 * MM); wdt = x1 - x0
+    y = inner[1] + hb + int(1.2 * MM)
+
+    def section(label):
+        nonlocal y
+        d.text((x0, y), label, font=font(5.6, 'black'), fill=pink); y += int(3.4 * MM)
+
+    def general(name, eff, stop):
+        nonlocal y
+        cx = x0 + int(17 * MM); cw = x1 - cx
+        el = wrap(eff, font(5.4), cw); sl = wrap(stop, font(4.6), cw)
+        rh = int(1 * MM) + len(el) * int(font(5.4).size * 1.25) + len(sl) * int(font(4.6).size * 1.25) + int(1 * MM)
+        d.rounded_rectangle((inner[0] + int(0.8 * MM), y - int(0.5 * MM), inner[2] - int(0.8 * MM), y + rh - int(0.6 * MM)), radius=int(0.8 * MM), fill=(250, 236, 243))
+        d.text((x0, y + int(0.4 * MM)), name, font=font(7, 'black'), fill=INK)
+        y2 = draw_text_block(d, (cx, y + int(0.3 * MM)), eff, font(5.4), cw, fill=INK, spacing=1.25)
+        draw_text_block(d, (cx, y2), stop, font(4.6), cw, fill=DIM, spacing=1.25)
+        y += rh + int(0.4 * MM)
+
+    section('だれでもできる')
+    general('ふ～ん♥', '1♥もらう', '止められない')
+    general('よわ♥', '2♥もらう', 'は？：メスガキ が止める')
+    general('ざぁ～こ♥', f'{RULES.get("coupCost", 7)}♥払って相手のプライドを1つ奪う', f'止められない。{RULES.get("forcedCoupAt", 10)}♥以上なら必ず撃つ')
+    y += int(0.6 * MM)
+    section('ガキカードのアクション（持ってなくても宣言OK）')
     rows = [
-        ('ふ～ん♥', 'なし', '1♥獲得', 'ブロック不可・チャレンジ不可'),
-        ('よわ♥', 'なし', '2♥獲得', 'は？：メスガキ'),
-        ('ざぁ～こ♥', f'{RULES.get("coupCost", 7)}♥（{RULES.get("forcedCoupAt", 10)}♥以上は必須）', '相手のプライドを1つ奪う', 'ブロック不可・チャレンジ不可'),
-        ('よわよわ～♥', 'メスガキ', '3♥獲得', 'チャレンジ可'),
-        ('なさけな～い♥', '後輩ガキ', '相手から2♥奪う', 'は？：後輩ガキ・幼馴染ガキ'),
-        ('ダサすぎ♥', '幼馴染ガキ', '山札から2枚引き、2枚捨てる', 'チャレンジ可'),
-        ('まけちゃえ～♥', 'サキュガキ＋3♥', '相手のプライドを1つ奪う', 'は？：わからせおじさん'),
+        ('mesugaki',    'よわよわ～♥',   '3♥もらう',                         '止められない',                 'よわ♥ を止める'),
+        ('kouhai',      'なさけな～い♥', '相手1人から2♥奪う',                'は？：後輩ガキ・幼馴染ガキ',   'なさけな～い♥ を止める'),
+        ('osananajimi', 'ダサすぎ♥',     '山札から2枚引き、2枚捨てる',       '止められない',                 'なさけな～い♥ を止める'),
+        ('succu',       'まけちゃえ～♥', '3♥払う → 相手のプライドを1つ奪う', 'は？：わからせおじさん',       '止めるものなし'),
+        ('ojisan',      '（アクションなし）', '',                              '',                             'まけちゃえ～♥ を止める'),
     ]
-    colx = x0 + int(22 * MM); colw = inner[2] - int(2 * MM) - colx; lw = int(21 * MM)
-    for i, (n, cond, eff, blk) in enumerate(rows):
-        if i % 2 == 0:
-            d.rectangle((inner[0] + int(1 * MM), y - int(0.8 * MM), inner[2] - int(1 * MM), y + int(8.6 * MM)), fill=(250, 236, 243))
-        d.text((x0, y), n, font=font(7.5, 'black'), fill=(184, 48, 106))
-        draw_text_block(d, (colx, y + int(0.3 * MM)), cond, font(5), colw, fill=DIM, spacing=1.2)
-        draw_text_block(d, (x0, y + int(4.2 * MM)), eff, font(5.4), lw, fill=INK, spacing=1.2)
-        draw_text_block(d, (colx, y + int(4.4 * MM)), blk, font(4.8), colw, fill=DIM, spacing=1.2)
-        y += int(9.3 * MM)
-    draw_text_block(d, (x0, y + int(0.6 * MM)), '役職つきのアクションは持っていなくても宣言できる（ハッタリ）。チャレンジされて持っていなければプライドを1つ失う。本当なら相手が失う。', font(4.8), wdt, fill=DIM, spacing=1.35)
+    rh = int(8.8 * MM)
+    for rid, act, eff, stop, blocks in rows:
+        col = hexrgb(ROLES[rid]['color'])
+        d.rounded_rectangle((inner[0] + int(0.8 * MM), y - int(0.5 * MM), inner[2] - int(0.8 * MM), y + rh - int(1.2 * MM)), radius=int(0.8 * MM), fill=mix(col, (255, 255, 255), 0.9))
+        d.rectangle((inner[0] + int(0.8 * MM), y - int(0.5 * MM), inner[0] + int(2.6 * MM), y + rh - int(1.2 * MM)), fill=col)
+        xr = x0 + int(2.2 * MM)
+        d.text((xr, y), ROLES[rid]['name'], font=font(6.2, 'black'), fill=col)
+        nx = xr + font(6.2, 'black').getlength(ROLES[rid]['name']) + int(2 * MM)
+        d.text((nx, y - int(0.2 * MM)), act, font=font(6.6 if rid != 'ojisan' else 5.2, 'black'), fill=INK)
+        if eff:
+            d.text((xr, y + int(3.1 * MM)), eff, font=font(5.2), fill=INK)
+        d.text((xr, y + int(5.7 * MM)), (stop + '　｜ ' if stop else '') + blocks, font=font(4.5), fill=DIM)
+        y += rh
+    draw_text_block(d, (x0, y + int(0.2 * MM)), 'チャレンジ：「持ってないでしょ」と疑う。ハッタリならその人、本物ならチャレンジした人がプライドを1つ失う。', font(4.5), wdt, fill=DIM, spacing=1.3)
     return im
 
 
 def quick_back():
     im = Image.new('RGB', (PW, PH), PAPER); d = ImageDraw.Draw(im)
+    navy = (60, 70, 130)
     inner = (BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE)
-    d.rounded_rectangle(inner, radius=int(3 * MM), outline=(90, 106, 168), width=int(0.6 * MM))
-    text_center(d, PW / 2, inner[1] + int(2.5 * MM), '手番とプライド', font(9.5, 'head'), fill=(60, 70, 130))
-    x0 = inner[0] + int(2.5 * MM); wdt = inner[2] - inner[0] - int(5 * MM); y = inner[1] + int(10 * MM)
+    d.rounded_rectangle(inner, radius=int(2.5 * MM), outline=navy, width=int(0.5 * MM))
+    hb = int(6 * MM)
+    d.rounded_rectangle((inner[0], inner[1], inner[2], inner[1] + hb), radius=int(2.5 * MM), fill=navy)
+    d.rectangle((inner[0], inner[1] + hb // 2, inner[2], inner[1] + hb), fill=navy)
+    text_center(d, PW / 2, inner[1] + int(1.2 * MM), '手番の流れとプライド', font(8.5, 'head'), fill=(255, 255, 255))
+    x0 = inner[0] + int(1.6 * MM); x1 = inner[2] - int(1.6 * MM); wdt = x1 - x0 - int(6 * MM); y = inner[1] + hb + int(1.6 * MM)
     secs = [
-        ('準備', f'メスガキカードを上下に置き、ガキカード2枚を伏せ、トリガー2枚を上下に1枚ずつ伏せる。全員2♥。'),
-        ('手番', '①アクションを1つ宣言 ②ほかの人がチャレンジ／「は？」ブロック ③通れば解決。'),
-        ('プライドを失ったら', '①手札のガキカードを1枚捨てる ②失わせた相手が上半身・下半身どちらを脱がせるか選び、裏返してボロ絵に ③その横のトリガーを表にして発動。'),
-        ('脱落・勝利', '上下とも裏返ったら脱落。最後の1人が勝ち。♥コレクターを持つ人は9♥集めても勝ち。'),
+        ('1', '宣言', 'アクションを1つ宣言する。ガキカードのアクションは持っていなくても宣言できる（ハッタリ）。'),
+        ('2', '割り込み', 'ほかの人は「チャレンジ！」（疑う）か「は？」（ガキカードでブロック）ができる。ブロックにもチャレンジできる。'),
+        ('3', '解決', '通れば効果。止められたら不発。10♥以上なら手番で必ず ざぁ～こ♥。'),
+        ('♥', 'プライドを失ったら', '手札のガキカードを1枚捨てる → 失わせた相手が上半身・下半身どちらを脱がせるか選んで裏返す → その横のトリガーを表にして発動。'),
+        ('★', '勝ち', '上下とも裏返ったら脱落。最後の1人が勝ち。♥コレクターを持つ人は9♥集めても勝ち。'),
     ]
-    for h, body in secs:
-        d.text((x0, y), h, font=font(7.5, 'black'), fill=(60, 70, 130)); y += int(4.4 * MM)
-        y = draw_text_block(d, (x0, y), body, font(6), wdt, fill=INK, spacing=1.4) + int(2.2 * MM)
+    for no, h, body in secs:
+        d.ellipse((x0, y, x0 + int(4.6 * MM), y + int(4.6 * MM)), fill=navy)
+        text_center(d, x0 + int(2.3 * MM), y + int(0.6 * MM), no, font(6, 'black'), fill=(255, 255, 255))
+        d.text((x0 + int(6 * MM), y), h, font=font(6.8, 'black'), fill=navy)
+        y2 = draw_text_block(d, (x0 + int(6 * MM), y + int(4 * MM)), body, font(5.2), wdt, fill=INK, spacing=1.35)
+        y = y2 + int(2 * MM)
     return im
 
 

@@ -140,21 +140,55 @@ def mix(a, b, t):
     return tuple(int(a[i] * (1 - t) + b[i] * t) for i in range(3))
 
 
+NO_START = '。、，．）」』】〕〉》♥♡～〜ー！？…・)]'   # 行頭に来てはいけない
+NO_END = '「『（【〔〈《(['                             # 行末に来てはいけない
+PAIRS = {'「': '」', '（': '）', '(': ')'}
+
+
+def _tokens(text, f, width):
+    """分割しないトークン：アクション名（ばいば～い♥ など）、短い「…」（…）(…)（12文字以内・行幅の8割以内）"""
+    words = sorted({v['name'] for v in globals().get('ACTIONS', {}).values()}, key=len, reverse=True)
+    out, i = [], 0
+    while i < len(text):
+        ch = text[i]
+        if ch in PAIRS:
+            j = text.find(PAIRS[ch], i)
+            if j != -1 and j - i <= 12 and f.getlength(text[i:j + 1]) <= width * 0.8:
+                out.append(text[i:j + 1]); i = j + 1; continue
+        w = next((w for w in words if text.startswith(w, i)), None)
+        if w and f.getlength(w) <= width * 0.8:
+            out.append(w); i += len(w); continue
+        out.append(ch); i += 1
+    return out
+
+
 def wrap(text, f, width):
-    """日本語向けの文字単位折り返し（句読点の行頭は避ける）"""
-    lines, cur = [], ''
-    for ch in text:
-        if ch == '\n':
-            lines.append(cur); cur = ''; continue
-        if f.getlength(cur + ch) > width and cur:
-            if ch in '。、）」♥）':
-                cur += ch; lines.append(cur); cur = ''; continue
-            lines.append(cur); cur = ch
-        else:
-            cur += ch
-    if cur:
+    """日本語向けの折り返し（禁則つき）"""
+    lines = []
+    for para in text.split('\n'):
+        cur = ''
+        for t in _tokens(para, f, width):
+            if cur and f.getlength(cur + t) > width:
+                if len(t) == 1 and t in NO_START:          # 追い出し：直前の1文字ごと次行へ
+                    if len(cur) >= 2 and cur[-1] not in NO_START and cur[-1] not in NO_END:
+                        lines.append(cur[:-1]); cur = cur[-1] + t
+                    else:
+                        cur += t                            # 追い出せなければぶら下げ
+                    continue
+                if cur[-1] in NO_END and len(cur) >= 2:     # 行末の「 は次行へ
+                    lines.append(cur[:-1]); cur = cur[-1] + t; continue
+                lines.append(cur); cur = t
+            else:
+                cur += t
         lines.append(cur)
     return lines
+
+
+def fit_font(text, max_w, pt, min_pt=5, kind='body', step=0.5):
+    """max_w に収まる最大の文字サイズ（pt 刻み）"""
+    while pt > min_pt and font(pt, kind).getlength(text) > max_w:
+        pt -= step
+    return font(pt, kind)
 
 
 def draw_text_block(d, xy, text, f, width, fill=INK, spacing=1.35, align='left'):
@@ -202,7 +236,7 @@ def role_front(rid):
     hb = int(13 * MM)
     d.rounded_rectangle((inner[0], inner[1], inner[2], inner[1] + hb), radius=int(3 * MM), fill=col)
     d.rectangle((inner[0], inner[1] + hb // 2, inner[2], inner[1] + hb), fill=col)
-    text_center(d, PW / 2, inner[1] + int(1.8 * MM), R['name'], font(16 if len(R['name']) <= 5 else 12.5, 'head'), fill=(255, 255, 255))
+    text_center(d, PW / 2, inner[1] + int(1.8 * MM), R['name'], fit_font(R['name'], inner[2] - inner[0] - int(6 * MM), 16, 10, 'head'), fill=(255, 255, 255))
     text_center(d, PW / 2, inner[1] + int(8.6 * MM), 'GAKI CARD', font(6), fill=mix(col, (255, 255, 255), 0.75))
     # 大きなマーク（頭文字）
     text_center(d, PW / 2, inner[1] + hb + int(4 * MM), R['name'][0], font(56, 'head'), fill=mix(col, PAPER, 0.8))
@@ -223,10 +257,17 @@ def role_front(rid):
     d.rounded_rectangle((inner[0] + int(2 * MM), y - int(1.5 * MM), inner[2] - int(2 * MM), y + int(13 * MM)), radius=int(1.5 * MM), fill=mix(col, (255, 255, 255), 0.9))
     d.text((x0, y), '「は？」ブロック', font=font(7), fill=col)
     blocks = '・'.join(ACTIONS[b]['name'] for b in R['blocks']) or 'なし'
-    d.text((x0, y + int(3.4 * MM)), blocks, font=font(10.5 if len(blocks) < 12 else 8.5, 'black'), fill=INK)
+    d.text((x0, y + int(3.4 * MM)), blocks, font=fit_font(blocks, wdt, 10.5, 7, 'black'), fill=INK)
     draw_text_block(d, (x0, y + int(8.6 * MM)), f'「{R["line"]}」', font(6.5), wdt, fill=DIM)
     # 公開のひとこと
-    text_center(d, PW / 2, inner[3] - int(7 * MM), f'公開：「{R["phrase"]}」', font(6), fill=DIM)
+    ph = f'公開：「{R["phrase"]}」'; pw = inner[2] - inner[0] - int(6 * MM)
+    if font(6).getlength(ph) <= pw:
+        text_center(d, PW / 2, inner[3] - int(7 * MM), ph, font(6), fill=DIM)
+    else:                                    # 長いセリフは2行に（下から積む）
+        pl = wrap(ph, font(5.5), pw); lh = int(font(5.5).size * 1.3)
+        yy = inner[3] - int(7 * MM) - lh * (len(pl) - 1) + int(0.8 * MM)
+        for ln in pl:
+            text_center(d, PW / 2, yy, ln, font(5.5), fill=DIM); yy += lh
     text_center(d, PW / 2, inner[3] - int(3.6 * MM), 'メスガキ・クー', font(5), fill=mix(col, PAPER, 0.3))
     return im
 
@@ -249,8 +290,8 @@ def trigger_front(tid):
     d.rounded_rectangle(inner, radius=int(3 * MM), outline=edge, width=int(0.7 * MM))
     text_center(d, PW / 2, inner[1] + int(3 * MM), 'TRIGGER', font(6), fill=(138, 152, 214))
     # 名前（長いと縮小）
-    name = T['name']; fs = 15 if len(name) <= 6 else 12 if len(name) <= 8 else 10
-    text_center(d, PW / 2, inner[1] + int(8 * MM), name, font(fs, 'head'), fill=(255, 255, 255))
+    name = T['name']; nf = fit_font(name, inner[2] - inner[0] - int(8 * MM), 15, 9, 'head')
+    text_center(d, PW / 2, inner[1] + int(8 * MM) + (font(15, 'head').size - nf.size) // 2, name, nf, fill=(255, 255, 255))
     d.line((inner[0] + int(4 * MM), inner[1] + int(17 * MM), inner[2] - int(4 * MM), inner[1] + int(17 * MM)), fill=edge, width=int(0.4 * MM))
     # 常時／1回 の帯
     tag = '常時' if T['persistent'] else ('1回' if '（1回）' in T['text'] else '発動時')
@@ -260,8 +301,13 @@ def trigger_front(tid):
     # 効果文
     x0 = inner[0] + int(4 * MM); wdt = inner[2] - inner[0] - int(8 * MM)
     body = T['text'].replace('（1回）', '')
-    fs = 8.5 if len(body) <= 40 else 7.5 if len(body) <= 60 else 6.8
-    draw_text_block(d, (x0, inner[1] + int(29 * MM)), body, font(fs), wdt, fill=(230, 236, 255), spacing=1.45)
+    top, bottom = inner[1] + int(29 * MM), inner[3] - int(11 * MM)
+    fs = 12 if len(body) <= 24 else 11 if len(body) <= 40 else 10 if len(body) <= 60 else 9
+    while fs > 7:                              # 収まるまで縮める。最終行が2文字以下の孤立も避ける
+        f = font(fs); ls = wrap(body, f, wdt); n = len(ls)
+        if top + n * int(f.size * 1.5) <= bottom and not (n > 1 and len(ls[-1]) <= 2): break
+        fs -= 0.5
+    draw_text_block(d, (x0, top), body, font(fs), wdt, fill=(230, 236, 255), spacing=1.5)
     # セット名
     sets = 'おすすめ' if tid in PRESETS['mix'] else ''
     base = '基本' if tid in PRESETS['basic'] else '新カード' if tid in PRESETS['fresh'] else '2軍'
@@ -426,9 +472,12 @@ def quick_front():
         nonlocal y
         d.text((x0, y), label, font=font(6, 'black'), fill=pink); y += int(3.6 * MM)
 
+    AN = {k: v['name'] for k, v in ACTIONS.items()}
+    name_w = max(font(7.5, 'black').getlength(AN[k]) for k in ('income', 'aid', 'coup')) + int(2 * MM)
+
     def general(name, eff, stop):
         nonlocal y
-        cx = x0 + int(15 * MM); cw = x1 - cx
+        cx = x0 + int(name_w); cw = x1 - cx
         el = wrap(eff, font(6), cw); sl = wrap(stop, font(5.5), cw)
         rh = int(0.8 * MM) + len(el) * int(font(6).size * 1.2) + len(sl) * int(font(5.5).size * 1.2) + int(0.8 * MM)
         d.rounded_rectangle((inner[0] + int(0.8 * MM), y - int(0.4 * MM), inner[2] - int(0.8 * MM), y + rh - int(0.5 * MM)), radius=int(0.8 * MM), fill=(250, 236, 243))
@@ -438,7 +487,6 @@ def quick_front():
         y += rh + int(0.3 * MM)
 
     section('だれでもできる')
-    AN = {k: v['name'] for k, v in ACTIONS.items()}
     general(AN['income'], '1♥もらう', '止められない')
     general(AN['aid'], '2♥もらう', 'は？：メスガキ')
     general(AN['coup'], f'{RULES.get("coupCost", 7)}♥で相手のプライドを1つ奪う', f'止められない。{RULES.get("forcedCoupAt", 10)}♥以上は必須')
@@ -516,7 +564,7 @@ def title_back():
     text_center(d, PW / 2, inner[1] + int(2.5 * MM), '内容物', font(9.5, 'head'), fill=(184, 48, 106))
     x0 = inner[0] + int(3 * MM); y = inner[1] + int(11 * MM)
     items = [('ガキカード', f'{len(ROLES) * 3}枚（5種×3）'), ('キャラカード', f'{len(PRINT_CHARS) * 2}枚（{len(PRINT_CHARS)}キャラ×上下・両面）'),
-             ('トリガーカード', f'{len(TRIG18)}枚'), ('早見表', '6枚'), ('タイトルカード', '1枚（この札）'), ('♥トークン', '50個（別途用意）'), ('ルールブック', '別紙')]
+             ('トリガーカード', f'{len(TRIG18)}枚' + (f'（ほかにハズレ{args.dud}枚' + (f'・白紙{args.blank}枚' if args.blank else '') + '）' if args.dud or args.blank else (f'（ほかに白紙{args.blank}枚）' if args.blank else ''))), ('早見表', f'{args.ref}枚'), ('タイトルカード', '1枚（この札）'), ('♥トークン', '50個（別途用意）'), ('ルールブック', '別紙')]
     vx = x0 + int(22 * MM); vw = inner[2] - int(3 * MM) - vx
     for n, v in items:
         d.text((x0, y), n, font=font(6.8, 'black'), fill=INK); y2 = draw_text_block(d, (vx, y + int(0.3 * MM)), v, font(5.6), vw, fill=DIM, spacing=1.25); y = max(y + int(6.2 * MM), y2 + int(1.2 * MM))

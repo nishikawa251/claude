@@ -68,6 +68,7 @@ PHYS = {
     ['トリガーカード', len(TRIG20), f'{len(TRIG20)}種×1枚：' + '・'.join(TRIG20), f'基本デッキ12枚とおすすめデッキ12枚の両方がそのまま遊べる組（重なりを除いて{len(TRIG20)}枚）。ハズレは入れない。新カードデッキを丸ごと遊ぶには {"・".join(_notin)} も要る'],
     ['♥トークン', 50, '1♥×40、5♥×10 くらい', '6人戦でも50あれば足りる（クーのコイン50枚と同じ）'],
     ['早見表', 6, 'アクション7種と「は？」ブロック・チャレンジの表。1人1枚', 'ゲーム画面の「ルール」の①〜③をそのまま'],
+    ['タイトルカード', 1, 'ゲーム名と人数・時間。裏に内容物一覧', '合計を52枚にそろえる1枚'],
   ],
   'rulebook': 'ルールブック：別紙（準備・手番・プライド喪失とトリガー・勝利条件・トリガー一覧）。カード枚数には含めない',
   'per_player': '1人ぶん：メスガキカード2枚（上・下）、ガキカード2枚（伏せ）、トリガー2枚（伏せて上下に1枚ずつ）、2♥',
@@ -399,7 +400,7 @@ function renderPhys(){
   const k=DATA.phys; if(!k){ return; }
   // 枚数はゲーム定義から。キャラは6種に絞った印刷想定
   const total=k.rows.filter(r=>r[0]!=='♥トークン').reduce((a,r)=>a+r[1],0);
-  $('#phys').innerHTML='<thead><tr><th>種類</th><th class="n">枚数</th><th>内訳</th><th>備考</th></tr></thead><tbody>'+k.rows.map(r=>`<tr><td class="nm">${esc(r[0])}</td><td class="n">${fmt(r[1])}${r[0]==='♥トークン'?'個':'枚'}</td><td class="tx">${esc(r[2])}</td><td class="tx">${esc(r[3])}</td></tr>`).join('')+`<tr><td class="nm">カード合計</td><td class="n">${fmt(total)}枚</td><td class="tx" colspan="2">早見表込み。ルールブックは別紙で付けるので数えない。トランプの52枚仕様で刷るなら余り1枚はタイトルカード、54枚仕様ならさらにハズレ2枚。♥トークンは別</td></tr></tbody>`;
+  $('#phys').innerHTML='<thead><tr><th>種類</th><th class="n">枚数</th><th>内訳</th><th>備考</th></tr></thead><tbody>'+k.rows.map(r=>`<tr><td class="nm">${esc(r[0])}</td><td class="n">${fmt(r[1])}${r[0]==='♥トークン'?'個':'枚'}</td><td class="tx">${esc(r[2])}</td><td class="tx">${esc(r[3])}</td></tr>`).join('')+`<tr><td class="nm">カード合計</td><td class="n">${fmt(total)}枚</td><td class="tx" colspan="2">トランプ1組と同じ52枚。ルールブックは別紙で付けるので数えない。54枚仕様（ジョーカー2枚つき）で刷るなら余り2枚はハズレ2枚に。♥トークンは別</td></tr></tbody>`;
   $('#physnote').textContent=`${k.rulebook}。${k.per_player}。${k.min4}。キャラの候補：${k.chars.join('・')}（この中から6人）。キャラ画像の分割と印刷用シート（A4両面）は tools/split_cards.py が出力する。`;
 }
 function renderCands(){

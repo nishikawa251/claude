@@ -53,13 +53,10 @@ f4, f3 = d.get('fresh_p4'), d.get('fresh_p3456')
 m4, m3 = d.get('mix_p4'), d.get('mix_p3456')
 RATING = rating_rows(d, ['basic_p4','basic_p3456','fresh_p4','fresh_p3456'])
 MIX_IDS = PRESETS.get('mix', [])
-# 物理版のトリガー20枚：基本デッキ＋おすすめデッキの和集合に、総合評価の上位から足して20枚
+# 物理版のトリガー：基本デッキ＋おすすめデッキの和集合（18枚）
 _t20 = []
 for i in PRESETS.get('basic', []) + MIX_IDS:
     if i not in _t20: _t20.append(i)
-for r in RATING:
-    if len(_t20) >= 20: break
-    if r['id'] not in _t20: _t20.append(r['id'])
 TRIG20 = [CNAME[i] for i in _t20]
 _notin = [CNAME[i] for i in PRESETS.get('fresh', []) if i not in _t20]
 N_PRINT_CHARS = 6
@@ -68,8 +65,7 @@ PHYS = {
   'rows': [
     ['ガキカード（役職）', N_ROLES*3, f'{N_ROLES}種×3枚。メスガキ・後輩ガキ・幼馴染ガキ・サキュガキ・わからせおじさん', '裏面は共通の裏柄。表に「できる／ブロック」を印刷しておくと早見表が要らない'],
     ['メスガキカード（キャラ）', N_PRINT_CHARS*2, f'{N_PRINT_CHARS}キャラ×上半身・下半身の2枚。表＝通常絵、裏＝ボロ絵の両面印刷', f'6人戦の最大人数ぶん。ゲームにある{N_CHARS}キャラから好きな6人を選ぶ。横長（416:298 ≒ 88×63mm）で、上下を縦に並べると全身'],
-    ['トリガーカード', len(TRIG20), f'{len(TRIG20)}種×1枚：' + '・'.join(TRIG20), f'基本デッキ12枚とおすすめデッキ12枚の両方がそのまま遊べる組（重なりを除いて18枚）に、総合評価の次点2枚を足した。新カードデッキを丸ごと遊ぶには {"・".join(_notin)} も要る'],
-    ['ハズレ（任意）', 2, '効果なしのトリガー', '今の設定では使わない（dudCount 0）。入れるなら2枚'],
+    ['トリガーカード', len(TRIG20), f'{len(TRIG20)}種×1枚：' + '・'.join(TRIG20), f'基本デッキ12枚とおすすめデッキ12枚の両方がそのまま遊べる組（重なりを除いて{len(TRIG20)}枚）。ハズレは入れない。新カードデッキを丸ごと遊ぶには {"・".join(_notin)} も要る'],
     ['♥トークン', 50, '1♥×40、5♥×10 くらい', '6人戦でも50あれば足りる（クーのコイン50枚と同じ）'],
     ['早見表', 6, 'アクション7種と「は？」ブロック・チャレンジの表。1人1枚', 'ゲーム画面の「ルール」の①〜③をそのまま'],
     ['ルールシート', 1, '準備・手番・プライド喪失とトリガー・勝利条件', ''],
@@ -403,7 +399,7 @@ function renderPhys(){
   const k=DATA.phys; if(!k){ return; }
   // 枚数はゲーム定義から。キャラは6種に絞った印刷想定
   const total=k.rows.filter(r=>r[0]!=='♥トークン').reduce((a,r)=>a+r[1],0);
-  $('#phys').innerHTML='<thead><tr><th>種類</th><th class="n">枚数</th><th>内訳</th><th>備考</th></tr></thead><tbody>'+k.rows.map(r=>`<tr><td class="nm">${esc(r[0])}</td><td class="n">${fmt(r[1])}${r[0]==='♥トークン'?'個':'枚'}</td><td class="tx">${esc(r[2])}</td><td class="tx">${esc(r[3])}</td></tr>`).join('')+`<tr><td class="nm">カード合計</td><td class="n">${fmt(total)}枚</td><td class="tx" colspan="2">ハズレ・早見表・ルールシート込み。♥トークンは別</td></tr></tbody>`;
+  $('#phys').innerHTML='<thead><tr><th>種類</th><th class="n">枚数</th><th>内訳</th><th>備考</th></tr></thead><tbody>'+k.rows.map(r=>`<tr><td class="nm">${esc(r[0])}</td><td class="n">${fmt(r[1])}${r[0]==='♥トークン'?'個':'枚'}</td><td class="tx">${esc(r[2])}</td><td class="tx">${esc(r[3])}</td></tr>`).join('')+`<tr><td class="nm">カード合計</td><td class="n">${fmt(total)}枚</td><td class="tx" colspan="2">早見表・ルールシート込み。♥トークンは別</td></tr></tbody>`;
   $('#physnote').textContent=`${k.per_player}。${k.min4}。キャラの候補：${k.chars.join('・')}（この中から6人）。キャラ画像の分割と印刷用シート（A4両面）は tools/split_cards.py が出力する。`;
 }
 function renderCands(){

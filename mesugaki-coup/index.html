@@ -559,7 +559,7 @@ const TRIGGERS = [
   { id:'t25', name:'ごほうび',       text:'以後、自分がチャレンジに成功するたびに2♥もらう', persistent:true },
   { id:'t26', name:'内緒話',         text:'相手1人を選び、互いに手札1枚をこっそり見せ合う（見せる札は本人が選ぶ）' },
   { id:'t27', name:'お色直し',       text:'自分の手札をすべて山札に戻し、同じ枚数を引き直す' },
-  { id:'t28', name:'道連れ',         text:'自分を脱がせた相手もプライドを1つ失う' },
+  { id:'t28', name:'道連れ',         text:'自分を脱がせた相手の手札が2枚なら、その相手もプライドを1つ失う' },
 ];
 // トリガーデッキ：基本／新カードの2プリセット＋カスタム。ゲームに使うのは DECK.ids の12枚
 const DECK_PRESETS = {
@@ -1125,6 +1125,7 @@ async function resolveTrigger(p, card, by){
     }
     case 't28': {
       if(!by || by===p || !by.alive || !by.hand.length){ log(`脱がせた相手がいないので不発`); return; }
+      if(by.hand.length<2){ log(`${by.name} の手札は1枚なので「道連れ」は不発`); return; }
       log(`${p.name} の「道連れ」！ ${by.name} もプライドを失う`, 'hurt');
       render(); await wait(400);
       await loseInfluence(by, p, '道連れ');

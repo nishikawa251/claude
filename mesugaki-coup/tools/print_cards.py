@@ -32,7 +32,7 @@ ap.add_argument('--size', default='91x55', help='仕上がり mm（長辺x短辺
 ap.add_argument('--bleed', type=float, default=1.5, help='塗り足し mm（各辺）')
 ap.add_argument('--lion', action='store_true', help='ライオン名刺 異種テンプレート向けの回転済み画像と面付けシートも出す')
 ap.add_argument('--dpi', type=int, default=350)
-ap.add_argument('--chars', default='shiro,momoko,emera,oren,aqua,asagi', help='印刷するキャラ id を6つ')
+ap.add_argument('--chars', default='momoko,grimaloe,aqua,pin,shiro,kuro', help='印刷するキャラ id を6つ（既定：モモコ・グリムアロエ・アクア・パイン・シロ・クロ）')
 ap.add_argument('--font', default=None, help='日本語フォント（TTF/OTF）。省略時は IPA ゴシックを探す')
 args = ap.parse_args()
 

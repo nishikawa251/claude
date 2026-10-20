@@ -65,7 +65,7 @@ PHYS = {
   'chars': [n for _, n in _chars],
   'rows': [
     ['ガキカード（役職）', N_ROLES*3, f'{N_ROLES}種×3枚。メスガキ・後輩ガキ・幼馴染ガキ・サキュガキ・わからせおじさん', '裏面は共通の裏柄。表に「できる／ブロック」を印刷しておくと早見表が要らない'],
-    ['メスガキカード（キャラ）', N_PRINT_CHARS*2, f'{N_PRINT_CHARS}キャラ×上半身・下半身の2枚。表＝通常絵、裏＝ボロ絵の両面印刷', f'6人戦の最大人数ぶん。ゲームにある{N_CHARS}キャラから好きな6人を選ぶ。横長（416:298 ≒ 88×63mm）で、上下を縦に並べると全身'],
+    ['メスガキカード（キャラ）', N_PRINT_CHARS*2, f'{N_PRINT_CHARS}キャラ×上半身・下半身の2枚。表＝通常絵、裏＝ボロ絵の両面印刷', '基本形はモモコ・グリムアロエ・アクア・パイン・シロ・クロ。横長（名刺91×55mm）で、上下を縦に並べると全身'],
     ['トリガーカード', len(TRIG20), f'{len(TRIG20)}種×1枚：' + '・'.join(TRIG20), f'基本デッキ12枚とおすすめデッキ12枚の両方がそのまま遊べる組（重なりを除いて{len(TRIG20)}枚）。ハズレは入れない。新カードデッキを丸ごと遊ぶには {"・".join(_notin)} も要る'],
     ['♥トークン', 50, '1♥×40、5♥×10 くらい', '6人戦でも50あれば足りる（クーのコイン50枚と同じ）'],
     ['早見表', 6, 'アクション7種と「は？」ブロック・チャレンジの表。1人1枚', 'ゲーム画面の「ルール」の①〜③をそのまま'],
@@ -404,7 +404,7 @@ function renderPhys(){
   // 枚数はゲーム定義から。キャラは6種に絞った印刷想定
   const total=k.rows.filter(r=>r[0]!=='♥トークン').reduce((a,r)=>a+r[1],0);
   $('#phys').innerHTML='<thead><tr><th>種類</th><th class="n">枚数</th><th>内訳</th><th>備考</th></tr></thead><tbody>'+k.rows.map(r=>`<tr><td class="nm">${esc(r[0])}</td><td class="n">${fmt(r[1])}${r[0]==='♥トークン'?'個':'枚'}</td><td class="tx">${esc(r[2])}</td><td class="tx">${esc(r[3])}</td></tr>`).join('')+`<tr><td class="nm">カード合計</td><td class="n">${fmt(total)}枚</td><td class="tx" colspan="2">トランプ1組と同じ52枚。ルールブックは別紙で付けるので数えない。54枚仕様（ジョーカー2枚つき）で刷るなら余り2枚はハズレ2枚に。♥トークンは別</td></tr></tbody>`;
-  $('#physnote').textContent=`${k.rulebook}。${k.per_player}。${k.min4}。キャラの候補：${k.chars.join('・')}（この中から6人）。キャラ画像の分割と印刷用シート（A4両面）は tools/split_cards.py が出力する。`;
+  $('#physnote').textContent=`${k.rulebook}。${k.per_player}。${k.min4}。キャラは基本形の6人（モモコ・グリムアロエ・アクア・パイン・シロ・クロ）。ほかの候補：${k.chars.filter(n=>!['モモコ','グリムアロエ','アクア','パイン','シロ','クロ'].includes(n)).join('・')}。キャラ画像の分割と印刷用シート（A4両面）は tools/split_cards.py が出力する。`;
 }
 function renderCands(){
   $('#cands').innerHTML=DATA.cands.map(c=>`<article class="cc"><h3 class="cc-name">${esc(c.name)}</h3><p class="txt">${esc(c.eff)}</p><p class="memo">${esc(c.aim)}</p></article>`).join('');

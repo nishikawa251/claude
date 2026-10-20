@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>弱いカードの強化案</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+:root{--bg:#faf6f8;--surface:#fff;--ink:#1f1522;--ink2:#4f4252;--muted:#7a6c7d;--line:#eadfe7;--band:#f6eef3;--accent:#b8306a;--good:#1f7a4d;
+  --tS:#8f1d4f;--tA:#b8306a;--tB:#d9699a;--tC:#eba9c6;--tD:#d9d2d8;--tE:#e9e3ea;--onS:#fff;--onA:#fff;--onB:#1f1522;--onC:#1f1522;--onD:#1f1522;--onE:#4f4252;
+  --display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;--body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#141015;--surface:#1d171f;--ink:#f6ecf2;--ink2:#d3c4cf;--muted:#a896a6;--line:#382c3a;--band:#241c26;--accent:#ff74aa;--good:#7fdcaa;
+  --tS:#ff74aa;--tA:#e0558f;--tB:#b04a78;--tC:#7a3a57;--tD:#3a323c;--tE:#2b242d;--onS:#1f0a14;--onA:#1f0a14;--onB:#fff;--onC:#fff;--onD:#d3c4cf;--onE:#d3c4cf}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#141015;--surface:#1d171f;--ink:#f6ecf2;--ink2:#d3c4cf;--muted:#a896a6;--line:#382c3a;--band:#241c26;--accent:#ff74aa;--good:#7fdcaa;
+  --tS:#ff74aa;--tA:#e0558f;--tB:#b04a78;--tC:#7a3a57;--tD:#3a323c;--tE:#2b242d;--onS:#1f0a14;--onA:#1f0a14;--onB:#fff;--onC:#fff;--onD:#d3c4cf;--onE:#d3c4cf}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.7}
+main{max-width:1080px;margin:0 auto;padding:28px 16px 64px;display:flex;flex-direction:column;gap:36px}
+.eyebrow{font-size:12px;letter-spacing:.25em;color:var(--accent);font-weight:700}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,6vw,42px);line-height:1.15;margin:6px 0 10px;text-wrap:balance}
+h2{font-family:var(--display);font-weight:400;font-size:22px;margin:0 0 6px}
+p{margin:0 0 10px;max-width:70ch;color:var(--ink2)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi span{display:block;font-size:12px;color:var(--muted)} .kpi b{font-size:20px;font-variant-numeric:tabular-nums} .kpi em{display:block;margin-top:2px;font-style:normal;font-size:13px;color:var(--ink2)}
+section{display:flex;flex-direction:column;gap:10px}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-size:12px;white-space:nowrap}
+td.num{text-align:right;white-space:nowrap} td.nm{font-weight:700;white-space:nowrap} td.nm small{display:block;font-weight:400;color:var(--muted);font-size:11px}
+td.new{color:var(--good);font-weight:700} td.why{min-width:14em;color:var(--ink2)} .tx{font-weight:400;font-size:12px;color:var(--muted)} td.new .tx{color:var(--good)}
+.tier{display:inline-block;min-width:30px;text-align:center;border-radius:6px;padding:0 6px;font-weight:700;font-size:12px}
+.tS{background:var(--tS);color:var(--onS)} .tA{background:var(--tA);color:var(--onA)} .tB{background:var(--tB);color:var(--onB)} .tC{background:var(--tC);color:var(--onC)} .tD{background:var(--tD);color:var(--onD)} .tE{background:var(--tE);color:var(--onE)}
+ul{margin:0;padding-left:1.2em;color:var(--ink2);max-width:72ch} li{margin-bottom:6px}
+.note{font-size:13px;color:var(--muted)}
+</style></head><body><main>
+<header>
+  <div class="eyebrow">バランス調整案・buff2.json</div>
+  <h1>弱いカードの強化案</h1>
+  <p>1回あたりのHP価値が低いカードを中心に、23か所の変更を提案する。どれも数値の調整かキーワードの追加だけで、カードの役割は変えていない。提案を入れた状態でCPU同士を56,000戦回し、効果と副作用を確かめた。</p>
+</header>
+<section>
+  <h2>全体への影響</h2>
+  <div class="kpis">
+    <div class="kpi"><span>Dのカード（HP価値/回 4未満）</span><b>19 → 3枚</b><em>こんぼう・なべのふた・ふきや</em></div>
+    <div class="kpi"><span>Tierの分布（効果カードを除く）</span><b style="font-size:15px"><u style="text-decoration:none;white-space:nowrap;margin-right:.35em">S 7</u> <u style="text-decoration:none;white-space:nowrap;margin-right:.35em">A 10</u> <u style="text-decoration:none;white-space:nowrap;margin-right:.35em">B 25</u> <u style="text-decoration:none;white-space:nowrap;margin-right:.35em">C 24</u> <u style="text-decoration:none;white-space:nowrap;margin-right:.35em">D 19</u><br>→ <u style="text-decoration:none;white-space:nowrap;margin-right:.35em">S 8</u> <u style="text-decoration:none;white-space:nowrap;margin-right:.35em">A 10</u> <u style="text-decoration:none;white-space:nowrap;margin-right:.35em">B 21</u> <u style="text-decoration:none;white-space:nowrap;margin-right:.35em">C 43</u> <u style="text-decoration:none;white-space:nowrap;margin-right:.35em">D 3</u></b></div>
+    <div class="kpi"><span>サキュバス陣営の勝率</span><b>49.9% → 50.3%</b><em>シスター陣営 50.1% → 49.7%</em></div>
+    <div class="kpi"><span>1試合の平均</span><b>4.82 → 4.31巡</b><em>山札切れで終わる割合 1.5% → 0.8%</em></div>
+  </div>
+</section>
+<section>
+  <h2>提案</h2>
+  <p>現状の値が低い順。「HP価値/回」は1回使ったときに動いたHP（与ダメージ＋軽減＋回復−払ったHP）、「使用」は100戦あたりの使用回数。</p>
+  <div class="tbl"><table style="min-width:900px"><thead><tr><th>カード</th><th>現状</th><th>提案</th><th>理由</th><th class="num">HP価値/回</th><th class="num">Tier</th><th class="num">使用</th></tr></thead><tbody><tr><td class="nm">＜雪崩＞<small>☆, ▲　ID 116</small></td><td>攻12・HP-6</td><td class="new">攻14・HP-4</td><td class="why">HP6は重すぎる。コストを下げ、攻撃力も少し上げる</td><td class="num">1.1 → <b>4.3</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">10 → 11</td></tr><tr><td class="nm">ふきや<small>▲　ID 25 26</small></td><td>攻2<br><span class="tx">《追撃》続けてもう1枚▲カードを出しても良い。</span></td><td class="new">攻5<br><span class="tx">《追撃》続けてもう1枚▲カードを出しても良い。</span></td><td class="why">《追撃》の起点としても2は小さすぎる。5に</td><td class="num">1.2 → <b>3.1</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tD">D</span></td><td class="num">68 → 66</td></tr><tr><td class="nm">＜氷の柱＞<small>☆, ▲　ID 70</small></td><td>攻6・HP-3</td><td class="new">攻9・HP-2</td><td class="why">HP3払って6では割に合わない。コストを下げ攻撃力を上げる</td><td class="num">1.8 → <b>4.6</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">26 → 27</td></tr><tr><td class="nm">うみなりのつえ<small>▲　ID 32</small></td><td>攻2<br><span class="tx">《追撃》続けてもう1枚▲カードを出しても良い。
+攻撃の属性を〔水〕に変えてもよい。</span></td><td class="new">攻5<br><span class="tx">《追撃》続けてもう1枚▲カードを出しても良い。
+攻撃の属性を〔水〕に変えてもよい。</span></td><td class="why">同上</td><td class="num">2.0 → <b>5.0</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">34 → 34</td></tr><tr><td class="nm">マグマのつえ<small>▲　ID 31</small></td><td>攻2<br><span class="tx">《追撃》続けてもう1枚▲カードを出しても良い。
+攻撃の属性を〔火〕に変えてもよい。</span></td><td class="new">攻5<br><span class="tx">《追撃》続けてもう1枚▲カードを出しても良い。
+攻撃の属性を〔火〕に変えてもよい。</span></td><td class="why">属性を変える役なので、自身の攻撃力も持たせる</td><td class="num">2.0 → <b>5.1</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">34 → 34</td></tr><tr><td class="nm">いかづちのつえ<small>▲　ID 33</small></td><td>攻2<br><span class="tx">《追撃》続けてもう1枚▲カードを出しても良い。
+攻撃の属性を〔雷〕に変えてもよい。</span></td><td class="new">攻5<br><span class="tx">《追撃》続けてもう1枚▲カードを出しても良い。
+攻撃の属性を〔雷〕に変えてもよい。</span></td><td class="why">同上</td><td class="num">2.0 → <b>5.1</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">34 → 34</td></tr><tr><td class="nm">いかづちのきば<small>▲　ID 23 24</small></td><td>攻3</td><td class="new">攻6</td><td class="why">同上。雷は攻撃力3と特に低い</td><td class="num">2.3 → <b>4.5</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">28 → 40</td></tr><tr><td class="nm">クロスボウ<small>▲　ID 27 28</small></td><td>攻4<br><span class="tx">《追撃》続けてもう1枚▲カードを出しても良い。</span></td><td class="new">攻8<br><span class="tx">《追撃》続けてもう1枚▲カードを出しても良い。</span></td><td class="why">《追撃》の起点として4→8。重ねれば盾を越えられる値に</td><td class="num">2.3 → <b>5.1</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">69 → 69</td></tr><tr><td class="nm">こんぼう<small>▲　ID 1 2</small></td><td>攻5</td><td class="new">攻6<br><span class="tx">《追撃》続けてもう1枚▲カードを出しても良い。</span></td><td class="why">無属性5はほぼ必ず防がれる。攻撃力を少し上げ、《追撃》で重ねられるようにする</td><td class="num">2.4 → <b>3.7</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tD">D</span></td><td class="num">33 → 67</td></tr><tr><td class="nm">なべのふた<small>○　ID 44 45</small></td><td>防1</td><td class="new">防2<br><span class="tx">防御に使ったら、カードを1枚引く。</span></td><td class="why">守備力1はほぼ役に立たない。使うと1枚引ける軽い盾にする</td><td class="num">2.5 → <b>3.8</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tD">D</span></td><td class="num">41 → 40</td></tr><tr><td class="nm">聖なるわからせ竿<small>†, ▲　ID 96 97</small></td><td>攻10<br><span class="tx">正体を明かしているシスターのみが使用できる。
+《追撃》続けてもう1枚▲カードを出しても良い。
+【断罪成功】サキュバスは[顕現]の際に手札補充を行えない。
+【断罪失敗】攻撃失敗。手札を2枚選び捨てる。</span></td><td class="new">攻14<br><span class="tx">正体を明かしているシスターのみが使用できる。
+《追撃》続けてもう1枚▲カードを出しても良い。
+【断罪成功】サキュバスは[顕現]の際に手札補充を行えない。
+【断罪失敗】攻撃失敗。手札を2枚選び捨てる。</span></td><td class="why">断罪は失敗のリスクがあるのに、成功しても10では決め手にならない</td><td class="num">2.9 → <b>4.5</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">30 → 26</td></tr><tr><td class="nm">ほのおのやいば<small>▲　ID 19 20</small></td><td>攻4</td><td class="new">攻6</td><td class="why">属性攻撃は防げる盾が少ないので、攻撃力を上げるとそのまま通る</td><td class="num">3.1 → <b>4.4</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">36 → 40</td></tr><tr><td class="nm">いばらのムチ<small>▲, ○　ID 8</small></td><td>攻6・防2</td><td class="new">攻7・防4</td><td class="why">攻撃・防御どちらでも中途半端。両方を少し上げる</td><td class="num">3.5 → <b>4.6</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">31 → 30</td></tr><tr><td class="nm">＜稲妻＞<small>☆, ▲　ID 72</small></td><td>攻3・HP-生存×1</td><td class="new">攻5・HP-生存×1</td><td class="why">生存人数ぶんのHPを払う全体攻撃が3では弱すぎる</td><td class="num">3.6 → <b>6.9</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">13 → 12</td></tr><tr><td class="nm">ゴーストソード<small>▲　ID 12 13</small></td><td>攻8<br><span class="tx">《吸収》相手に与えたダメージ分、自分のHPを回復する。</span></td><td class="new">攻10<br><span class="tx">《吸収》相手に与えたダメージ分、自分のHPを回復する。</span></td><td class="why">《吸収》が活きるほど通らない。攻撃力を上げる</td><td class="num">3.7 → <b>5.1</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">52 → 52</td></tr><tr><td class="nm">どうのナイフ<small>▲　ID 3 4</small></td><td>攻8</td><td class="new">攻8<br><span class="tx">《追撃》続けてもう1枚▲カードを出しても良い。</span></td><td class="why">単体では盾に止められる。《追撃》をつけて重ねる素材にする</td><td class="num">3.7 → <b>5.1</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">52 → 68</td></tr><tr><td class="nm">こおりのブーメラン<small>▲　ID 37 38</small></td><td>攻3</td><td class="new">攻5</td><td class="why">ランダム範囲で当たりにくいぶん、当たった時の値を上げる</td><td class="num">3.8 → <b>6.1</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">27 → 34</td></tr><tr><td class="nm">こおりのやいば<small>▲　ID 21 22</small></td><td>攻5</td><td class="new">攻7</td><td class="why">同上</td><td class="num">3.9 → <b>5.2</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">44 → 46</td></tr><tr><td class="nm">＜大嵐＞<small>☆, ▲　ID 117</small></td><td>攻6・HP-生存×2</td><td class="new">攻6・HP-生存×1</td><td class="why">生存人数×2のHPは重すぎる。×1に</td><td class="num">4.0 → <b>6.7</b></td><td class="num"><span class="tier tD">D</span> → <span class="tier tC">C</span></td><td class="num">6 → 4</td></tr><tr><td class="nm">《水攻めの悦》<small>♥, ☆, ▲・♥面　ID 116</small></td><td>攻9・HP-3</td><td class="new">攻13・HP-3</td><td class="why">♥面なのに＜滝＞などより弱い。攻撃力を上げる</td><td class="num">4.1 → <b>7.2</b></td><td class="num"><span class="tier tC">C</span> → <span class="tier tC">C</span></td><td class="num">13 → 14</td></tr><tr><td class="nm">＜火の玉＞<small>☆, ▲　ID 68</small></td><td>攻5・HP-2</td><td class="new">攻7・HP-2</td><td class="why">HP2を払って当たるかどうかのランダム攻撃。当たった時の値を上げる</td><td class="num">4.3 → <b>6.6</b></td><td class="num"><span class="tier tC">C</span> → <span class="tier tC">C</span></td><td class="num">23 → 21</td></tr><tr><td class="nm">こうてつのやり<small>▲　ID 5 6</small></td><td>攻10</td><td class="new">攻12</td><td class="why">攻撃力10は盾1〜2枚で止まる。12に</td><td class="num">4.9 → <b>6.4</b></td><td class="num"><span class="tier tC">C</span> → <span class="tier tC">C</span></td><td class="num">60 → 59</td></tr><tr><td class="nm">＜灼熱＞<small>☆, ▲　ID 115</small></td><td>攻9・HP-3</td><td class="new">攻11・HP-3</td><td class="why">HP3のランダム攻撃として9は低め</td><td class="num">5.5 → <b>6.8</b></td><td class="num"><span class="tier tC">C</span> → <span class="tier tC">C</span></td><td class="num">11 → 10</td></tr></tbody></table></div>
+</section>
+<section>
+  <h2>変えていないカードへの影響</h2>
+  <p>攻撃カードが強くなると盾の出番が増え、盾1枚あたりの軽減量も変わる。HP価値/回が1.5以上動いたか、Tierが変わったカード。</p>
+  <div class="tbl"><table><thead><tr><th>カード</th><th class="num">HP価値/回</th><th class="num">Tier</th><th class="num">差</th></tr></thead><tbody><tr><td class="nm">アイスエッジ<small>▲</small></td><td class="num">8.5 → <b>8.0</b></td><td class="num"><span class="tier tB">B</span> → <span class="tier tC">C</span></td><td class="num">-0.6</td></tr><tr><td class="nm">うろこのたて<small>○</small></td><td class="num">8.1 → <b>7.8</b></td><td class="num"><span class="tier tB">B</span> → <span class="tier tC">C</span></td><td class="num">-0.3</td></tr><tr><td class="nm">《快楽の炎》<small>♥☆▲</small></td><td class="num">8.0 → <b>7.8</b></td><td class="num"><span class="tier tB">B</span> → <span class="tier tC">C</span></td><td class="num">-0.2</td></tr><tr><td class="nm">マジックシールド<small>○</small></td><td class="num">12.7 → <b>13.4</b></td><td class="num"><span class="tier tB">B</span> → <span class="tier tA">A</span></td><td class="num">+0.8</td></tr><tr><td class="nm">ビッグシールド<small>○</small></td><td class="num">17.0 → <b>18.5</b></td><td class="num"><span class="tier tA">A</span> → <span class="tier tS">S</span></td><td class="num">+1.5</td></tr><tr><td class="nm">＜石壁＞<small>☆○</small></td><td class="num">11.3 → <b>13.0</b></td><td class="num"><span class="tier tB">B</span> → <span class="tier tB">B</span></td><td class="num">+1.7</td></tr><tr><td class="nm">ミラーフォース<small>○</small></td><td class="num">24.6 → <b>26.5</b></td><td class="num"><span class="tier tS">S</span> → <span class="tier tS">S</span></td><td class="num">+1.9</td></tr></tbody></table></div>
+</section>
+<section>
+  <h2>サキュバス能力の勝率への影響</h2>
+  <p>カードの変更は全員に効くので、能力の順位はほぼ変わらないはず。差が±2pt程度なら誤差。</p>
+  <div class="tbl"><table><thead><tr><th>キャラ</th><th class="num">サキュバス陣営の勝率</th><th class="num">差（pt）</th></tr></thead><tbody><tr><td class="nm">華我錠 ジョウカ</td><td class="num">56.6% → <b>55.2%</b></td><td class="num">-1.4</td></tr><tr><td class="nm">悪亜 チノン</td><td class="num">55.9% → <b>54.5%</b></td><td class="num">-1.3</td></tr><tr><td class="nm">パイン</td><td class="num">51.2% → <b>52.3%</b></td><td class="num">+1.1</td></tr><tr><td class="nm">骸雷 ミロク</td><td class="num">51.3% → <b>51.9%</b></td><td class="num">+0.6</td></tr><tr><td class="nm">マラリヤ</td><td class="num">49.5% → <b>50.2%</b></td><td class="num">+0.7</td></tr><tr><td class="nm">紅刃</td><td class="num">49.3% → <b>50.1%</b></td><td class="num">+0.8</td></tr><tr><td class="nm">最愛 チアモ</td><td class="num">47.4% → <b>49.4%</b></td><td class="num">+2.0</td></tr><tr><td class="nm">不死 ミヨミ</td><td class="num">46.4% → <b>49.2%</b></td><td class="num">+2.8</td></tr><tr><td class="nm">赤鬼 カギコ</td><td class="num">47.1% → <b>48.4%</b></td><td class="num">+1.3</td></tr><tr><td class="nm">首塚 ボタン</td><td class="num">46.6% → <b>48.1%</b></td><td class="num">+1.5</td></tr><tr><td class="nm">痕部 クルル</td><td class="num">47.6% → <b>47.6%</b></td><td class="num">-0.1</td></tr><tr><td class="nm">首塚 ツバキ</td><td class="num">46.3% → <b>47.4%</b></td><td class="num">+1.2</td></tr><tr><td class="nm">天獄焉魔 ジャスイ</td><td class="num">46.6% → <b>46.0%</b></td><td class="num">-0.6</td></tr><tr><td class="nm">能力なし（比較用）</td><td class="num">43.4% → <b>45.1%</b></td><td class="num">+1.7</td></tr></tbody></table></div>
+</section>
+<section>
+  <h2>補足</h2>
+  <ul>
+    <li>効果系のカード（誓いの祈り・寄進の行い・秘密の懺悔・夜魔のホウキなど）はHPを動かさないので、この指標では強さを測れない。CPUが使いこなせていない面もあるため、今回は対象外にした。</li>
+    <li>《追撃》の組み合わせで出たダメージは、重ねたカードの攻撃力の比で分けて数えている。起点になる小さいカード（ふきや・つえ）は、組み合わせの一部として実際より低く出やすい。</li>
+    <li>なべのふたの「1枚引く」はHPを動かさないので、HP価値/回には入っていない。Dに残っていても、盾としての役割は上がっている。</li>
+    <li>すべてCPU同士の結果。数値は叩き台として使い、最終的には人の試遊で確かめてほしい。</li>
+    <li>再現：<code>node sim/run.js 1000 結果.json sim/patches/buff2.json</code> → <code>python3 sim/proposal.py …</code></li>
+  </ul>
+  <p class="note">作成日 2026-09-27</p>
+</section>
+</main></body></html>

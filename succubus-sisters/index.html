@@ -1,0 +1,2785 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>サキュバスシスターズ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#1a0f1d; --bg2:#211426; --panel:#29182e; --panel-hi:#35203b; --line:#4a3151;
+  --ink:#f8ebf1; --muted:#bea7bd; --rose:#ff70a7; --rose-dim:#8c3a5c; --holy:#f1d68c; --holy-dim:#8a7440; --fallen:#a98eff;
+  --hp:#ff5d7a; --good:#8ae2a4; --warn:#ffc36b;
+  --el-none:#d8cad1; --el-fire:#ff8148; --el-water:#56b8ff; --el-thunder:#ffd94d;
+  --k-atk:#3b1e2b; --k-def:#1d2940; --k-sup:#1c3a2b; --k-mag:#2f2247; --k-judge:#3d331b;
+  --display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;
+  --body:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{
+  margin:0;color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.55;font-weight:500;
+  background:
+    radial-gradient(ellipse 70% 45% at 50% -6%, #4d1c40 0%, transparent 70%),
+    radial-gradient(ellipse 55% 40% at 100% 105%, #2b1a4c 0%, transparent 70%),
+    var(--bg);
+  background-attachment:fixed;
+}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid var(--rose);outline-offset:2px}
+#app{max-width:1100px;margin:0 auto;padding:12px 16px 28px;display:flex;flex-direction:column;gap:12px}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.brand{font-family:var(--display);font-size:20px;letter-spacing:.04em;color:var(--rose);text-shadow:0 0 16px rgba(255,112,167,.3)}
+.brand b{font-weight:400;color:var(--holy)}
+.meta{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.btn-ghost{background:transparent;border:1px solid var(--line);border-radius:999px;padding:3px 12px;font-size:12px;cursor:pointer;color:var(--muted)}
+.btn-ghost:hover{color:var(--ink);border-color:var(--rose-dim)}
+
+/* setup */
+.setup{display:flex;flex-direction:column;gap:20px}
+.hero{padding:18px 0 4px;display:flex;flex-direction:column;gap:8px}
+.hero .eyebrow{font-size:12px;letter-spacing:.3em;color:var(--holy)}
+.hero h1{margin:0;font-family:var(--display);font-weight:400;font-size:clamp(36px,9vw,72px);line-height:1.02;color:var(--rose);text-wrap:balance;text-shadow:0 0 30px rgba(255,112,167,.25)}
+.hero h1 span{color:var(--holy);text-shadow:0 0 30px rgba(241,214,140,.2)}
+.hero p{margin:0;color:var(--muted);max-width:62ch}
+.sect{display:flex;flex-direction:column;gap:8px}
+.sect h2{margin:0;font-size:12px;letter-spacing:.25em;color:var(--holy);font-weight:700}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{min-width:52px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-weight:700;font-variant-numeric:tabular-nums}
+.seg button.on{border-color:var(--rose);background:var(--rose-dim)}
+.seg-note{font-size:12px;color:var(--muted)}
+.chars{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.char{
+  text-align:left;display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:12px;cursor:pointer;
+  background:var(--panel);border:1px solid var(--line)
+}
+.char.on{border-color:var(--rose);box-shadow:0 0 0 1px var(--rose),0 0 18px rgba(255,112,167,.25)}
+.char .nm{font-weight:700}
+.char .tx{font-size:12px;color:var(--muted);line-height:1.5}
+.gem{
+  position:relative;overflow:hidden;flex:none;width:38px;height:38px;border-radius:10px;display:grid;place-items:center;
+  background:var(--gem);color:#1a0f1d;font-family:var(--display);font-size:14px;box-shadow:0 0 0 2px var(--gem)
+}
+.gem img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.gem.oni{box-shadow:0 0 0 2px var(--rose),0 0 12px rgba(255,112,167,.65)}
+.dead .gem img{filter:grayscale(1)}
+.char .gem{width:60px;height:60px}
+.mepanel .gem{width:48px;height:48px}
+.preview{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.preview button{padding:0;border:0;background:none;cursor:zoom-in;display:flex;flex-direction:column;gap:4px;align-items:center;font-size:11px;color:var(--muted)}
+.preview img{width:132px;max-width:100%;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.preview .ptext{flex:1 1 220px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.preview .ptext b{color:var(--ink);font-size:15px}
+.art{height:190px;max-width:100%;border-radius:12px;box-shadow:0 0 0 2px var(--rose),0 0 28px rgba(255,112,167,.45);animation:pop .45s ease}
+.sheet .art{height:auto;width:200px;align-self:center}
+.sheet.zoom{width:min(420px,100%);align-items:center}
+.sheet.zoom img{width:100%;border-radius:12px;background:#fff}
+.zoombtn{margin-left:8px;vertical-align:baseline}
+.zoomnote{margin:8px 0 0;font-size:12px;line-height:1.5;color:var(--muted, #aaa);max-width:40ch}
+.start-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;bottom:0;z-index:5;padding-block:14px calc(12px + env(safe-area-inset-bottom, 0px));background:linear-gradient(to bottom,transparent,var(--bg) 40%)}
+
+/* players */
+.foes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.pl{
+  text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 9px;
+  display:flex;flex-direction:column;gap:5px;position:relative;min-width:0;cursor:default
+}
+.pickable{cursor:pointer}
+.pickable:hover{border-color:var(--rose-dim)}
+.target{border-color:var(--hp);box-shadow:0 0 0 1px var(--hp),0 0 16px rgba(255,93,122,.35)}
+.target::after{content:"対象";position:absolute;top:-9px;right:8px;background:var(--hp);color:#1a0f1d;font-size:10px;font-weight:700;padding:0 6px;border-radius:4px}
+.active{box-shadow:0 0 0 2px var(--holy),0 0 18px rgba(241,214,140,.28)!important}
+.dead{opacity:.4;filter:grayscale(.75)}
+.attacker{box-shadow:0 0 0 2px var(--warn),0 0 20px rgba(255,195,107,.5)!important}
+.defender{box-shadow:0 0 0 2px var(--hp),0 0 20px rgba(255,93,122,.55)!important}
+.attacker::before,.defender::before{position:absolute;top:-9px;left:8px;z-index:2;font-size:10px;font-weight:700;padding:0 6px;border-radius:4px}
+.attacker::before{content:"攻撃";background:var(--warn);color:#2a1d05}
+.defender::before{content:"標的";background:var(--hp);color:#1a0f1d}
+#arrows{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:30;overflow:visible}
+#arrows .shaft{fill:none;stroke:currentColor;stroke-width:5;stroke-linecap:round;stroke-dasharray:14 9;animation:flow .6s linear infinite}
+#arrows .glow{fill:none;stroke:currentColor;stroke-width:13;stroke-linecap:round;opacity:.22}
+#arrows .head{fill:currentColor}
+#arrows .preview .shaft{stroke-width:3;stroke-dasharray:5 7;opacity:.85}
+#arrows .preview .glow{display:none}
+@keyframes flow{to{stroke-dashoffset:-23}}
+.hit{animation:hit .45s ease}
+@keyframes hit{0%,100%{transform:none}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
+.phead{display:flex;align-items:center;gap:7px;min-width:0}
+.pname{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.role{flex:none;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.role.sister{background:var(--holy);border-color:var(--holy);color:#2a1d05}
+.role.succubus{background:var(--rose);border-color:var(--rose);color:#2a0716}
+.role.fallen{background:var(--fallen);border-color:var(--fallen);color:#150a30}
+.role.private{background:transparent;border-style:dashed}
+.role.private.sister{color:var(--holy);border-color:var(--holy)}
+.role.private.succubus{color:var(--rose);border-color:var(--rose)}
+.role.private.fallen{color:var(--fallen);border-color:var(--fallen)}
+.bar{position:relative;height:16px;border-radius:5px;background:#12091a;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#b8354e,var(--hp));transition:width .4s ease}
+.bar b{position:relative;display:block;font-size:11px;line-height:16px;padding-left:6px;font-variant-numeric:tabular-nums;text-shadow:0 1px 1px #000}
+.stats{display:flex;gap:8px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.stats .vp{color:var(--holy)}
+.pfield{display:flex;gap:4px;flex-wrap:wrap}
+.badge{font-size:10px;padding:0 6px;border-radius:4px;background:#3b2440;color:#f2c1dc}
+.badge.seal{background:#4a1b2c;color:#ffb3c9}
+
+/* field */
+.field{display:grid;grid-template-columns:1.6fr 1fr;gap:8px}
+.stage{
+  position:relative;min-height:200px;border-radius:14px;padding:14px;overflow:hidden;
+  background:radial-gradient(circle at 50% 45%, rgba(255,112,167,.08), transparent 65%), var(--bg2);
+  border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;text-align:center
+}
+.duel{display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap}
+.who{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;max-width:120px}
+.who .gem{width:64px;height:64px;font-size:22px;border-radius:14px}
+.arrow{font-family:var(--display);color:var(--rose);font-size:22px}
+.stitle{font-family:var(--display);font-size:22px;letter-spacing:.04em}
+.chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.chip{
+  --elc:var(--el-none);
+  border:1px solid var(--elc);color:var(--elc);background:color-mix(in srgb,var(--elc) 12%,transparent);
+  border-radius:7px;padding:1px 8px;font-size:12px;white-space:nowrap
+}
+.chip.heart{border-style:double;border-width:3px}
+.power{font-size:13px;color:var(--muted)}
+.power b{font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums}
+.flips{display:flex;flex-direction:column;gap:3px;font-size:12px}
+.flips .ok{color:var(--hp)} .flips .ng{color:var(--muted)}
+.result{font-family:var(--display);font-size:24px;animation:pop .35s ease}
+.result.bad{color:var(--hp)} .result.ok{color:var(--good)} .result.gold{color:var(--holy)} .result.rose{color:var(--rose)}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+
+.log{
+  margin:0;padding:10px 12px;list-style:none;border-radius:14px;background:var(--bg2);border:1px solid var(--line);
+  height:200px;overflow-y:auto;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px
+}
+.log li.turn{color:var(--holy);margin-top:4px}
+.log li.hit{color:#ffb2c0}
+.log li.ko{color:var(--hp);font-weight:700}
+.log li.good{color:var(--good)}
+.log li.rose{color:var(--rose);font-weight:700}
+.log li.holy{color:var(--holy);font-weight:700}
+.log li.judge{color:var(--holy)}
+
+/* me */
+.me{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.mepanel{position:relative;border:1px solid transparent;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-radius:10px;padding:4px}
+.mepanel .bar{flex:1 1 160px;height:20px}
+.mepanel .bar b{line-height:20px;font-size:12px}
+.mepanel .stats{font-size:13px}
+.prompt{font-size:14px;min-height:22px}
+.prompt strong{color:var(--rose)}
+.info{font-size:12px;color:var(--muted);min-height:20px;padding:7px 10px;border-radius:10px;background:#1a0f20;white-space:pre-line}
+.info b{color:var(--ink)}
+.controls{display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  border:1px solid var(--rose-dim);background:linear-gradient(#ff8fbb,#e8568f);color:#2a0716;font-weight:700;
+  padding:9px 16px;border-radius:10px;cursor:pointer
+}
+.btn:disabled{background:#3b2a40;border-color:#3b2a40;color:#8f7d92;cursor:not-allowed}
+.btn.holy{background:linear-gradient(#f7e2a6,#d9b75b);border-color:var(--holy-dim);color:#2a1d05}
+.btn.sub{background:var(--panel-hi);border-color:var(--line);color:var(--ink);font-weight:500}
+.btn.sub:hover:not(:disabled){border-color:var(--rose-dim)}
+.rowlabel{font-size:11px;color:var(--muted);letter-spacing:.15em}
+.hand{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.card{
+  --elc:var(--el-none); --kc:var(--k-atk);
+  position:relative;min-height:132px;max-width:100%;border-radius:10px;cursor:pointer;padding:6px 7px 7px;text-align:left;
+  background:linear-gradient(165deg,color-mix(in srgb,var(--kc) 100%,#fff 6%),var(--kc) 70%);
+  border:2px solid color-mix(in srgb,var(--elc) 65%,transparent);
+  display:flex;flex-direction:column;gap:3px;transition:transform .12s ease, box-shadow .12s ease, opacity .12s
+}
+.card:hover{transform:translateY(-2px)}
+.card.sel{transform:translateY(-6px);box-shadow:0 0 0 2px var(--rose),0 6px 18px rgba(255,112,167,.35)}
+.card.off{opacity:.36}
+.card.usable{box-shadow:0 0 0 1px var(--elc),0 0 14px color-mix(in srgb,var(--elc) 45%,transparent)}
+.card .ord{position:absolute;top:-8px;left:-6px;background:var(--rose);color:#2a0716;border-radius:50%;width:18px;height:18px;font-size:11px;display:grid;place-items:center;font-weight:700}
+.ctop{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted)}
+.marks{letter-spacing:.05em;color:var(--ink)}
+.trig{font-size:10px;border:1px solid var(--line);border-radius:4px;padding:0 4px;font-variant-numeric:tabular-nums}
+.cname{font-weight:700;font-size:12.5px;line-height:1.3;overflow-wrap:anywhere}
+.cnums{display:flex;gap:5px;align-items:center;flex-wrap:wrap;font-size:12px;font-variant-numeric:tabular-nums}
+.cnums .atk{color:#ff9db4} .cnums .def{color:#9ccfff} .cnums .cost{color:var(--warn)}
+.elc{font-style:normal;font-size:10px;font-weight:700;background:var(--elc);color:#1a0f1d;border-radius:4px;padding:0 4px}
+.csub{font-size:10.5px;color:var(--muted);line-height:1.35}
+.cheart{margin-top:auto;font-size:10.5px;color:#ffb9d3;border-top:1px dashed var(--rose-dim);padding-top:3px;line-height:1.35}
+.cheart.on{color:var(--rose);font-weight:700}
+.k-atk{--kc:var(--k-atk)} .k-def{--kc:var(--k-def)} .k-sup{--kc:var(--k-sup)} .k-mag{--kc:var(--k-mag)} .k-judge{--kc:var(--k-judge)}
+.el-none{--elc:var(--el-none)} .el-fire{--elc:var(--el-fire)} .el-water{--elc:var(--el-water)} .el-thunder{--elc:var(--el-thunder)}
+.empty{color:var(--muted);font-size:12px;padding:10px 0}
+.myfield{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.fcard{border:1px solid var(--elc);background:var(--k-mag);border-radius:8px;padding:3px 9px;font-size:12px;cursor:pointer}
+.fcard.sel{box-shadow:0 0 0 2px var(--rose)}
+.fcard.off{opacity:.4}
+
+/* floating */
+/* オンライン対戦 */
+.modeseg{margin-top:4px}
+.netlabel{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);max-width:320px}
+.netrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.netlabel input,.netrow input{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-width:0;flex:1 1 180px;max-width:420px}
+.netlabel input{flex:none;width:100%}
+.netrow input:focus,.netlabel input:focus{outline:2px solid var(--rose);outline-offset:1px}
+#netCode{letter-spacing:.3em;text-transform:uppercase;font-weight:700;flex:0 1 200px}
+.roomcode{font-family:var(--display);font-size:clamp(40px,12vw,64px);letter-spacing:.18em;color:var(--holy);line-height:1}
+.members{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.members li{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
+.members em{font-style:normal;font-size:10px;font-weight:700;margin-left:6px;padding:0 6px;border-radius:999px;background:var(--rose-dim);color:var(--ink)}
+.members small{color:var(--muted)}
+.netmsg{margin:0;font-size:13px;color:var(--muted)}
+.netmsg.bad{color:var(--hp)}
+.netmsg a{color:var(--rose);overflow-wrap:anywhere}
+.seg button:disabled{opacity:.35;cursor:not-allowed}
+/* 太陽のお守り・昇天弓のカットイン */
+#cutin{position:fixed;inset:0;z-index:45;pointer-events:none;display:grid;place-items:center;overflow:hidden}
+#cutin:empty{display:none}
+.ci{position:absolute;inset:0;display:grid;place-items:center;animation:ciout 2.3s ease forwards}
+.ci-bg{position:absolute;inset:0}
+.ci-rays{position:absolute;left:50%;top:50%;width:170vmax;height:170vmax;margin:-85vmax 0 0 -85vmax;border-radius:50%;
+  -webkit-mask-image:radial-gradient(circle,#000 0%,transparent 55%);mask-image:radial-gradient(circle,#000 0%,transparent 55%)}
+.ci-body{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:16px}
+.ci-card{width:min(170px,38vw);border-radius:12px;background:#fff;animation:cicard 2.3s cubic-bezier(.2,1.5,.4,1) forwards}
+.ci-title{font-family:var(--display);font-size:clamp(36px,10vw,68px);line-height:1.05;letter-spacing:.04em;animation:cititle 2.3s cubic-bezier(.2,1.4,.4,1) forwards}
+.ci-sub{font-size:clamp(14px,3.6vw,18px);font-weight:700;color:#fff;text-shadow:0 2px 6px #000;animation:cisub 2.3s ease forwards}
+.ci-spark{position:absolute;left:50%;top:55%;width:9px;height:9px;border-radius:50%;animation:cispark 1.7s ease-out forwards}
+/* 太陽のお守り：金色の光と回る光線 */
+.ci.sun .ci-bg{background:radial-gradient(circle at 50% 48%,rgba(255,244,190,.95) 0%,rgba(255,196,70,.6) 28%,rgba(120,60,0,.35) 55%,rgba(26,15,29,.1) 80%);animation:cisun 2.3s ease forwards}
+.ci.sun .ci-rays{background:repeating-conic-gradient(from 0deg,rgba(255,230,140,.55) 0deg 5deg,transparent 5deg 15deg);animation:cispin 2.3s linear forwards}
+.ci.sun .ci-card{box-shadow:0 0 0 3px #ffe08a,0 0 70px 16px rgba(255,210,90,.85)}
+.ci.sun .ci-title{color:#fff6cf;text-shadow:0 0 26px rgba(255,190,60,1),0 3px 0 #8a5200}
+.ci.sun .ci-spark{background:#ffe27a;box-shadow:0 0 12px 3px #ffc53a}
+/* 昇天弓：白い閃光と雷光の矢 */
+.ci.bow .ci-bg{background:radial-gradient(circle at 50% 50%,rgba(60,30,90,.2) 0%,rgba(10,4,20,.88) 75%);animation:cibow 2.3s ease forwards}
+.ci.bow .ci-rays{background:repeating-conic-gradient(from 0deg,rgba(255,217,77,.35) 0deg 2deg,transparent 2deg 22deg);animation:cispin 2.3s linear reverse forwards}
+.ci.bow .ci-card{box-shadow:0 0 0 3px var(--el-thunder),0 0 70px 14px rgba(255,217,77,.7)}
+.ci.bow .ci-title{color:var(--el-thunder);text-shadow:0 0 22px rgba(255,217,77,.95),0 3px 0 #5a3d00}
+.ci.bow .ci-spark{background:#fff;box-shadow:0 0 10px 3px var(--el-thunder)}
+.ci-flash{position:absolute;inset:0;background:#fff;animation:ciflash .5s ease-out forwards}
+.ci-streak{position:absolute;left:-30vw;top:50%;width:160vw;height:6px;border-radius:6px;transform:rotate(-14deg);
+  background:linear-gradient(90deg,transparent,#fff 40%,var(--el-thunder) 70%,transparent);box-shadow:0 0 24px 6px rgba(255,217,77,.8);animation:cistreak 2.3s ease-out forwards}
+.quake{animation:quake .6s ease}
+@keyframes quake{0%,100%{transform:none}15%{transform:translate(-8px,4px)}30%{transform:translate(7px,-5px)}45%{transform:translate(-6px,3px)}60%{transform:translate(5px,-2px)}80%{transform:translate(-2px,1px)}}
+@keyframes ciout{0%{opacity:0}8%{opacity:1}82%{opacity:1}100%{opacity:0}}
+@keyframes cisun{0%{transform:scale(.3);opacity:0}15%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes cibow{0%{opacity:0}10%{opacity:1}100%{opacity:1}}
+@keyframes cispin{from{transform:rotate(0) scale(.6)}to{transform:rotate(80deg) scale(1.1)}}
+@keyframes cicard{0%{transform:scale(.2) rotate(-18deg);opacity:0}18%{transform:scale(1.12) rotate(4deg);opacity:1}30%{transform:scale(1) rotate(0)}100%{transform:scale(1.04)}}
+@keyframes cititle{0%,12%{transform:scale(2.4);opacity:0;letter-spacing:.5em}30%{transform:scale(1);opacity:1;letter-spacing:.04em}100%{transform:scale(1.03)}}
+@keyframes cisub{0%,28%{opacity:0;transform:translateY(10px)}42%,100%{opacity:1;transform:none}}
+@keyframes cispark{0%{transform:translate(-50%,-50%) scale(.4);opacity:1}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.2);opacity:0}}
+@keyframes ciflash{0%{opacity:.95}100%{opacity:0}}
+@keyframes cistreak{0%,6%{transform:translateX(-120vw) rotate(-14deg);opacity:0}16%{transform:translateX(0) rotate(-14deg);opacity:1}40%{opacity:.85}100%{transform:translateX(30vw) rotate(-14deg);opacity:0}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:40}
+.float{position:fixed;transform:translate(-50%,0);font-weight:700;font-size:19px;text-shadow:0 2px 4px #000;animation:rise 1.1s ease forwards;white-space:nowrap}
+.float.hp{color:var(--hp)} .float.heal{color:var(--good)} .float.draw{color:var(--ink);font-size:14px} .float.rose{color:var(--rose)}
+@keyframes rise{from{opacity:0;transform:translate(-50%,6px)}15%{opacity:1}to{opacity:0;transform:translate(-50%,-38px)}}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:50;background:rgba(10,4,14,.74);display:grid;place-items:center;padding:16px}
+.sheet{
+  width:min(640px,100%);max-height:calc(100% - 32px);overflow-y:auto;background:var(--bg2);border:1px solid var(--rose-dim);
+  border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px
+}
+.sheet h2{margin:0;font-family:var(--display);font-weight:400;color:var(--rose);font-size:24px;text-wrap:balance}
+.sheet h3{margin:6px 0 0;font-size:14px;color:var(--holy)}
+.sheet p,.sheet li{margin:0;font-size:13px;max-width:66ch}
+.sheet ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
+.sheet .muted{color:var(--muted)}
+.sheet .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.sheet .hand{grid-template-columns:repeat(auto-fill,minmax(104px,1fr))}
+.bigrole{font-family:var(--display);font-size:40px;line-height:1.1}
+.bigrole.sister{color:var(--holy)} .bigrole.succubus{color:var(--rose)} .bigrole.fallen{color:var(--fallen)}
+.plist{display:flex;flex-direction:column;gap:6px}
+.plist button{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);cursor:pointer;text-align:left}
+.plist button:hover{border-color:var(--rose)}
+.tbl-wrap{overflow-x:auto}
+table.score{border-collapse:collapse;font-size:13px;width:100%;font-variant-numeric:tabular-nums}
+table.score th,table.score td{border-bottom:1px solid var(--line);padding:6px 6px;text-align:left;white-space:nowrap}
+table.score td.nm{white-space:normal;min-width:5.5em}
+table.score th{color:var(--muted);font-weight:500}
+table.score td.num{text-align:right}
+.plus{color:var(--good)} .minus{color:var(--hp)}
+
+@media (max-width:760px){
+  .field{grid-template-columns:1fr}
+  .log{height:130px}
+  .stage{min-height:170px}
+  .foes{grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px}
+  .pl{padding:6px 7px;gap:4px}
+  .pl .gem{width:26px;height:26px;font-size:11px;border-radius:7px}
+  .who .gem{width:52px;height:52px}
+  .art{height:150px}
+  .pname{font-size:11.5px}
+  .stats{gap:5px;font-size:10px}
+  .hand{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand">サキュバス<b>シスターズ</b></div>
+    <div class="tools">
+      <span class="meta" id="meta"></span>
+      <button class="btn-ghost" id="btnRules" type="button">ルール</button>
+      <button class="btn-ghost" id="btnSpeed" type="button">速度：普通</button>
+      <button class="btn-ghost" id="btnRestart" type="button">タイトルへ</button>
+    </div>
+  </header>
+
+  <section class="setup" id="setup"></section>
+
+  <section id="game" hidden>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="foes" id="foes" aria-label="ほかのプレイヤー"></div>
+      <div class="field">
+        <div class="stage" id="stage" aria-live="polite"></div>
+        <ol class="log" id="log" aria-label="記録"></ol>
+      </div>
+      <section class="me" aria-label="あなた">
+        <div class="mepanel" id="mePanel"></div>
+        <div class="prompt" id="prompt"></div>
+        <div class="info" id="info"></div>
+        <div class="controls" id="controls"></div>
+        <div class="myfield" id="myField"></div>
+        <div class="hand" id="hand"></div>
+      </section>
+    </div>
+  </section>
+</div>
+<svg id="arrows" aria-hidden="true"></svg>
+<div id="fx"></div>
+<div id="cutin" aria-live="assertive"></div>
+<div class="modal" id="modal" hidden></div>
+
+<script>
+'use strict';
+/* ================================================================
+   カードリスト
+   GFカードシート【印刷】260714 _120枚Ver の A〜V 列をもとに、強化案と回復カードの範囲変更を反映したもの
+   （Googleドライブの「GFカードシート【強化版】260927 _120枚Ver」と同じ内容）。
+   シートで行をコピーしてこの中に貼り替えれば、カードを更新できる。
+   ================================================================ */
+const CARD_TSV = `
+採用	面付済	ID	カード種	カード名(名称仮)	範囲	属性	攻撃	防御	エキスパ	トリガー	コスト	効果	→♥カード	カード種	カード名(名称仮)	範囲	属性	攻撃	防御	コスト	効果
+TRUE	FALSE	1	▲	こんぼう	単体	〔無〕	6	-	Ba	A	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	2	▲	こんぼう	単体	〔無〕	6	-	Ba	A	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	3	▲	どうのナイフ	単体	〔無〕	8	-	Ba	B	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	4	▲	どうのナイフ	単体	〔無〕	8	-	Ba	B	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	5	▲	こうてつのやり	単体	〔無〕	12	-	Ba	C	-
+TRUE	FALSE	6	▲	こうてつのやり	単体	〔無〕	12	-	Ba	C	-	-
+TRUE	FALSE	7	▲	エクスカリバー	単体	〔無〕	30	-	Ba	D	-	-
+TRUE	FALSE	8	▲, ○	いばらのムチ	単体	〔無〕	7	4	1st	A	-	-
+TRUE	FALSE	9	▲, ○	はがねのムチ	単体	〔無〕	8	4	1st	B	-	-
+TRUE	FALSE	10	▲, ○	ローズウィップ	単体	〔無〕	10	10	1st	C	-	-
+TRUE	FALSE	11	▲	エクスカリバーのさや	単体	〔無〕	18	1	Ba	D	-	-
+TRUE	FALSE	12	▲	ゴーストソード	単体	〔無〕	10	-	Ba	E	-	《吸収》相手に与えたダメージ分、自分のHPを回復する。
+TRUE	FALSE	13	▲	ゴーストソード	単体	〔無〕	10	-	Ba	E	-	《吸収》相手に与えたダメージ分、自分のHPを回復する。
+TRUE	FALSE	14	▲	リアルゴーストソード	単体	〔無〕	14	-	1st	D	-	《吸収》相手に与えたダメージ分、自分のHPを回復する。
+TRUE	FALSE	15	▲	じゃしんのつるぎ	単体	〔無〕	20	-	1st	E	-	ダメージ判定後、相手に与えたダメージと同数の〔無〕ダメージを自分に与える（自分に与えるダメージは○防御カードで軽減することができない）。
+TRUE	FALSE	16	▲	どくばり	単体	〔無〕	1	-	Ba	A	-	"《即死》このカードのダメージを防御で0以下にできなかった場合、防御側のHPは0になる。
+この攻撃にはダメージ、属性を追加できない。《追撃不可》"
+TRUE	FALSE	17	▲	どくばり	単体	〔無〕	1	-	Ba	A	-	"《即死》このカードのダメージを防御で0以下にできなかった場合、防御側のHPは0になる。
+この攻撃にはダメージ、属性を追加できない。《追撃不可》"
+TRUE	FALSE	18	▲	アサシンダガー	単体	〔無〕	3	-	Ba	B	-	"《即死》このカードのダメージを防御で0以下にできなかった場合、防御側のHPは0になる。
+この攻撃にはダメージ、属性を追加できない。《追撃不可》"
+TRUE	FALSE	19	▲	ほのおのやいば	単体	〔火〕	6	-	Ba	C	-	-
+TRUE	FALSE	20	▲	ほのおのやいば	単体	〔火〕	6	-	Ba	C	-	-
+TRUE	FALSE	21	▲	こおりのやいば	単体	〔水〕	7	-	Ba	D	-	-
+TRUE	FALSE	22	▲	こおりのやいば	単体	〔水〕	7	-	Ba	D	-	-
+TRUE	FALSE	23	▲	いかづちのきば	単体	〔雷〕	6	-	Ba	E	-	-
+TRUE	FALSE	24	▲	いかづちのきば	単体	〔雷〕	6	-	Ba	E	-	-
+TRUE	FALSE	25	▲	ふきや	単体	〔無〕	5	-	Ba	A	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	26	▲	ふきや	単体	〔無〕	5	-	Ba	A	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	27	▲	クロスボウ	単体	〔無〕	8	-	Ba	B	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	28	▲	クロスボウ	単体	〔無〕	8	-	Ba	B	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	29	▲	かぜきりの弓	単体	〔無〕	8	-	Ba	C	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	30	▲	かぜきりの弓	単体	〔無〕	8	-	Ba	C	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	31	▲	マグマのつえ	単体	〔火〕	5	-	1st	A	-	"《追撃》続けてもう1枚▲カードを出しても良い。
+攻撃の属性を〔火〕に変えてもよい。"
+TRUE	FALSE	32	▲	うみなりのつえ	単体	〔水〕	5	-	1st	B	-	"《追撃》続けてもう1枚▲カードを出しても良い。
+攻撃の属性を〔水〕に変えてもよい。"
+TRUE	FALSE	33	▲	いかづちのつえ	単体	〔雷〕	5	-	1st	C	-	"《追撃》続けてもう1枚▲カードを出しても良い。
+攻撃の属性を〔雷〕に変えてもよい。"
+TRUE	FALSE	34	▲	ほのおのブーメラン	A, B, C	〔火〕	4	-	Ba	D	-	-
+TRUE	FALSE	35	▲	ほのおのブーメラン	A, B, C	〔火〕	4	-	Ba	D	-	-
+TRUE	FALSE	36	▲	メテオエッジ	A, E	〔火〕	10	-	Ba	A	-	-
+TRUE	FALSE	37	▲	こおりのブーメラン	B, C, D	〔水〕	5	-	Ba	E	-	-
+TRUE	FALSE	38	▲	こおりのブーメラン	B, C, D	〔水〕	5	-	Ba	E	-	-
+TRUE	FALSE	39	▲	アイスエッジ	B, C	〔水〕	9	-	Ba	B	-	-
+TRUE	FALSE	40	▲	かみなりブーメラン	C, D, E	〔雷〕	4	-	Ba	D	-	-
+TRUE	FALSE	41	▲	かみなりブーメラン	C, D, E	〔雷〕	4	-	Ba	D	-	-
+TRUE	FALSE	42	▲	サンダーエッジ	D, E	〔雷〕	11	-	Ba	C	-	-
+TRUE	FALSE	43	▲	昇天弓	単体	〔雷〕	1	-	1st	D	-	"昇天時、手札にあれば必ず出して使用する。
+その場合、攻撃効果は「【ランダム：B D】〔無〕30ダメージ」になる。"
+TRUE	FALSE	44	○	なべのふた	単体	〔無〕	-	2	Ba	A	-	防御に使ったら、カードを1枚引く。
+TRUE	FALSE	45	○	なべのふた	単体	〔無〕	-	2	Ba	A	-	防御に使ったら、カードを1枚引く。
+TRUE	FALSE	46	○	かわのたて	単体	〔無〕	-	3	Ba	B	-	-
+TRUE	FALSE	47	○	かわのたて	単体	〔無〕	-	3	Ba	B	-	-
+TRUE	FALSE	48	○	せいどうのたて	単体	〔無〕	-	5	Ba	C	-	-
+TRUE	FALSE	49	○	せいどうのたて	単体	〔無〕	-	5	Ba	C	-	-
+TRUE	FALSE	50	○	うろこのたて	単体	〔無〕	-	7	Ba	D	-	-
+TRUE	FALSE	51	○	うろこのたて	単体	〔無〕	-	7	Ba	D	-	-
+TRUE	FALSE	52	○	はがねのたて	単体	〔無〕	-	9	Ba	E	-	-
+TRUE	FALSE	53	○	はがねのたて	単体	〔無〕	-	9	Ba	E	-	-
+TRUE	FALSE	54	○	神の大盾	単体	〔無〕	-	30	Ba	B	-	-
+TRUE	FALSE	55	○	マジックシールド	単体	〔無〕	-	10	1st	E	-	《反撃》{受けたダメージ}を、プレイヤー1人を選んで与える。
+TRUE	FALSE	56	○	ミラーシールド	単体	〔無〕	-	0	1st	A	-	《反射》☆魔法による攻撃を相手に跳ね返す。
+TRUE	FALSE	57	○	ビッグシールド	単体	〔無〕	-	0	1st	B	-	《無効》〔無〕属性による攻撃を打ち消す。
+TRUE	FALSE	58	○	ほのおのたて	単体	〔火〕	-	6	Ba	A	-	-
+TRUE	FALSE	59	○	ほのおのたて	単体	〔火〕	-	6	Ba	A	-	-
+TRUE	FALSE	60	○	プロミネンスのたて	単体	〔火〕	-	10	1st	C	-	-
+TRUE	FALSE	61	○	みかがみのたて	単体	〔水〕	-	7	Ba	B	-	-
+TRUE	FALSE	62	○	みかがみのたて	単体	〔水〕	-	7	Ba	B	-	-
+TRUE	FALSE	63	○	アクエリアスガード	単体	〔水〕	-	15	1st	D	-	-
+TRUE	FALSE	64	○	ふうまのたて	単体	〔雷〕	-	4	Ba	C	-	-
+TRUE	FALSE	65	○	ふうまのたて	単体	〔雷〕	-	4	Ba	C	-	-
+TRUE	FALSE	66	○	ルーンバックラー	単体	〔雷〕	-	11	1st	E	-	-
+TRUE	FALSE	67	○	ミラーフォース	単体	〔無〕	-	-	Ba	C	-	《全反射》すべての行動を相手に跳ね返す。
+TRUE	FALSE	68	☆, ▲	＜火の玉＞	A, B, C	〔火〕	7	-	Ba	D	HP-2	-
+TRUE	FALSE	69	☆, ▲	＜マグマ＞	D, E	〔火〕	14	-	Ba	E	HP-4	-
+TRUE	FALSE	70	☆, ▲	＜氷の柱＞	単体	〔水〕	9	-	Ba	A	HP-2	-
+TRUE	FALSE	71	☆, ▲	＜滝＞	単体	〔水〕	22	-	Ba	B	HP-12	-
+TRUE	FALSE	72	☆, ▲	＜稲妻＞	全体	〔雷〕	5	-	Ba	C	HP-生存✕1	-
+TRUE	FALSE	73	☆, ▲	＜雷霆＞	全体	〔雷〕	9	-	Ba	D	HP-生存✕3	-
+TRUE	FALSE	74	☆, ○	＜乱気流＞	単体	〔無〕	-	-	Ba	A	HP-5	《反射》☆魔法による攻撃を相手に跳ね返す。
+TRUE	FALSE	75	☆, ○	＜石壁＞	単体	〔無〕	-	-	Ba	A	HP-5	《無効》〔無〕属性による攻撃を打ち消す。
+TRUE	FALSE	76	△	ハートのせいすい	自分	〔無〕	-	-	Ba	B	-	HPを10回復する。
+TRUE	FALSE	77	△	ハートのせいすい	自分	〔無〕	-	-	Ba	B	-	HPを10回復する。
+TRUE	FALSE	78	△	天の川のおいしい水	自分	〔無〕	-	-	Ba	C	-	HPを15回復する。
+TRUE	FALSE	79	△	ソーサリーリング	単体	〔無〕	-	-	Ba	C	-	《活力》続けてもう1枚☆カードを出しても良い。このターン中、魔法を消費HP無しで使える。
+TRUE	FALSE	80	△	ドキドキなみだ	単体	〔無〕	-	-	1st	D	-	"対象を1人選ぶ。対象は山札の上からカードを1枚表にする。
+B・D：HPを10回復する。／A・C・E：HPを10減らす。これは防御できない。"
+TRUE	FALSE	81	△	ドキドキなみだ	単体	〔無〕	-	-	1st	D	-	"対象を1人選ぶ。対象は山札の上からカードを1枚表にする。
+B・D：HPを10回復する。／A・C・E：HPを10減らす。これは防御できない。"
+TRUE	FALSE	82	△	夜魔のホウキ	単体	〔無〕	-	-	1st	E	-	"対象を1人選ぶ。対象は、場に置かれた魔法を全て破棄する。
+破棄できる魔法がなければ、手札を1枚選んで破棄する。"
+TRUE	FALSE	83	△	太陽のお守り	単体	〔無〕	-	-	1st	E	-	"自分のHPが0になった時、手札にあるなら公開する。
+自分のHPを10回復し、このカードをゲームから除外する。"
+TRUE	FALSE	84	△	誓いの祈り	単体	〔無〕	-	-	Ba	A	-	"手札を好きな枚数捨て、その後山札から捨てた枚数分引く。
+その後、続けてもう1枚カードを出してプレイしても良い。"
+TRUE	FALSE	85	△	誓いの祈り	単体	〔無〕	-	-	Ba	A	-	"手札を好きな枚数捨て、その後山札から捨てた枚数分引く。
+その後、続けてもう1枚カードを出してプレイしても良い。"
+TRUE	FALSE	86	△	誓いの祈り	単体	〔無〕	-	-	Ba	A	-	"手札を好きな枚数捨て、その後山札から捨てた枚数分引く。
+その後、続けてもう1枚カードを出してプレイしても良い。"
+TRUE	FALSE	87	△	寄進の行い	単体	〔無〕	-	-	Ba	B	-	"対象を1人選ぶ。自分とそのプレイヤーはお互い手札を1枚ずつ選択し、全員に公開した上で選択したカードを入れ替える。
+その後、続けてもう1枚カードを出してプレイしても良い。"
+TRUE	FALSE	88	△	寄進の行い	単体	〔無〕	-	-	Ba	B	-	"対象を1人選ぶ。自分とそのプレイヤーはお互い手札を1枚ずつ選択し、全員に公開した上で選択したカードを入れ替える。
+その後、続けてもう1枚カードを出してプレイしても良い。"
+TRUE	FALSE	89	△	許しの告解	単体	〔無〕				C		"自分の役職を公開する。サキュバスなら、〔顕現〕効果処理を行う。
+その後、手札を1枚引き、続けてもう1枚カードを出してプレイしても良い。"
+TRUE	FALSE	90	△	許しの告解	単体	〔無〕				C		"自分の役職を公開する。サキュバスなら、〔顕現〕効果処理を行う。
+その後、手札を1枚引き、続けてもう1枚カードを出してプレイしても良い。"
+TRUE	FALSE	91	△	秘密の懺悔	単体	〔無〕				D		"プレイヤーをひとり選ぶ。相手の役職カードを自分だけ確認する。
+その後、選んだプレイヤーにカードを1枚渡す。"
+TRUE	FALSE	92	△	秘密の懺悔	単体	〔無〕				D		"プレイヤーをひとり選ぶ。相手の役職カードを自分だけ確認する。
+その後、選んだプレイヤーにカードを1枚渡す。"
+TRUE	FALSE	93	†, ▲	聖なるわからせ棒	単体	〔無〕	20	-	1st	E	-	"正体を明かしているシスターのみが使用できる。
+サキュバスはこの攻撃中、天罰カードを使用して防御できない。
+【断罪成功】サキュバスは[顕現]の際に手札補充を行えない。
+【断罪失敗】攻撃失敗。自分に〔無〕20ダメージ(防御可能)、手札を1枚選び捨てる。"
+TRUE	FALSE	94	†, ▲	聖なるわからせ棒	単体	〔無〕	20	-	1st	E	-	"正体を明かしているシスターのみが使用できる。
+サキュバスはこの攻撃中、天罰カードを使用して防御できない。
+【断罪成功】サキュバスは[顕現]の際に手札補充を行えない。
+【断罪失敗】攻撃失敗。自分に〔無〕20ダメージ(防御可能)、手札を1枚選び捨てる。"
+TRUE	FALSE	95	†, ▲	聖なるわからせ棒	単体	〔無〕	20	-	1st	E	-	"正体を明かしているシスターのみが使用できる。
+サキュバスはこの攻撃中、天罰カードを使用して防御できない。
+【断罪成功】サキュバスは[顕現]の際に手札補充を行えない。
+【断罪失敗】攻撃失敗。自分に〔無〕20ダメージ(防御可能)、手札を1枚選び捨てる。"
+TRUE	FALSE	96	†, ▲	聖なるわからせ竿	単体	〔無〕	14	-	1st	A	-	"正体を明かしているシスターのみが使用できる。
+《追撃》続けてもう1枚▲カードを出しても良い。
+【断罪成功】サキュバスは[顕現]の際に手札補充を行えない。
+【断罪失敗】攻撃失敗。手札を2枚選び捨てる。"
+TRUE	FALSE	97	†, ▲	聖なるわからせ竿	単体	〔無〕	14	-	1st	A	-	"正体を明かしているシスターのみが使用できる。
+《追撃》続けてもう1枚▲カードを出しても良い。
+【断罪成功】サキュバスは[顕現]の際に手札補充を行えない。
+【断罪失敗】攻撃失敗。手札を2枚選び捨てる。"
+TRUE	FALSE	98	†, ▲	聖なるちくりんちょ	単体	〔無〕	2	-	1st	B	-	"正体を明かしているシスターのみが使用できる。
+【断罪成功】サキュバスは[顕現]の際にHP修正を行えない。
+【断罪失敗】攻撃失敗。自分に「〔無〕15ダメージ《即死》」を与える（防御可能）。"
+TRUE	FALSE	99	†, ▲	聖なるちくりんちょ	単体	〔無〕	2	-	1st	B	-	"正体を明かしているシスターのみが使用できる。
+【断罪成功】サキュバスは[顕現]の際にHP修正を行えない。
+【断罪失敗】攻撃失敗。自分に「〔無〕15ダメージ《即死》」を与える（防御可能）。"
+TRUE	FALSE	100	†, ○	「立場をわからせる」	単体	〔無〕	-	-	1st	C	-	"♥カードを用いた攻撃にのみ使用できる。
+♥カードを用いた攻撃を無効にする。サキュバスは次の自身ターン開始まで♥カードを使用できない。"
+TRUE	FALSE	101	▲	ホーリーランス	単体	〔無〕	13	-	Ba	D	-	-		♥, ▲	サキュバスブレード	単体	〔無〕	25	-	-	-
+TRUE	FALSE	102	▲	ホーリーランス	単体	〔無〕	13	-	Ba	D	-	-		♥, ▲	サキュバスブレード	単体	〔無〕	25	-	-	-
+TRUE	FALSE	103	▲	けんじゃのやり	単体	〔無〕	15	-	Ba	E	-	-		♥, ▲	あくまのキッス	全体	〔無〕	10	-	-	各プレイヤーこの攻撃中、防御カードを1枚までしか使えない。
+TRUE	FALSE	104	▲	けんじゃのやり	単体	〔無〕	15	-	Ba	E	-	-		♥, ▲	あくまのキッス	全体	〔無〕	10	-	-	各プレイヤーこの攻撃中、防御カードを1枚までしか使えない。
+TRUE	FALSE	105	▲	しにがみのかま	単体	〔無〕	10	-	1st	A	-	"《即死》このカードのダメージを防御で0以下にできなかった場合、防御側のHPは0になる。
+この攻撃にはダメージ、属性を追加できない。《追撃不可》"		♥, ▲	「ざぁ～こ♥」	単体	〔無〕	20	-	-	"《即死》このカードのダメージを防御で0以下にできなかった場合、防御側のHPは0になる。
+この攻撃にはダメージ、属性を追加できない。《追撃不可》"
+TRUE	FALSE	106	▲	グリムシューター	単体	〔無〕	9	-	Ba	B	-	《追撃》続けてもう1枚▲カードを出しても良い。		♥, ▲	ナイトスナイパー	単体	〔無〕	12	-	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	107	▲	グリムシューター	単体	〔無〕	9	-	Ba	B	-	《追撃》続けてもう1枚▲カードを出しても良い。		♥, ▲	ナイトスナイパー	単体	〔無〕	12	-	-	《追撃》続けてもう1枚▲カードを出しても良い。
+TRUE	FALSE	108	○	オリハルコンのたて	単体	〔無〕	-	13	Ba	C	-	-		♥, ○	プシュケーのたて	単体	〔無〕	-	20	-	-
+TRUE	FALSE	109	○	オリハルコンのたて	単体	〔無〕	-	13	Ba	C	-	-		♥, ○	プシュケーのたて	単体	〔無〕	-	20	-	-
+TRUE	FALSE	110	○	エナジーシールド	単体	〔無〕	-	10	Ba	D	-	-		♥, ○	フレイムドレイン	単体	〔火〕	-	12	-	このカードを使って攻撃ダメージが0以下になった場合、攻撃した相手に【〔火〕5ダメージ】を与える。
+TRUE	FALSE	111	○	エナジーシールド	単体	〔無〕	-	10	Ba	D	-	-		♥, ○	アイスドレイン	単体	〔水〕	-	12	-	このカードを使って攻撃ダメージが0以下になった場合、攻撃した相手に【〔水〕5ダメージ】を与える。
+TRUE	FALSE	112	○	エナジーシールド	単体	〔無〕	-	10	Ba	D	-	-		♥, ○	エレキドレイン	単体	〔雷〕	-	12	-	このカードを使って攻撃ダメージが0以下になった場合、攻撃した相手に【〔雷〕5ダメージ】を与える。
+TRUE	FALSE	113	○	ミラーシールド	単体	〔無〕	-	0	1st	E	-	《反射》☆魔法による攻撃を相手に跳ね返す。		♥, ○	リリスミラージュ	単体	〔無〕	-	15	-	"《反射》☆魔法による攻撃を相手に跳ね返す。
+反射対象を自由に選んで良い。"
+TRUE	FALSE	114	○	ビッグシールド	単体	〔無〕	-	0	1st	E	-	《無効》〔無〕属性による攻撃を打ち消す。		♥, ○	ききませ～ん♥	単体	〔無〕	-	-	-	《無効》〔火〕〔水〕〔雷〕属性による攻撃を打ち消す。
+TRUE	FALSE	115	☆, ▲	＜灼熱＞	C, D, E	〔火〕	11	-	1st	A	HP-3	-		♥, ☆, ▲	《快楽の炎》	A, B, C	〔火〕	13	-	HP-3	-
+TRUE	FALSE	116	☆, ▲	＜雪崩＞	単体	〔水〕	14	-	1st	B	HP-4	-		♥, ☆, ▲	《水攻めの悦》	単体	〔水〕	13	-	HP-3	-
+TRUE	FALSE	117	☆, ▲	＜大嵐＞	全体	〔雷〕	6	-	1st	C	HP-生存✕1	-		♥, ☆, ▲	《電気ショック》	D, E	〔雷〕	20	-	HP-3	この攻撃で発生したダメージで、サキュバスは《吸収》による回復をしない。
+TRUE	FALSE	118	△	最強のおいしい水	自分	〔無〕	-	-	Ba	E	-	HPを20回復する。		♥, △	サキュバスポーション	自分	〔無〕	-	-	-	"HPを20回復する。
+その後、続けてもう1枚カードをプレイしても良い。"
+TRUE	FALSE	119	○	にじのカーテン	単体	〔無〕	-	0	Ba	E	-	《除去》受けている攻撃を〔無〕属性にする。		♥, ○	「どれにしようかな～♥」	単体	〔無〕	-	-	-	"以下の効果から選ぶ。
+・《反射》☆魔法
+・《除去》受けている攻撃を〔無〕属性にする。
+・《反撃》{受けたダメージ}×2を、プレイヤー1人に与える。(〔無〕属性、防御可能)"
+TRUE	FALSE	120	○	にじのカーテン	単体	〔無〕	-	0	Ba	E	-	《除去》受けている攻撃を〔無〕属性にする。		♥, ○	「どれにしようかな～♥」	単体	〔無〕	-	-	-	"以下の効果から選ぶ。
+・《反射》☆魔法
+・《除去》受けている攻撃を〔無〕属性にする。
+・《反撃》{受けたダメージ}×2を、プレイヤー1人に与える。(〔無〕属性、防御可能)"
+`;
+
+/* ================================================================
+   定数・キャラクター
+   ================================================================ */
+const EL_KEY = { '〔無〕':'none', '〔火〕':'fire', '〔水〕':'water', '〔雷〕':'thunder' };
+const EL = { none:'無', fire:'火', water:'水', thunder:'雷' };
+const ROLE = { sister:'シスター', succubus:'サキュバス', fallen:'堕天使' };
+const HP_START = 30, HP_CAP = 40, HAND_BASE = 6, GAMES = 3, ROUND_LIMIT = 40;
+// 堕天使の人数：3人はなし、4〜6人は1人
+const fallenCount = n => n >= 4 ? 1 : 0;
+
+// 名前で決まる固有効果（キーワードだけでは表せないもの）
+const SPECIAL = {
+  'じゃしんのつるぎ':'jashin', '昇天弓':'bow', 'ドキドキなみだ':'tears', '夜魔のホウキ':'broom', '太陽のお守り':'amulet',
+  '誓いの祈り':'prayer', '寄進の行い':'donation', '許しの告解':'confess', '秘密の懺悔':'peek',
+  '聖なるわからせ棒':'judgeRod', '聖なるわからせ竿':'judgePole', '聖なるちくりんちょ':'judgeNeedle',
+  '「立場をわからせる」':'putInPlace', 'あくまのキッス':'kiss',
+  'フレイムドレイン':'drainShield', 'アイスドレイン':'drainShield', 'エレキドレイン':'drainShield',
+  'リリスミラージュ':'freeReflect', '「どれにしようかな～♥」':'choose', '《電気ショック》':'noAbsorb',
+};
+// 断罪カード：成功時にサキュバスの顕現を制限する内容と、失敗時の罰
+const JUDGE = {
+  judgeRod:    { success:{ noRefill:true },  noHeartDef:true, fail:{ self:{ power:20 }, discard:1 } },
+  judgePole:   { success:{ noRefill:true },  fail:{ discard:2 } },
+  judgeNeedle: { success:{ noHpReset:true }, fail:{ self:{ power:15, instakill:true } } },
+};
+
+const COMMON_SUCC = '手札上限＋1。全ての攻撃は《吸収》を持つ。';
+const CHARACTERS = [
+  { key:'kagiko',   name:'赤鬼 カギコ',       short:'カギコ',   glyph:'鬼', gem:'#ff6b6b', text:'［攻撃時］自分のすべての〔無〕属性攻撃に＋7ダメージ。' },
+  { key:'botan',    name:'首塚 ボタン',       short:'ボタン',   glyph:'牡', gem:'#ffa24a', text:'［ターン開始時］手札補充の前に、手札を1枚まで捨てても良い。［攻撃時］自分のすべての〔火〕〔水〕〔雷〕属性攻撃に＋5ダメージ。' },
+  { key:'chinon',   name:'悪亜 チノン',       short:'チノン',   glyph:'悪', gem:'#8f80ff', text:'［防御時］自分が受ける全ての攻撃を−3ダメージ。※HPコストは減少しない。' },
+  { key:'chiamo',   name:'最愛 チアモ',       short:'チアモ',   glyph:'愛', gem:'#ff86cf', text:'［攻撃時］のぞむなら、手札から1枚捨てる。その後山札を1枚めくり、そのカードが手札から捨てたカードと同じトリガーを持つなら、攻撃ダメージを2倍にする。' },
+  { key:'miyomi',   name:'不死 ミヨミ',       short:'ミヨミ',   glyph:'死', gem:'#a4adc2', text:'手札上限をさらに＋1。堕天使が昇天した場合、手札上限をさらに＋1。' },
+  { key:'malariya', name:'マラリヤ',          short:'マラリヤ', glyph:'瘴', gem:'#79d279', text:'［防御時］手札から▲攻撃カードを2枚捨てるなら、《無効》：☆魔法。他プレイヤーの場に出ている☆魔法を、自分の場にあるかのように使用しても良い。' },
+  { key:'joka',     name:'華我錠 ジョウカ',   short:'ジョウカ', glyph:'錠', gem:'#ebc84f', text:'［攻撃時］手札を1枚捨てるなら、自分の攻撃に＋10ダメージ。' },
+  { key:'miroku',   name:'骸雷 ミロク',       short:'ミロク',   glyph:'骸', gem:'#ffe277', text:'［攻撃時］すべての攻撃の対象は全体になる。自分のすべての攻撃を−Xダメージ。Xは現在判明しているシスターの数に等しい。' },
+  { key:'kureha',   name:'紅刃',              short:'紅刃',     glyph:'紅', gem:'#e6475b', text:'［攻撃時］手札を3枚捨てるなら、このターンのすべての攻撃は〔火〕属性になる。' },
+  { key:'kururu',   name:'痕部 クルル',       short:'クルル',   glyph:'痕', gem:'#b98aff', text:'［ターン開始時］望むならドローフェイズをスキップしても良い。その場合、自分以外のプレイヤー全員に3ダメージ。攻撃ダメージを受けるたび、山札からカードを1枚引く。' },
+  { key:'tsubaki',  name:'首塚 ツバキ',       short:'ツバキ',   glyph:'椿', gem:'#ff7a95', text:'［ターン開始時］手札補充の前に、手札を1枚まで捨てても良い。［防御時］自分が受ける全ての〔火〕〔水〕〔雷〕属性の攻撃を−5ダメージ。' },
+  { key:'pine',     name:'パイン',            short:'パイン',   glyph:'葉', gem:'#84e3bb', text:'［ターン開始時］HPを10回復する。［防御時］受けるダメージをピッタリ0にできた時、カードを1枚引く。' },
+  { key:'jasui',    name:'天獄焉魔 ジャスイ', short:'ジャスイ', glyph:'獄', gem:'#6a78ff', text:'［ターン開始時］手札補充の前に、山札の一番上のカードを1枚まで見て、のぞむなら捨てても良い。［ターン開始時］手札を1枚捨て、捨て札にある前の手番プレイヤーが使用したカードを1枚取得する。' },
+];
+
+/* ================================================================
+   カードの読み込み
+   ================================================================ */
+function parseTSV(text){
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++){
+    const ch = text[i];
+    if (q){
+      if (ch === '"'){ if (text[i + 1] === '"'){ cell += '"'; i++; } else q = false; }
+      else cell += ch;
+    } else if (ch === '"' && cell === '') q = true;
+    else if (ch === '\t'){ row.push(cell); cell = ''; }
+    else if (ch === '\n'){ row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if (ch !== '\r') cell += ch;
+  }
+  if (cell !== '' || row.length){ row.push(cell); rows.push(row); }
+  return rows;
+}
+const num = v => { v = String(v ?? '').trim(); if (v === '' || v === '-') return null; const n = Number(v); return isNaN(n) ? null : n; };
+function parseRange(s){
+  s = String(s || '').trim();
+  if (!s || s === '単体') return { kind:'single' };
+  if (s === '全体') return { kind:'all' };
+  if (s === '自分') return { kind:'self' };
+  const set = s.split(/[,，、\s]+/).filter(Boolean);
+  return { kind:'random', set };
+}
+function parseCost(s){
+  s = String(s || '').trim();
+  let m = s.match(/HP-(\d+)/); if (m) return { hp:+m[1] };
+  m = s.match(/生存[✕×xX*](\d+)/); if (m) return { perAlive:+m[1] };
+  return null;
+}
+function parseKw(t){
+  const k = {};
+  if (/《吸収》(?!による)/.test(t)) k.drain = true;
+  if (/《即死》/.test(t)) k.instakill = true;
+  if (/《追撃不可》/.test(t)) k.noChain = true;
+  if (/《追撃》/.test(t)) k.chain = true;
+  if (/《全反射》/.test(t)) k.reflectAll = true;
+  else if (/《反射》/.test(t)) k.reflectMagic = true;
+  const nm = t.match(/《無効》((?:〔.〕)+)属性/);
+  if (nm) k.nullify = [...nm[1].matchAll(/〔.〕/g)].map(m => EL_KEY[m[0]]);
+  if (/《除去》/.test(t)) k.remove = true;
+  if (/《反撃》/.test(t)) k.counter = /受けたダメージ\}×2/.test(t) ? 2 : 1;
+  if (/《活力》/.test(t)) k.vigor = true;
+  if (/防御に使ったら、?カードを1枚引く/.test(t)) k.drawOnDef = true;
+  const ce = t.match(/属性を(〔.〕)に変えてもよい/); if (ce) k.changeEl = EL_KEY[ce[1]];
+  const hm = t.match(/HPを(\d+)回復する/); if (hm) k.heal = +hm[1];
+  if (/続けてもう1枚☆?カードを/.test(t)) k.extra = true;
+  return k;
+}
+function makeFace(kind, name, range, el, atk, def, cost, text){
+  const marks = String(kind).split(/[,，、\s]+/).filter(Boolean);
+  text = String(text || '').trim(); if (text === '-') text = '';
+  name = String(name).trim();
+  const f = {
+    name, marks, range:parseRange(range), el:EL_KEY[String(el || '').trim()] || 'none',
+    atk:num(atk), def:num(def), cost:parseCost(cost), text, kw:parseKw(text), sp:SPECIAL[name] || null,
+  };
+  f.isAtk = marks.includes('▲');
+  f.isDef = marks.includes('○') || f.def !== null;
+  f.isMagic = marks.includes('☆');
+  f.isSupport = marks.includes('△');
+  f.isJudge = marks.includes('†');
+  f.isHeart = marks.includes('♥');
+  return f;
+}
+function buildCardDefs(){
+  const defs = [];
+  for (const r of parseTSV(CARD_TSV.trim())){
+    if (String(r[0]).trim().toUpperCase() !== 'TRUE') continue;
+    const top = makeFace(r[3], r[4], r[5], r[6], r[7], r[8], r[11], r[12]);
+    const heart = r[14] && String(r[14]).includes('♥') ? makeFace(r[14], r[15], r[16], r[17], r[18], r[19], r[20], r[21]) : null;
+    defs.push({ id:+r[2], trig:String(r[10] || '').trim(), top, heart });
+  }
+  return defs;
+}
+const CARD_DEFS = buildCardDefs();
+
+/* ================================================================
+   状態
+   ================================================================ */
+const ABORT = Symbol('abort');
+let M = null, G = null, gameId = 0, speed = 1, uidSeq = 0;
+const UI = { zoom:null, mode:'setup', sel:[], fsel:[], target:null, extra:{}, resolve:null, focus:null, rules:false, setup:{ count:5, char:0, online:false, name:'', joinCode:'' }, mfocus:null };
+
+const rand = n => Math.floor(Math.random() * n);
+function shuffle(a){ for (let i = a.length - 1; i > 0; i--){ const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const me = () => G.players[Net.seat];
+const alivePlayers = () => G.players.filter(p => p.alive);
+function othersClockwise(p){
+  const n = G.players.length, out = [];
+  for (let k = 1; k < n; k++){ const q = G.players[(p.i + k) % n]; if (q.alive) out.push(q); }
+  return out;
+}
+const isSucc = p => p.role === 'succubus' && p.revealed;
+const handMax = p => isSucc(p) ? HAND_BASE + 1 + (p.char.key === 'miyomi' ? 1 + (G.players.some(q => q.role === 'fallen' && !q.alive) ? 1 : 0) : 0) : HAND_BASE;
+const faceFor = (p, c) => (c.def.heart && p.role === 'succubus') ? c.def.heart : c.def.top;
+function knownRole(viewer, q){ if (q.revealed || viewer === q) return q.role; return viewer.known[q.i] || null; }
+
+async function wait(ms){
+  const id = gameId;
+  await new Promise(r => setTimeout(r, ms * speed));
+  if (id !== gameId) throw ABORT;
+}
+// 集計用のフック（シミュレーター sim/ から使う。通常のプレイでは何もしない）
+function emit(type, data){ if (typeof window.onGameEvent === 'function') window.onGameEvent(type, data); }
+function log(text, cls = ''){ G.log.push({ text, cls }); if (G.log.length > 200) G.log.shift(); }
+
+/* ================================================================
+   マッチ（3戦）とゲームの準備
+   ================================================================ */
+function startMatch(){
+  if (Net.role) netLeave();
+  gameId++;
+  const n = UI.setup.count, ci = UI.setup.char;
+  const pool = shuffle(CHARACTERS.map((c, i) => i).filter(i => i !== ci));
+  M = { game:0, players:Array.from({ length:n }, (_, k) => {
+    const char = CHARACTERS[k === 0 ? ci : pool[k - 1]];
+    return { i:k, human:k === 0, char, name:k === 0 ? 'あなた' : char.short, vp:0, history:[] };
+  }) };
+  nextGame();
+}
+
+function nextGame(){
+  gameId++;
+  M.game++;
+  const n = M.players.length;
+  const roles = ['succubus', ...Array(fallenCount(n)).fill('fallen')];
+  while (roles.length < n) roles.push('sister');
+  shuffle(roles);
+  const deck = shuffle(CARD_DEFS.map(def => ({ uid:++uidSeq, def })));
+  G = {
+    players: M.players.map((mp, k) => Object.assign(mp, {
+      role:roles[k], hp:HP_START, hand:[], field:[], revealed:false, manifested:false, alive:true,
+      heartSealed:false, known:{}, sus:{}, hitAt:0,
+    })),
+    deck, trash:[], removed:[], round:1, turn:0, start:rand(n), ending:null, judgeSuccess:new Set(),
+    stage:null, log:[], ts:{}, lastUsed:[], curUsed:[], pendingConfession:false, result:null, bowFiring:0,
+  };
+  G.turn = G.start;
+  G.players.forEach(p => { for (let k = 0; k < HAND_BASE; k++) p.hand.push(G.deck.pop()); });
+  log(`第${M.game}戦。神託が配られた。スタートは${G.players[G.start].name}。`, 'turn');
+  UI.mode = 'wait'; UI.sel = []; UI.fsel = []; UI.target = null; UI.focus = null;
+  render();
+  run();
+}
+
+function roleIntro(p){
+  const n = G.players.length;
+  const fallenN = fallenCount(n);
+  const cast = `この戦いはサキュバス1人${fallenN ? `・堕天使${fallenN}人` : ''}・シスター${n - 1 - fallenN}人。`;
+  const goal = {
+    sister:'サキュバスを昇天させればシスター陣営の勝ち。誰がサキュバスかはまだわからない。',
+    succubus:'最後の1人まで生き残れば勝ち。オラクルで【顕現】するとHPが30に戻り、手札上限＋1、すべての攻撃が《吸収》になる。',
+    fallen:'サキュバスと同じ陣営。サキュバスが顕現したら【告解】して正体を明かし、手札を渡す【供与】で支えられる。',
+  }[p.role];
+  return { role:p.role, body:`${cast}\n${goal}` };
+}
+
+/* ================================================================
+   ゲーム進行
+   ================================================================ */
+async function run(){
+  try {
+    await Promise.all(G.players.filter(p => p.human).map(p => {
+      const intro = roleIntro(p);
+      return askP(p, 'notice', { title:`第${M.game}戦　あなたの神託`, role:intro.role, body:intro.body, art:artSrc(p.char, intro.role === 'succubus' ? 'oni' : 'hito') });
+    }));
+    while (!G.ending){
+      const p = G.players[G.turn];
+      if (p.alive) await takeTurn(p);
+      if (G.ending) break;
+      advance();
+      if (G.round > ROUND_LIMIT){ G.ending = 'deck'; log('決着がつかないまま時間切れ（山札切れとして扱う）', 'turn'); }
+    }
+    await finishGame();
+  } catch (e){ if (e !== ABORT) console.error(e); }
+}
+
+function advance(){
+  const n = G.players.length;
+  for (let k = 0; k < n; k++){
+    G.turn = (G.turn + 1) % n;
+    if (G.turn === G.start) G.round++;
+    if (G.players[G.turn].alive) return;
+  }
+}
+
+function checkEnd(){
+  if (G.ending) return true;
+  const alive = alivePlayers();
+  const succ = G.players.find(p => p.role === 'succubus');
+  // サキュバスと堕天使だけが残ったら、その時点でサキュバス陣営の勝ち
+  if (!succ.alive || alive.length <= 1 || alive.every(p => p.role !== 'sister')) G.ending = 'done';
+  return !!G.ending;
+}
+
+async function takeTurn(p){
+  G.lastUsed = G.curUsed; G.curUsed = [];
+  G.ts = { played:false, gifted:false, freeMagic:false, kurehaFire:false };
+  p.heartSealed = false;
+  G.stage = { src:p, title:`${p.name}のターン` };
+  log(`― ${p.name}のターン（${G.round}巡目） ―`, 'turn');
+  render(); await wait(p.human ? 250 : 450);
+
+  if (isSucc(p)) await turnStartAbilities(p);
+  if (G.ending || !p.alive) return;
+  await drawPhase(p);
+  if (G.ending) return;
+  await actionPhase(p);
+}
+
+async function drawPhase(p){
+  if (G.ts.skipDraw){ log(`${p.name}はドローフェイズをスキップした`); return; }
+  const need = handMax(p) - p.hand.length;
+  if (need <= 0) return;
+  if (G.deck.length < need){ G.ending = 'deck'; log('山札が足りず、手札を補充できない。ゲーム終了。', 'turn'); return; }
+  draw(p, need);
+  if (p.human) log(`${p.name}はカードを${need}枚引いた`);
+  render();
+}
+
+function draw(p, n){
+  let got = 0;
+  for (let k = 0; k < n && G.deck.length; k++){ p.hand.push(G.deck.pop()); got++; }
+  if (got) fx(p, `+${got}枚`, 'draw');
+  return got;
+}
+function flip(){ const c = G.deck.pop(); if (c) G.trash.push(c); return c || null; }
+function takeFromHand(p, cards){ const ids = new Set(cards.map(c => c.uid)); p.hand = p.hand.filter(c => !ids.has(c.uid)); }
+function discard(p, cards){ if (!cards || !cards.length) return; takeFromHand(p, cards); G.trash.push(...cards); log(`${p.name}は${cards.length}枚捨てた`); }
+
+function damage(p, n){
+  if (n <= 0 || !p.alive) return;
+  p.hp = Math.max(0, p.hp - n);
+  p.hitAt = Date.now();
+  fx(p, `-${n}`, 'hp');
+}
+function heal(p, n){
+  if (!p.alive) return 0;
+  const b = p.hp; p.hp = Math.min(HP_CAP, p.hp + n);
+  if (p.hp > b) fx(p, `+${p.hp - b}`, 'heal');
+  return p.hp - b;
+}
+
+async function actionPhase(p){
+  let remaining = 1, magicOnly = false;
+  while (remaining > 0 && p.alive && !G.ending){
+    const act = p.human ? await askP(p, 'action', { magicOnly }) : cpuPlan(p, magicOnly);
+    if (!act || act.type === 'pass'){
+      if (act && act.discard){ discard(p, [act.discard]); render(); }
+      if (!p.human) log(`${p.name}はパスした`);
+      break;
+    }
+    if (act.type === 'manifest'){ await manifest(p, {}); await handleConfessions(); continue; }
+    if (act.type === 'gift'){ G.ts.gifted = true; await doGift(p, p.human); continue; }
+    remaining--;
+    const r = await playAction(p, act) || {};
+    await handleConfessions();
+    checkEnd();
+    if (r.extra){ remaining++; magicOnly = !!r.magicOnly; } else magicOnly = false;
+  }
+}
+
+/* ---------- 正体・顕現 ---------- */
+function reveal(p, why = ''){
+  if (p.revealed) return;
+  p.revealed = true;
+  log(`${why}${p.name}の正体は【${ROLE[p.role]}】`, p.role === 'sister' ? 'holy' : 'rose');
+}
+async function revealSelf(p){
+  if (p.revealed) return;
+  if (p.role === 'succubus') await manifest(p, {});
+  else { reveal(p); G.stage = { src:p, title:'正体を明かした', result:{ text:ROLE[p.role], cls:p.role === 'sister' ? 'gold' : 'rose' } }; render(); await wait(700); }
+}
+async function manifest(p, o){
+  emit('manifest', { p, o });
+  p.revealed = true; p.manifested = true;
+  log(`${p.name}が顕現した！ 正体はサキュバス（${p.char.name}）`, 'rose');
+  if (!o.noHpReset){ p.hp = HP_START; log(`HPが${p.hp}になった`, 'rose'); }
+  else log('断罪によりHPは戻らない', 'judge');
+  if (!o.noRefill){ const n = handMax(p) - p.hand.length; if (n > 0) draw(p, n); }
+  else log('断罪により手札は補充されない', 'judge');
+  log(`サキュバス能力：${p.char.text}`, 'rose');
+  G.pendingConfession = true;
+  G.stage = { src:p, title:'顕現', art:artSrc(p.char, 'oni'), result:{ text:`${p.name}はサキュバス！`, cls:'rose' } };
+  render(); await wait(1200);
+}
+async function handleConfessions(){
+  if (!G.pendingConfession) return;
+  G.pendingConfession = false;
+  const succ = G.players.find(p => p.role === 'succubus');
+  if (!succ.alive) return;
+  for (const f of G.players.filter(p => p.role === 'fallen' && p.alive && !p.revealed)){
+    const yes = f.human
+      ? await askP(f, 'option', { title:'告解', body:'サキュバスが顕現した。あなたも堕天使として正体を明かしますか？ 明かすと、手札をサキュバスに渡す【供与】ができるようになる。', options:[{ label:'告解する', value:true, cls:'' }, { label:'黙っている', value:false, cls:'sub' }] })
+      : f.hand.some(c => c.def.heart) || Math.random() < 0.65;
+    if (!yes) continue;
+    reveal(f, '告解。');
+    render(); await wait(600);
+    await doGift(f, true);
+  }
+}
+function canGift(p){
+  const succ = G.players.find(q => q.role === 'succubus');
+  return p.role === 'fallen' && p.revealed && !!succ && succ.alive && succ.revealed && p.hand.length > 0;
+}
+async function doGift(p, optional){
+  if (!canGift(p)) return;
+  const succ = G.players.find(q => q.role === 'succubus');
+  let pick;
+  if (p.human){
+    const r = await askP(p, 'cards', { title:'供与', body:`${succ.name}（サキュバス）に渡すカードを1枚選ぶ。${optional ? '渡さないなら選ばずに決定。' : ''}`, cards:p.hand, owner:p, min:optional ? 0 : 1, max:1 });
+    pick = r[0];
+  } else {
+    const hearts = p.hand.filter(c => c.def.heart);   // ♥カードを優先して渡す
+    pick = (hearts.length ? hearts : p.hand).slice().sort((a, b) => cardValue(succ, b) - cardValue(succ, a))[0];
+  }
+  if (!pick) return;
+  takeFromHand(p, [pick]); succ.hand.push(pick);
+  log(`${p.name}は${succ.name}にカードを1枚供与した`, 'rose');
+  fx(succ, '+1枚', 'draw');
+  render(); await wait(500);
+}
+
+/* ---------- ターン開始時のサキュバス能力 ---------- */
+async function turnStartAbilities(p){
+  const k = p.char.key;
+  if (k === 'kururu' && othersClockwise(p).length){
+    const skip = p.human
+      ? await askP(p, 'option', { title:'クルルの能力', body:`ドローフェイズを飛ばすと、自分以外の全員に3ダメージ。（いまの手札 ${p.hand.length}/${handMax(p)}枚）`, options:[{ label:'飛ばして3ダメージ', value:true, cls:'' }, { label:'普通に引く', value:false, cls:'sub' }] })
+      : (handMax(p) - p.hand.length <= 2 || othersClockwise(p).some(q => q.hp <= 3 && enemyScore(p, q) > 0));
+    if (skip){
+      G.ts.skipDraw = true;
+      log(`${p.name}はドローフェイズを飛ばし、全員に3ダメージ`, 'rose');
+      for (const q of othersClockwise(p)) damage(q, 3);
+      G.stage = { src:p, title:'クルルの能力', result:{ text:'全員に3ダメージ', cls:'bad' } };
+      render(); await wait(800);
+      await settle();
+      if (G.ending) return;
+    }
+  }
+  if (k === 'pine'){ const h = heal(p, 10); if (h) log(`${p.name}はHPを${h}回復（パイン）`, 'good'); render(); }
+  if ((k === 'tsubaki' || k === 'botan') && p.hand.length){
+    const pick = p.human
+      ? await askP(p, 'cards', { title:`${p.char.short}の能力`, body:'手札補充の前に、手札を1枚まで捨てられる。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:1 })
+      : (p.hand.length >= handMax(p) ? [lowest(p, p.hand)] : []);
+    discard(p, pick);
+  }
+  if (k === 'jasui'){
+    const top = G.deck[G.deck.length - 1];
+    if (top){
+      const drop = p.human
+        ? await askP(p, 'option', { title:'ジャスイの能力', body:'山札の一番上のカード。捨てますか？', card:top, options:[{ label:'捨てる', value:true, cls:'' }, { label:'そのまま', value:false, cls:'sub' }] })
+        : cardValue(p, top) < 6;
+      if (drop){ G.trash.push(G.deck.pop()); log(`${p.name}は山札の一番上を捨てた`); }
+    }
+    const used = G.lastUsed.filter(c => G.trash.includes(c));
+    if (used.length && p.hand.length >= 1){
+      let take = null;
+      if (p.human){
+        const r = await askP(p, 'cards', { title:'ジャスイの能力', body:'前の手番の人が使ったカードを1枚取る（代わりに手札を1枚捨てる）。取らないなら選ばずに決定。', cards:used, owner:p, min:0, max:1 });
+        take = r[0] || null;
+      } else {
+        const best = used.slice().sort((a, b) => cardValue(p, b) - cardValue(p, a))[0];
+        if (cardValue(p, best) >= 13) take = best;
+      }
+      if (take){
+        const drop = p.human
+          ? await askP(p, 'cards', { title:'ジャスイの能力', body:'捨てるカードを1枚選ぶ。', cards:p.hand, owner:p, min:1, max:1 })
+          : lowestN(p, p.hand, 1);
+        discard(p, drop);
+        G.trash = G.trash.filter(c => c !== take); p.hand.push(take);
+        log(`${p.name}は捨て札から${take.def.top.name}を取った`);
+      }
+    }
+    render();
+  }
+}
+
+/* ================================================================
+   カードの使用
+   ================================================================ */
+function magicCost(p, f){
+  if (!f.cost) return 0;
+  if (G.ts.freeMagic && G.players[G.turn] === p) return 0;
+  return f.cost.hp ?? f.cost.perAlive * alivePlayers().length;
+}
+function playProblem(p, c, magicOnly){
+  const f = faceFor(p, c);
+  if (G.round === 1 && (c.def.heart || f.isJudge)) return '1巡目は♥カード・†カードを使えない';
+  if (c.def.heart && p.heartSealed) return '♥カードを封じられている';
+  if (f.isJudge && p.role !== 'sister') return 'シスターだけが使える';
+  if (magicOnly && !f.isMagic) return 'いまは☆魔法だけ使える';
+  if (f.sp === 'amulet') return 'HPが0になったとき自動で使われる';
+  if (!(f.isAtk || f.isSupport)) return '攻撃されたときに防御として使う';
+  if (f.isMagic && magicCost(p, f) >= p.hp) return 'HPが足りない';
+  return '';
+}
+function chainable(p, c){
+  const f = faceFor(p, c);
+  return f.isAtk && !f.isMagic && !f.kw.instakill && !f.kw.noChain && !f.isJudge && playProblem(p, c, false) === '';
+}
+function usableField(p){
+  const own = p.field.slice();
+  if (isSucc(p) && p.char.key === 'malariya') G.players.forEach(q => { if (q !== p) own.push(...q.field); });
+  return own;
+}
+function fieldProblem(p, c, magicOnly){
+  const f = faceFor(p, c);
+  if (!f.isAtk) return '攻撃されたときに防御として使う';
+  if (c.def.heart && p.heartSealed) return '♥カードを封じられている';
+  if (magicCost(p, f) >= p.hp) return 'HPが足りない';
+  return '';
+}
+// 何を対象に取るか：other=自分以外1人 / any=誰でも1人 / none=対象を選ばない
+function targetKind(faces){
+  const f0 = faces[0], last = faces[faces.length - 1];
+  if (f0.isAtk) return last.range.kind === 'single' ? 'other' : 'none';
+  if (['donation', 'peek', 'broom'].includes(f0.sp)) return 'other';
+  if (f0.sp === 'tears') return 'any';   // 回復カードは自分にだけ使える（対象を選ばない）
+  return 'none';
+}
+
+async function playAction(p, act){
+  const cards = act.cards;
+  if (!p.revealed && cards.some(c => c.def.heart || faceFor(p, c).isJudge)) await revealSelf(p);
+  if (G.ending || !p.alive) return {};
+  const faces = cards.map(c => faceFor(p, c));
+  const f0 = faces[0];
+  if (f0.isMagic){
+    const cost = magicCost(p, f0);
+    if (cost){ p.hp -= cost; emit('cost', { p, face:f0, hp:cost }); fx(p, `HP-${cost}`, 'hp'); log(`${p.name}はHPを${cost}払った`); }
+  }
+  if (!act.fromField){
+    takeFromHand(p, cards);
+    cards.forEach((c, i) => faces[i].isMagic ? p.field.push(c) : G.trash.push(c));
+    G.curUsed.push(...cards);
+  }
+  G.ts.played = true;
+  emit('play', { p, faces });
+  if (f0.isAtk){ await doAttack(p, cards, faces, act.target); return {}; }
+  return await doSupport(p, f0, act.target);
+}
+
+async function doSupport(p, f, target){
+  const t = target || p;
+  G.stage = { src:p, dst:t !== p ? t : null, title:f.name, faces:[f] };
+  log(`${p.name}は${f.name}を使った${t !== p ? `（対象：${t.name}）` : ''}`);
+  render(); await wait(650);
+  const res = (text, cls = 'ok') => { G.stage.result = { text, cls }; };
+
+  switch (f.sp){
+    case 'tears': {
+      const c = flip();
+      if (!c){ res('山札がない', 'gold'); break; }
+      G.stage.flips = [{ t, c, ok:['B', 'D'].includes(c.def.trig) }];
+      if (['B', 'D'].includes(c.def.trig)){ const h = heal(t, 10); res(`HP+${h}`); log(`${t.name}のめくったカードは〔${c.def.trig}〕。HPが${h}回復`, 'good'); }
+      else { damage(t, 10); res('HP-10', 'bad'); log(`${t.name}のめくったカードは〔${c.def.trig}〕。HPが10減った`, 'hit'); }
+      break;
+    }
+    case 'broom': {
+      if (t.field.length){ G.trash.push(...t.field); log(`${t.name}の場の魔法${t.field.length}枚が破棄された`, 'hit'); t.field = []; res('魔法を破棄', 'bad'); }
+      else if (t.hand.length){
+        const pick = t.human ? await askP(t, 'cards', { title:'夜魔のホウキ', body:'場に魔法がないので、手札を1枚選んで捨てる。', cards:t.hand, owner:t, min:1, max:1 }) : [lowest(t, t.hand)];
+        discard(t, pick); res('手札を1枚破棄', 'bad');
+      } else res('何も起きない', 'gold');
+      break;
+    }
+    case 'prayer': {
+      const pick = p.human
+        ? await askP(p, 'cards', { title:'誓いの祈り', body:'捨てるカードを好きな枚数選ぶ。捨てた枚数だけ山札から引く。', cards:p.hand, owner:p, min:0, max:p.hand.length })
+        : p.hand.filter(c => cardValue(p, c) < 7);
+      discard(p, pick);
+      const n = draw(p, pick.length);
+      res(`${n}枚引き直し`, 'gold');
+      return { extra:true };
+    }
+    case 'donation': {
+      if (!p.hand.length || !t.hand.length){ res('交換できない', 'gold'); return { extra:true }; }
+      const mine = p.human ? (await askP(p, 'cards', { title:'寄進の行い', body:`${t.name}に渡すカードを1枚選ぶ。`, cards:p.hand, owner:p, min:1, max:1 }))[0] : lowest(p, p.hand);
+      const theirs = t.human ? (await askP(t, 'cards', { title:'寄進の行い', body:`${p.name}とカードを1枚交換する。渡すカードを選ぶ。`, cards:t.hand, owner:t, min:1, max:1 }))[0] : lowest(t, t.hand);
+      takeFromHand(p, [mine]); takeFromHand(t, [theirs]); p.hand.push(theirs); t.hand.push(mine);
+      log(`${p.name}の${mine.def.top.name}と${t.name}の${theirs.def.top.name}が入れ替わった`);
+      res('交換', 'gold');
+      return { extra:true };
+    }
+    case 'confess': {
+      await revealSelf(p);
+      draw(p, 1);
+      res('告白して1枚引く', 'gold');
+      return { extra:true };
+    }
+    case 'peek': {
+      p.known[t.i] = t.role;
+      if (p.human) await askP(p, 'notice', { title:'秘密の懺悔', role:t.role, body:`${t.name}の神託をこっそり確認した。` });
+      else log(`${p.name}は${t.name}の神託をこっそり確認した`);
+      if (p.hand.length){
+        const give = p.human ? (await askP(p, 'cards', { title:'秘密の懺悔', body:`${t.name}に渡すカードを1枚選ぶ。`, cards:p.hand, owner:p, min:1, max:1 }))[0] : lowest(p, p.hand);
+        takeFromHand(p, [give]); t.hand.push(give);
+        log(`${p.name}は${t.name}にカードを1枚渡した`);
+      }
+      res('確認した', 'gold');
+      break;
+    }
+    default: {
+      if (f.kw.vigor){ G.ts.freeMagic = true; log('このターン、魔法を消費HP無しで使える', 'good'); res('《活力》', 'gold'); render(); await wait(500); return { extra:true, magicOnly:true }; }
+      if (f.kw.heal){ const h = heal(t, f.kw.heal); emit('heal', { p, t, face:f, amount:h }); log(`${t.name}のHPが${h}回復`, 'good'); res(`HP+${h}`); }
+    }
+  }
+  render(); await wait(800);
+  await settle();
+  return { extra:!!f.kw.extra };
+}
+
+/* ---------- 攻撃 ---------- */
+function atkLabel(a){ return `〔${EL[a.el]}〕${a.power}${a.instakill ? '《即死》' : ''}${a.magic ? '・魔法' : ''}`; }
+
+async function doAttack(p, cards, faces, target){
+  const f0 = faces[0], last = faces[faces.length - 1];
+  const atk = {
+    name:faces.map(f => f.name).join('＋'), power:faces.reduce((s, f) => s + (f.atk || 0), 0), el:f0.el,
+    magic:f0.isMagic, heart:cards.some(c => !!c.def.heart), judge:f0.isJudge ? f0.sp : null,
+    instakill:!!f0.kw.instakill, cardDrain:faces.some(f => f.kw.drain), range:last.range,
+    kiss:faces.some(f => f.sp === 'kiss'), noAbsorb:faces.some(f => f.sp === 'noAbsorb'), jashin:faces.some(f => f.sp === 'jashin'), faces,
+  };
+  for (const f of faces.slice(1)) if (f.kw.changeEl) atk.el = f.kw.changeEl;
+  if (!atk.instakill && !atk.judge) await attackAbilities(p, atk);
+  if (atk.judge){ await doJudge(p, atk, target); return; }
+  let targets = atk.range.kind === 'single' ? [target] : othersClockwise(p);
+  if (atk.range.kind === 'random') targets = await rollRandom(p, atk, targets);
+  for (const t of targets){ if (G.ending) break; if (t && t.alive) await strike(atk, p, t); }
+}
+
+async function attackAbilities(p, atk){
+  if (!isSucc(p)) return;
+  const k = p.char.key;
+  if (k === 'miroku'){
+    const x = G.players.filter(q => q.role === 'sister' && q.revealed).length;   // 判明しているシスターの数（昇天した人も含む）
+    atk.power = Math.max(0, atk.power - x); atk.range = { kind:'all' };
+    if (x) log(`判明しているシスター${x}人ぶん、攻撃が−${x}`, 'rose');
+  }
+  if (k === 'kureha'){
+    if (!G.ts.kurehaFire && atk.el !== 'fire' && p.hand.length >= 3){
+      const pick = p.human
+        ? await askP(p, 'cards', { title:'紅刃の能力', body:'手札を3枚捨てると、このターンの攻撃はすべて〔火〕属性になる。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:3 })
+        : (p.hand.length >= 5 && Math.random() < 0.5 ? lowestN(p, p.hand, 3) : []);
+      if (pick.length === 3){ discard(p, pick); G.ts.kurehaFire = true; }
+    }
+    if (G.ts.kurehaFire) atk.el = 'fire';
+  }
+  if (k === 'kagiko' && atk.el === 'none') atk.power += 7;
+  if (k === 'botan' && atk.el !== 'none') atk.power += 5;
+  if (k === 'chiamo' && p.hand.length && G.deck.length){
+    const pick = p.human
+      ? await askP(p, 'cards', { title:'チアモの能力', body:'手札を1枚捨てて山札を1枚めくる。同じトリガーなら、この攻撃の攻撃力が2倍になる。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:1 })
+      : (atk.power >= 6 && cardValue(p, lowest(p, p.hand)) < 7 ? [lowest(p, p.hand)] : []);
+    if (pick.length){
+      discard(p, pick);
+      const c = flip();
+      const hit = c && c.def.trig === pick[0].def.trig;
+      log(`${p.name}は〔${pick[0].def.trig}〕を捨てて山札をめくった：${c ? `${c.def.top.name}〔${c.def.trig}〕` : 'なし'} → ${hit ? 'ダメージ2倍！' : '不一致'}`, hit ? 'rose' : '');
+      if (hit) atk.power *= 2;   // 攻撃ダメージ（防御の前）を2倍
+    }
+  }
+  if (k === 'joka' && p.hand.length){
+    const pick = p.human
+      ? await askP(p, 'cards', { title:'ジョウカの能力', body:'手札を1枚捨てると、この攻撃に＋10ダメージ。捨てないなら選ばずに決定。', cards:p.hand, owner:p, min:0, max:1 })
+      : (cardValue(p, lowest(p, p.hand)) < 8 ? [lowest(p, p.hand)] : []);
+    if (pick.length){ discard(p, pick); atk.power += 10; log(`${p.name}の攻撃が＋10された`, 'rose'); }
+  }
+}
+
+async function rollRandom(p, atk, cands){
+  const hits = [], flips = [];
+  for (const t of cands){
+    const c = flip();
+    if (!c){ log('山札がなく、めくれない'); continue; }
+    const ok = atk.range.set.includes(c.def.trig);
+    flips.push({ t, c, ok });
+    log(`${t.name}がめくった：${c.def.top.name}〔${c.def.trig}〕→ ${ok ? '命中' : '外れ'}`);
+    if (ok) hits.push(t);
+  }
+  G.stage = { src:p, title:atk.name, atk, faces:atk.faces, flips };
+  render(); await wait(1300);
+  return hits;
+}
+
+async function doJudge(p, atk, t){
+  const J = JUDGE[atk.judge];
+  G.stage = { src:p, dst:t, title:'断罪', atk, faces:atk.faces };
+  log(`${p.name}の断罪！ ${t.name}は正体を明かさなければならない`, 'judge');
+  render(); await wait(900);
+  if (t.role === 'succubus'){
+    G.judgeSuccess.add(p);
+    log('断罪成功！', 'holy');
+    G.stage.result = { text:'断罪成功', cls:'gold' }; render(); await wait(800);
+    if (!t.manifested) await manifest(t, J.success);
+    if (J.noHeartDef) atk.noHeartDef = true;
+    await strike(atk, p, t);
+    return;
+  }
+  reveal(t, '断罪で');
+  log(`断罪失敗…`, 'judge');
+  G.stage.result = { text:`断罪失敗（${ROLE[t.role]}）`, cls:'bad' };
+  render(); await wait(1000);
+  if (J.fail.self) await strike({ name:'断罪失敗の反動', power:J.fail.self.power, el:'none', instakill:!!J.fail.self.instakill, range:{ kind:'single' }, faces:[] }, p, p);
+  if (J.fail.discard && p.alive && p.hand.length){
+    const n = Math.min(J.fail.discard, p.hand.length);
+    const pick = p.human ? await askP(p, 'cards', { title:'断罪失敗', body:`手札を${n}枚選んで捨てる。`, cards:p.hand, owner:p, min:n, max:n }) : lowestN(p, p.hand, n);
+    discard(p, pick);
+  }
+}
+
+/* ---------- 防御と解決 ---------- */
+function defUsable(t, c, atk){
+  const f = faceFor(t, c);
+  if (!f.isDef) return false;
+  if (G.round === 1 && (c.def.heart || f.isJudge)) return false;
+  if (c.def.heart && (t.heartSealed || (atk.noHeartDef && t.role === 'succubus'))) return false;
+  if (f.isJudge && t.role !== 'sister') return false;
+  if (f.isMagic && magicCost(t, f) >= t.hp) return false;
+  return true;
+}
+function validDef(f, atk, el){
+  if (!f.isDef) return false;
+  if (f.sp === 'putInPlace') return !!atk.heart;
+  if (f.sp === 'choose' || f.kw.reflectAll || f.kw.remove) return true;
+  if (f.kw.reflectMagic && atk.magic) return true;
+  if (f.kw.nullify && f.kw.nullify.includes(el)) return true;
+  return el === 'none' || f.el === el;
+}
+function effectiveEl(atk, faces){ return faces.some(f => f.kw.remove || f.sp === 'choose') ? 'none' : atk.el; }
+
+// 防御の結果を予想する（プレビュー表示とCPUの判断に使う）
+function predict(t, atk, faces, mode){
+  let el = atk.el;
+  if (faces.some(f => f.kw.remove && f.sp !== 'choose') || mode === 'remove') el = 'none';
+  if (atk.heart && faces.some(f => f.sp === 'putInPlace')) return { text:'無効にする', dmg:0 };
+  if (faces.some(f => f.kw.reflectAll) || (atk.magic && (faces.some(f => f.kw.reflectMagic && f.sp !== 'choose') || mode === 'reflect'))) return { text:'跳ね返す', dmg:0 };
+  if (faces.some(f => f.kw.nullify && f.kw.nullify.includes(el))) return { text:'無効にする', dmg:0 };
+  const def = faces.filter(f => f.def && validDef(f, atk, el)).reduce((s, f) => s + f.def, 0);
+  let dmg = Math.max(0, atk.power - def);
+  if (isSucc(t) && t.char.key === 'chinon') dmg = Math.max(0, dmg - 3);
+  if (isSucc(t) && t.char.key === 'tsubaki' && el !== 'none') dmg = Math.max(0, dmg - 5);
+  if (atk.instakill && dmg > 0) return { text:'即死する', dmg:999 };
+  return { text:dmg ? `${dmg}ダメージ受ける` : 'ダメージ0', dmg };
+}
+
+async function strike(atk, src, t, depth = 0){
+  if (!t.alive || (G.ending && !G.bowFiring)) return;
+  G.stage = { src, dst:t, title:atk.name, atk, faces:atk.faces };
+  log(`${src.name} → ${t.name}：${atk.name}（${atkLabel(atk)}）`);
+  if (t !== src && atk.range.kind === 'single') t.sus[src.i] = (t.sus[src.i] || 0) + 1;
+  render(); await wait(t.human ? 300 : 750);
+
+  if (isSucc(t) && t.char.key === 'malariya' && atk.magic && await malariyaAbility(t, atk)){
+    G.stage.result = { text:'無効！', cls:'ok' }; log(`${t.name}は魔法を無効にした（マラリヤ）`, 'good'); render(); await wait(700); return;
+  }
+
+  const d = t.human ? await askP(t, 'defend', { atk, src }) : cpuDefend(t, atk, src);
+  if (!t.revealed && d.cards.some(c => c.def.heart || faceFor(t, c).isJudge)) await revealSelf(t);
+  const faces = [...d.cards, ...d.field].map(c => faceFor(t, c));
+  for (const f of faces) if (f.isMagic){ const cost = magicCost(t, f); if (cost){ const b = t.hp; t.hp = Math.max(1, t.hp - cost); emit('cost', { p:t, face:f, hp:b - t.hp }); fx(t, `HP-${cost}`, 'hp'); } }
+  takeFromHand(t, d.cards);
+  d.cards.forEach(c => faceFor(t, c).isMagic ? t.field.push(c) : G.trash.push(c));
+  G.stage.def = faces;
+  if (faces.some(f => f.kw.drawOnDef)) draw(t, faces.filter(f => f.kw.drawOnDef).length);
+  if (faces.length) log(`${t.name}は${faces.map(f => f.name).join('・')}で防御${d.mode ? `（${{ reflect:'反射', remove:'除去', counter:'反撃' }[d.mode]}）` : ''}`);
+
+  let el = atk.el;
+  if (faces.some(f => f.kw.remove && f.sp !== 'choose') || d.mode === 'remove') el = 'none';
+
+  if (atk.heart && faces.some(f => f.sp === 'putInPlace')){
+    if (src.role === 'succubus'){ src.heartSealed = true; log(`${src.name}は次の自分のターンまで♥カードを使えない`, 'judge'); }
+    emit('strike', { atk, src, t, faces, dmg:0, prevented:atk.power, by:faces.find(f => f.sp === 'putInPlace') });
+    G.stage.result = { text:'立場をわからせた', cls:'gold' }; log(`${t.name}は♥攻撃を無効にした`, 'good');
+    render(); await wait(900); return;
+  }
+  const reflect = faces.some(f => f.kw.reflectAll) || (atk.magic && (faces.some(f => f.kw.reflectMagic && f.sp !== 'choose') || d.mode === 'reflect'));
+  if (reflect){
+    let to = src;
+    if (faces.some(f => f.sp === 'freeReflect') && othersClockwise(t).length) to = t.human ? await askP(t, 'player', { title:'リリスミラージュ', body:'跳ね返す相手を選ぶ。', players:othersClockwise(t) }) : cpuPickEnemy(t);
+    const rf = faces.find(f => f.kw.reflectAll) || faces.find(f => f.kw.reflectMagic && f.sp !== 'choose') || faces.find(f => f.sp === 'choose');
+    emit('strike', { atk, src, t, faces, dmg:0, prevented:atk.power, by:rf });
+    G.stage.result = { text:'反射！', cls:'gold' }; log(`${t.name}は攻撃を${to.name}へ跳ね返した`, 'good');
+    render(); await wait(800);
+    await reflectTo({ ...atk, reflectedBy:rf }, t, to, depth); return;
+  }
+
+  const nullified = faces.some(f => f.kw.nullify && f.kw.nullify.includes(el));
+  const defSum = nullified ? 0 : faces.filter(f => f.def && validDef(f, atk, el)).reduce((s, f) => s + f.def, 0);
+  let dmg = nullified ? 0 : Math.max(0, atk.power - defSum);
+  if (!nullified && isSucc(t) && t.char.key === 'chinon') dmg = Math.max(0, dmg - 3);
+  if (!nullified && isSucc(t) && t.char.key === 'tsubaki' && el !== 'none') dmg = Math.max(0, dmg - 5);
+  const drain = atk.cardDrain || (isSucc(src) && !atk.noAbsorb);
+
+  if (atk.instakill && dmg > 0){
+    const lost = t.hp; t.hp = 0; t.hitAt = Date.now(); fx(t, '即死', 'hp');
+    G.stage.result = { text:'即死！', cls:'bad' }; log(`${t.name}は即死した`, 'hit');
+    dmg = lost;
+  } else if (dmg > 0){
+    damage(t, dmg); G.stage.result = { text:`${dmg}ダメージ`, cls:'bad' }; log(`${t.name}に${dmg}ダメージ`, 'hit');
+  } else {
+    G.stage.result = { text:nullified ? '無効！' : '防いだ！', cls:'ok' }; log(`${t.name}は${nullified ? '攻撃を無効にした' : '防ぎきった'}`, 'good');
+  }
+  emit('strike', { atk, src, t, faces, dmg, el, defSum, nullified, killed:t.hp <= 0 });
+  render(); await wait(850);
+
+  if (dmg > 0 && drain && src.alive && src !== t){ const h = heal(src, dmg); if (h) log(`${src.name}はHPを${h}吸収した`, 'rose'); }
+  if (dmg > 0 && atk.jashin && src.alive){ damage(src, dmg); log(`${src.name}はじゃしんのつるぎの反動で${dmg}ダメージ`, 'hit'); }
+  if (dmg > 0 && t.hp > 0 && isSucc(t) && t.char.key === 'kururu') draw(t, 1);
+  if (!nullified && atk.power > 0 && defSum === atk.power && isSucc(t) && t.char.key === 'pine') draw(t, 1);
+
+  if (t.hp > 0 && depth < 6){
+    const ctr = faces.find(f => f.kw.counter && f.sp !== 'choose');
+    const counterable = othersClockwise(t).length > 0;   // 反撃できる相手が残っているか
+    if (ctr && dmg > 0 && counterable){
+      const to = t.human ? await askP(t, 'player', { title:ctr.name, body:`受けた${dmg}ダメージを、プレイヤー1人に与える。`, players:othersClockwise(t) }) : cpuPickEnemy(t);
+      damage(to, dmg); emit('counter', { p:t, to, face:ctr, dmg }); log(`${t.name}の反撃！ ${to.name}に${dmg}ダメージ`, 'hit'); render(); await wait(700);
+    }
+    if (d.mode === 'counter' && dmg > 0 && counterable){
+      const to = t.human ? await askP(t, 'player', { title:'反撃', body:`${dmg * 2}ダメージ（〔無〕・防御可能）を与える相手を選ぶ。`, players:othersClockwise(t) }) : cpuPickEnemy(t);
+      await settle();
+      await strike({ name:'反撃', power:dmg * 2, el:'none', range:{ kind:'single' }, faces:[] }, t, to, depth + 1);
+    }
+    const ds = faces.find(f => f.sp === 'drainShield');
+    if (ds && dmg === 0 && src.alive && src !== t){
+      await strike({ name:ds.name, power:5, el:ds.el, range:{ kind:'single' }, faces:[ds] }, t, src, depth + 1);
+    }
+  }
+  await settle();
+}
+
+async function reflectTo(atk, from, to, depth){
+  if (depth >= 6 || !to || !to.alive){ log('攻撃は消えた'); return; }
+  await strike({ ...atk, noHeartDef:false, range:{ kind:'single' } }, from, to, depth + 1);
+}
+
+async function malariyaAbility(t, atk){
+  const atks = t.hand.filter(c => faceFor(t, c).isAtk);
+  if (atks.length < 2) return false;
+  const pick = t.human
+    ? await askP(t, 'cards', { title:'マラリヤの能力', body:'▲カードを2枚捨てると、この魔法攻撃を無効にできる。やめるなら選ばずに決定。', cards:atks, owner:t, min:0, max:2 })
+    : (atk.power >= 7 ? lowestN(t, atks, 2) : []);
+  if (pick.length !== 2) return false;
+  discard(t, pick);
+  return true;
+}
+
+/* ---------- 昇天 ---------- */
+// 太陽のお守り・昇天弓が発動したときの全画面カットイン
+async function cutin(kind, p, card){
+  if (Net.role === 'host') netBroadcast({ t:'cutin', kind, p:p.i, d:card.def.id });
+  const el = $('#cutin');
+  if (!el) return;
+  const sparks = Array.from({ length:18 }, (_, i) => {
+    const a = (i / 18) * Math.PI * 2 + Math.random() * .3, r = 160 + Math.random() * 180;
+    return `<i class="ci-spark" style="--dx:${Math.cos(a) * r}px;--dy:${Math.sin(a) * r - (kind === 'sun' ? 80 : 0)}px;animation-delay:${.15 + Math.random() * .35}s"></i>`;
+  }).join('');
+  const text = kind === 'sun'
+    ? { title:'太陽のお守り', sub:`${p.name}はHP10で踏みとどまった！` }
+    : { title:'昇天弓', sub:`${p.name}の最後の一矢！ 〔無〕30ダメージ` };
+  el.innerHTML = `<div class="ci ${kind}"><div class="ci-bg"></div><div class="ci-rays"></div>${kind === 'bow' ? '<div class="ci-streak"></div><div class="ci-flash"></div>' : ''}${sparks}
+    <div class="ci-body"><img class="ci-card" src="${cardSrc(card.def)}" alt="" onerror="this.remove()"><div class="ci-title">${text.title}</div><div class="ci-sub">${esc(text.sub)}</div></div></div>`;
+  if (kind === 'bow'){ const app = $('#app'); app.classList.remove('quake'); void app.offsetWidth; app.classList.add('quake'); }
+  try { await wait(2200); }
+  finally { el.innerHTML = ''; $('#app').classList.remove('quake'); }
+}
+async function settle(){
+  for (const p of G.players) if (p.alive && p.hp <= 0) await die(p);
+  checkEnd();
+}
+async function die(p){
+  const amulet = p.hand.find(c => faceFor(p, c).sp === 'amulet');
+  if (amulet){
+    takeFromHand(p, [amulet]); G.removed.push(amulet);
+    emit('amulet', { p, face:amulet.def.top });
+    p.hp = 10;
+    log(`${p.name}の太陽のお守りが輝いた！ HP10で踏みとどまる`, 'good');
+    G.stage = { src:p, title:'太陽のお守り', result:{ text:'HP10で復活', cls:'gold' } };
+    render(); await cutin('sun', p, amulet);
+    fx(p, '+10', 'heal'); render(); await wait(400);
+    return;
+  }
+  p.alive = false; p.hp = 0; p.revealed = true;
+  log(`${p.name}は昇天した（${ROLE[p.role]}）`, 'ko');
+  const bow = p.hand.find(c => faceFor(p, c).sp === 'bow');
+  G.trash.push(...p.hand, ...p.field); p.hand = []; p.field = [];
+  G.stage = { src:p, title:'昇天', result:{ text:`${p.name}：${ROLE[p.role]}`, cls:p.role === 'sister' ? 'gold' : 'rose' } };
+  render(); await wait(1000);
+  if (bow){
+    // 昇天弓は手札にあれば必ず撃たれる（サキュバスの昇天でゲームが終わる場合も撃ち切る）
+    log(`${p.name}の昇天弓が放たれる！`, 'hit');
+    emit('bowfire', { p, face:bow.def.top });
+    G.stage = { src:p, title:'昇天弓', result:{ text:'最後の一矢', cls:'bad' } };
+    render(); await cutin('bow', p, bow);
+    const atk = { name:'昇天弓', power:30, el:'none', range:{ kind:'random', set:['B', 'D'] }, faces:[bow.def.top] };
+    G.bowFiring++;
+    try {
+      const hits = await rollRandom(p, atk, othersClockwise(p));
+      for (const t of hits) if (t.alive) await strike(atk, p, t);
+    } finally { G.bowFiring--; }
+  }
+  checkEnd();
+}
+
+/* ---------- 勝利点 ---------- */
+async function finishGame(){
+  const alive = alivePlayers();
+  const succ = G.players.find(p => p.role === 'succubus');
+  let reason, text;
+  if (!alive.length){ reason = 'none'; text = '全員が昇天した。勝利点の計算はない。'; }
+  else if (!succ.alive){ reason = 'succubus'; text = 'サキュバスが昇天した。シスター陣営の勝ち。'; }
+  else if (alive.length === 1){ reason = 'last'; text = '最後まで残ったのはサキュバス。サキュバス陣営の勝ち。'; }
+  else if (alive.every(p => p.role !== 'sister')){ reason = 'last'; text = '生き残ったのはサキュバスと堕天使だけ。サキュバス陣営の勝ち。'; }
+  else { reason = 'deck'; text = '山札が尽きてゲーム終了。'; }
+  const gain = new Map(G.players.map(p => [p, []]));
+  const add = (p, v, why) => gain.get(p).push({ v, why });
+  if (reason === 'last') G.players.filter(p => p.role !== 'sister').forEach(p => add(p, 3, `${ROLE[p.role]}の勝利`));
+  if (reason === 'succubus'){
+    alive.forEach(p => add(p, 1, '生存'));
+    G.players.filter(p => p.role !== 'sister').forEach(p => add(p, -2, `${ROLE[p.role]}の敗北`));
+    G.judgeSuccess.forEach(p => add(p, 1, '断罪成功'));
+    if (alive.length === 1) add(alive[0], 3, 'ただ1人の生存者');
+  }
+  if (reason === 'deck'){ alive.forEach(p => add(p, 1, '生存')); add(succ, -2, 'サキュバス'); }
+  G.players.forEach(p => {
+    const d = gain.get(p).reduce((s, x) => s + x.v, 0);
+    p.vp += d; p.history.push(d);
+    p.revealed = true;
+  });
+  G.result = { reason, text, gain };
+  emit('end', { reason, gain });
+  log(text, 'turn');
+  UI.mode = 'wait'; render();
+  await Promise.all(G.players.filter(p => p.human).map(p => askP(p, 'result')));
+  if (M.game < GAMES) nextGame();
+  else { UI.mode = 'final'; render(); netNotifyAll('final'); }
+}
+
+/* ================================================================
+   CPU
+   ================================================================ */
+function cardValue(p, c){
+  // 堕天使にとって♥カードはサキュバスに渡すための札（手放さない）
+  const keep = p.role === 'fallen' && c.def.heart && G.players.some(q => q.role === 'succubus' && q.alive) ? 15 : 0;
+  return keep + baseValue(p, c);
+}
+function baseValue(p, c){
+  const f = faceFor(p, c);
+  if (f.isJudge) return p.role === 'sister' ? 14 : 1;
+  if (f.sp === 'amulet') return 12;
+  if (f.sp === 'bow') return 9;
+  if (f.kw.reflectAll) return 16;
+  if (f.kw.reflectMagic || f.kw.nullify || f.sp === 'choose') return 11 + (f.def || 0) / 2;
+  if (f.isAtk) return (f.atk || 0) * (f.kw.instakill ? 1.6 : 1) + (f.kw.chain ? 3 : 0) + (f.el !== 'none' ? 2 : 0) + (f.isMagic ? -2 : 0);
+  if (f.isDef) return (f.def || 0) + (f.el !== 'none' ? 1 : 0);
+  if (f.kw.heal) return f.kw.heal * (p.hp < 20 ? 1.2 : 0.6);
+  return 6;
+}
+const lowest = (p, cards) => cards.slice().sort((a, b) => cardValue(p, a) - cardValue(p, b))[0];
+const lowestN = (p, cards, n) => cards.slice().sort((a, b) => cardValue(p, a) - cardValue(p, b)).slice(0, n);
+
+function enemyScore(p, q){
+  const r = knownRole(p, q);
+  let s = (p.sus[q.i] || 0) * 4 + Math.random() * 8;
+  const onlyAllies = othersClockwise(p).every(o => { const k = knownRole(p, o); return p.role === 'sister' ? k === 'sister' : (k === 'succubus' || k === 'fallen'); });
+  if (p.role === 'sister'){
+    if (r === 'succubus') s += 100; else if (r === 'fallen') s += 60; else if (r === 'sister') s -= 60;
+  } else if (p.role === 'succubus'){
+    if (r === 'sister') s += 40; else if (r === 'fallen') s -= onlyAllies ? 0 : 80;
+    s += (HP_CAP - q.hp) / 3;
+  } else {
+    if (r === 'succubus') s -= onlyAllies ? 0 : 120; else if (r === 'sister') s += 40; else if (r === 'fallen') s -= 30;
+  }
+  return s;
+}
+function cpuPickEnemy(p){
+  const foes = othersClockwise(p);
+  let best = foes[0], bs = -1e9;
+  for (const q of foes){ const s = enemyScore(p, q); if (s > bs){ bs = s; best = q; } }
+  return best;
+}
+function wantManifest(p){
+  if (p.role !== 'succubus' || p.revealed || G.round === 1) return false;
+  return p.hp <= 14 || alivePlayers().length <= 3 || Math.random() < 0.08;
+}
+function heartOK(p, c){
+  if (!c.def.heart) return true;
+  if (p.role === 'sister') return true;
+  if (p.role === 'fallen') return p.revealed && !G.players.some(q => q.role === 'succubus' && q.alive);
+  return p.revealed || p.hp <= 20 || Math.random() < 0.25;
+}
+
+function cpuPlan(p, magicOnly){
+  const hand = p.hand;
+  const F = c => faceFor(p, c);
+  const ok = c => playProblem(p, c, magicOnly) === '' && heartOK(p, c);
+  const playable = hand.filter(ok);
+
+  if (!magicOnly && !G.ts.played && G.round > 1){
+    if (wantManifest(p)) return { type:'manifest' };
+    if (!G.ts.gifted && canGift(p) && (p.hand.some(c => c.def.heart) || (p.hand.length > 2 && Math.random() < 0.7))) return { type:'gift' };
+  }
+  // 回復
+  if (p.hp <= 15){
+    const h = playable.filter(c => F(c).kw.heal && !F(c).sp).sort((a, b) => F(b).kw.heal - F(a).kw.heal)[0];
+    if (h) return { type:'play', cards:[h], target:p };
+    const cf = playable.find(c => F(c).sp === 'confess');
+    if (cf && p.role === 'succubus' && !p.revealed) return { type:'play', cards:[cf] };
+  }
+  if (!magicOnly){
+    const vigor = playable.find(c => F(c).kw.vigor);
+    const hasMagic = hand.some(c => F(c).isMagic && F(c).isAtk) || usableField(p).some(c => F(c).isAtk);
+    if (vigor && hasMagic) return { type:'play', cards:[vigor] };
+  }
+
+  const target = cpuPickEnemy(p);
+  // 断罪
+  if (p.role === 'sister'){
+    const judges = playable.filter(c => F(c).isJudge && F(c).isAtk);
+    if (judges.length){
+      const known = alivePlayers().find(q => q.role === 'succubus' && q.revealed);
+      const unknown = othersClockwise(p).filter(q => !knownRole(p, q));
+      let jt = null;
+      if (known) jt = known;
+      else if (unknown.length && (unknown.length <= 2 || Math.random() < 0.12)) jt = unknown.sort((a, b) => (p.sus[b.i] || 0) - (p.sus[a.i] || 0))[0];
+      if (jt) return { type:'play', cards:[judges.sort((a, b) => F(b).atk - F(a).atk)[0]], target:jt };
+    }
+  }
+  // 攻撃
+  const atkCards = playable.filter(c => F(c).isAtk && !F(c).isJudge && (!F(c).isMagic || p.hp - magicCost(p, F(c)) >= 10));
+  const options = [];
+  for (const c of atkCards) options.push({ cards:[c], v:(F(c).atk || 0) + (F(c).kw.instakill ? 6 : 0) + (F(c).el !== 'none' ? 2 : 0) });
+  const chainers = atkCards.filter(c => chainable(p, c) && F(c).kw.chain).sort((a, b) => F(b).atk - F(a).atk);
+  if (chainers.length){
+    const fin = atkCards.filter(c => chainable(p, c) && !F(c).kw.chain).sort((a, b) => F(b).atk - F(a).atk)[0];
+    const seq = fin ? [...chainers, fin] : chainers;
+    options.push({ cards:seq, v:seq.reduce((s, c) => s + (F(c).atk || 0), 0) + 1 });
+  }
+  for (const c of usableField(p)) if (fieldProblem(p, c, magicOnly) === '' && p.hp - magicCost(p, F(c)) >= 12) options.push({ cards:[c], fromField:true, v:(F(c).atk || 0) + 1 });
+  options.sort((a, b) => b.v - a.v);
+  if (options.length && options[0].v > 0){
+    const o = options[0];
+    return { type:'play', cards:o.cards, fromField:!!o.fromField, target };
+  }
+  if (magicOnly) return { type:'pass' };
+
+  // 補助
+  const sp = name => playable.find(c => F(c).sp === name);
+  if (sp('prayer') && !atkCards.length) return { type:'play', cards:[sp('prayer')] };
+  if (sp('confess') && p.role === 'sister' && !p.revealed && Math.random() < 0.5) return { type:'play', cards:[sp('confess')] };
+  if (sp('broom')){ const t = othersClockwise(p).filter(q => q.field.length && enemyScore(p, q) > 0)[0]; if (t) return { type:'play', cards:[sp('broom')], target:t }; }
+  if (sp('peek')){ const t = othersClockwise(p).find(q => !knownRole(p, q)); if (t && Math.random() < 0.6) return { type:'play', cards:[sp('peek')], target:t }; }
+  if (sp('tears') && Math.random() < 0.4) return { type:'play', cards:[sp('tears')], target };
+  if (sp('donation') && Math.random() < 0.4) return { type:'play', cards:[sp('donation')], target };
+  if (p.hp <= 28){ const h = playable.find(c => F(c).kw.heal && !F(c).sp); if (h) return { type:'play', cards:[h], target:p }; }
+  // 何もできないときは1枚捨ててパス（手札を回すための仮ルール）
+  if (hand.length >= handMax(p)) return { type:'pass', discard:lowest(p, hand) };
+  return { type:'pass' };
+}
+
+function cpuDefend(t, atk, src){
+  const F = c => faceFor(t, c);
+  const hand = t.hand.filter(c => defUsable(t, c, atk) && (heartOKDef(t, c)));
+  const field = usableField(t).filter(c => defUsable(t, c, atk) && t.hp - magicCost(t, F(c)) >= 8);
+  const all = [...hand, ...field];
+  const out = cards => ({ cards:cards.filter(c => hand.includes(c)), field:cards.filter(c => !hand.includes(c)) });
+  const big = atk.instakill || atk.power >= 8;
+
+  if (atk.heart){ const x = hand.find(c => F(c).sp === 'putInPlace'); if (x && big) return out([x]); }
+  const ra = all.find(c => F(c).kw.reflectAll); if (ra && big) return out([ra]);
+  if (atk.magic){ const m = all.find(c => F(c).kw.reflectMagic && F(c).sp !== 'choose'); if (m && atk.power >= 5) return out([m]); }
+  const nl = all.find(c => F(c).kw.nullify && F(c).kw.nullify.includes(atk.el)); if (nl && (big || atk.power >= 6)) return out([nl]);
+  const ch = hand.find(c => F(c).sp === 'choose'); if (ch && atk.magic && big) return { cards:[ch], field:[], mode:'reflect' };
+  if (atk.power <= 0 && !atk.instakill) return out([]);
+  if (!atk.instakill && atk.power <= 2 && t.hp > 20 && Math.random() < 0.5) return out([]);
+
+  let el = atk.el, prefix = [];
+  let shields = all.filter(c => F(c).def > 0 && validDef(F(c), atk, el)).sort((a, b) => F(a).def - F(b).def);
+  if (!shields.length && el !== 'none' && big && !atk.kiss){
+    const rm = hand.find(c => F(c).kw.remove && F(c).sp !== 'choose');
+    if (rm){ el = 'none'; prefix = [rm]; shields = all.filter(c => c !== rm && F(c).def > 0 && validDef(F(c), atk, 'none')).sort((a, b) => F(a).def - F(b).def); }
+  }
+  if (!shields.length) return out([]);
+  const need = atk.power;
+  const single = shields.find(c => F(c).def >= need);
+  let chosen;
+  if (single) chosen = [single];
+  else if (atk.kiss) chosen = [shields[shields.length - 1]];
+  else { chosen = []; let s = 0; for (const c of shields.slice().reverse()){ chosen.push(c); s += F(c).def; if (s >= need) break; } }
+  return out([...prefix, ...chosen]);
+}
+function heartOKDef(t, c){
+  if (c.def.heart && t.role === 'fallen' && G.players.some(q => q.role === 'succubus' && q.alive)) return false;   // 堕天使は♥カードを供与用に取っておく
+  if (!c.def.heart || t.revealed) return true;
+  if (t.role === 'sister') return true;
+  if (t.role === 'succubus') return G.round > 1 && (t.hp <= 18 || Math.random() < 0.3);
+  return false;
+}
+
+/* ================================================================
+   ネットワーク対戦
+   部屋を作った人（ホスト）のブラウザがゲームを進め、ほかの人は自分の操作だけを送る。
+   やりとりは MQTT の公開中継サーバーを通す（直接つながなくてよいので、回線の種類を選ばない）。
+   ホストは各プレイヤーに「その人から見える状態」だけを、その人だけが読める暗号で送る。
+   ================================================================ */
+const MQTT_SRC = ['vendor/mqtt.min.js', 'https://cdn.jsdelivr.net/npm/mqtt@5.16.1/dist/mqtt.min.js'];
+// 中継サーバー（無料の公開サーバー）。ホストは全部につなぎ、参加する側は順に部屋をさがす
+const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt', 'wss://test.mosquitto.org:8081/mqtt'];
+const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const Net = {
+  role:null,          // null＝1人用 / 'host' / 'client'
+  seat:0,             // 自分の席（G.players の添字）
+  code:'', buses:[], bus:null, room:null, status:'', error:'', token:'', byePkt:'', weak:false,
+  members:[],         // ホスト：参加者 { conn, name, char, token }
+  lobby:null,         // クライアント：ホストから届いた部屋の情報
+  host:null,          // クライアント：ホストへの接続
+  pending:new Map(),  // ホスト：返事待ちの問い合わせ
+  askSeen:new Set(), answers:new Map(),   // 参加する側：受けた問い合わせと返した答え（届き直しに備える）
+  seq:0, syncTimer:0, joinTimer:0, beat:0, lastHost:0,
+};
+const BEAT_MS = 3000, LOST_MS = 20000, CLIENT_GIVEUP_MS = 60000;   // 生存確認の間隔、ホストが席をCPUに渡すまで、参加側があきらめるまで
+const DEF_BY_ID = Object.fromEntries(CARD_DEFS.map(d => [d.id, d]));
+const CHAR_BY_KEY = Object.fromEntries(CHARACTERS.map(c => [c.key, c]));
+const FACE_REF = new Map();
+CARD_DEFS.forEach(d => { FACE_REF.set(d.top, [d.id, 0]); if (d.heart) FACE_REF.set(d.heart, [d.id, 1]); });
+
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v){ try { localStorage.setItem(k, v); } catch {} },
+};
+const cleanName = s => String(s || '').replace(/[\u0000-\u001f\u007f<>"]/g, '').trim().slice(0, 12);
+const randToken = () => Array.from({ length:16 }, () => CODE_CHARS[rand(CODE_CHARS.length)]).join('');
+const makeCode = () => Array.from({ length:5 }, () => CODE_CHARS[rand(CODE_CHARS.length)]).join('');
+const myName = () => cleanName(UI.setup.name) || 'プレイヤー';
+const inviteURL = () => `${location.origin}${location.pathname}?room=${Net.code}`;
+const PAGES_URL = 'https://nishikawa251.github.io/claude/succubus-sisters/';   // オンライン対戦はここで遊ぶ（GitHub Pages）
+
+/* ---------- 送受信する値の変換（プレイヤー・カード・カード面は番号にする） ---------- */
+function enc(v){
+  if (v === null || typeof v !== 'object') return v;
+  if (Array.isArray(v)) return v.map(enc);
+  if (FACE_REF.has(v)) return { $f:FACE_REF.get(v) };
+  if (v.def && 'uid' in v) return { $c:[v.uid, v.def.id] };
+  if ('char' in v && 'hp' in v && 'i' in v) return { $p:v.i };
+  const o = {};
+  for (const k of Object.keys(v)){ const x = v[k]; if (typeof x !== 'function' && !(x instanceof Map) && !(x instanceof Set)) o[k] = enc(x); }
+  return o;
+}
+// 画面の class 名や画像パスに入る文字列は、記号を含まないものだけ通す
+const ATTR_KEYS = new Set(['cls', 'role', 'el', 'art', 'mode', 'kind', 'reason', 'type', 'trig']);
+function dec(v, ctx, key){
+  if (typeof v === 'string') return ATTR_KEYS.has(key) && !/^[\w\/.\- ]{0,80}$/.test(v) ? '' : v;
+  if (v === null || typeof v !== 'object') return v;
+  if (Array.isArray(v)) return v.map(x => dec(x, ctx));
+  if (v.$p !== undefined) return ctx.player(v.$p);
+  if (v.$f){ const d = DEF_BY_ID[v.$f[0]]; return d ? (v.$f[1] ? d.heart : d.top) : null; }
+  if (v.$c) return ctx.card(v.$c[0], v.$c[1]);
+  const o = {};
+  for (const k of Object.keys(v)) if (k !== '__proto__' && k !== 'constructor' && k !== 'prototype') o[k] = dec(v[k], ctx, k);
+  return o;
+}
+
+/* ---------- 接続 ----------
+   MQTT の公開中継サーバーを通す（WebSocket だけで届くので、スマホ回線やルーターの種類を選ばない）。
+   通り道の名前は部屋コードのハッシュ。ホストへの手紙は部屋コードから作った鍵で、
+   ホストから各プレイヤーへの手紙はその人とだけ共有する鍵（ECDH）で暗号化する。 */
+function loadScript(src){
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = () => res(); s.onerror = () => { s.remove(); rej(new Error('load')); };
+    document.head.appendChild(s);
+  });
+}
+async function loadMQTT(){
+  if (window.mqtt) return;
+  for (const src of MQTT_SRC){ try { await loadScript(src); if (window.mqtt) return; } catch {} }
+  throw new Error('load');
+}
+function brokerList(){
+  // ?mqtt=ws://127.0.0.1:8888（カンマ区切りで複数）で中継サーバーを差し替える（動作確認用）
+  const q = new URLSearchParams(location.search).get('mqtt');
+  return q ? q.split(',').filter(Boolean) : BROKERS;
+}
+const mqttOpts = () => ({ clientId:'ss_' + randToken(), clean:true, keepalive:30, reconnectPeriod:2000, connectTimeout:8000, protocolVersion:4 });
+const b64 = u => { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(String(s)), ch => ch.charCodeAt(0));
+const ECDH = { name:'ECDH', namedCurve:'P-256' };
+async function roomKeys(code){
+  const te = new TextEncoder();
+  const h = new Uint8Array(await crypto.subtle.digest('SHA-256', te.encode('succsis-topic-v1:' + code)));
+  const topic = 'ss1/' + Array.from(h.slice(0, 10), b => b.toString(16).padStart(2, '0')).join('');
+  const base = await crypto.subtle.importKey('raw', te.encode('succsis-key-v1:' + code), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name:'PBKDF2', salt:te.encode('succsis-salt-v1'), iterations:100000, hash:'SHA-256' },
+    base, { name:'AES-GCM', length:256 }, false, ['encrypt', 'decrypt']);
+  const kp = await crypto.subtle.generateKey(ECDH, false, ['deriveKey']);
+  const pub = b64(new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey)));
+  return { topic, key, kp, pub };
+}
+async function sharedKey(priv, pubB64){
+  const pub = await crypto.subtle.importKey('raw', unb64(pubB64), ECDH, false, []);
+  return crypto.subtle.deriveKey({ name:'ECDH', public:pub }, priv, { name:'AES-GCM', length:256 }, false, ['encrypt', 'decrypt']);
+}
+async function seal(key, obj){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(obj))));
+  const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12);
+  return b64(out);
+}
+async function unseal(key, s){
+  const u = unb64(s);
+  return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name:'AES-GCM', iv:u.slice(0, 12) }, key, u.slice(12))));
+}
+const hasCrypto = () => !!(window.crypto && crypto.subtle && window.TextEncoder);
+// 相手1人ぶんの通り道。send / on('data') / close で使う
+class RelayConn {
+  constructor(bus, out, key, head){ Object.assign(this, { bus, out, key, head, open:true, seen:Date.now(), h:{}, q:Promise.resolve(), lastState:'' }); }
+  on(ev, fn){ (this.h[ev] || (this.h[ev] = [])).push(fn); }
+  emit(ev, x){ (this.h[ev] || []).forEach(fn => { try { fn(x); } catch (e){ console.error(e); } }); }
+  send(msg){
+    if (!this.open) return;
+    // 暗号化は非同期なので、順番が入れ替わらないよう1本の列にして送る
+    this.q = this.q.then(async () => {
+      const p = await seal(this.key, msg);
+      if (this.open) this.bus.c.publish(this.out, JSON.stringify({ ...this.head, p }), { qos:1 });
+    }).catch(() => {});
+  }
+  sendRawSync(p){ try { this.bus.c.publish(this.out, JSON.stringify({ ...this.head, p }), { qos:0 }); } catch {} }
+  close(){ if (!this.open) return; this.open = false; this.emit('close'); }
+}
+function netReset(){
+  clearTimeout(Net.joinTimer); clearTimeout(Net.syncTimer); clearInterval(Net.beat);
+  const buses = [...Net.buses, ...(Net.bus ? [Net.bus] : [])];
+  setTimeout(() => buses.forEach(b => { try { b.c.end(true); } catch {} }), 800);   // 別れのあいさつを送り切ってから閉じる
+  Object.assign(Net, { role:null, seat:0, code:'', buses:[], bus:null, room:null, status:'', members:[], lobby:null, host:null,
+    syncTimer:0, joinTimer:0, beat:0, lastHost:0, weak:false, token:'', byePkt:'' });
+  Net.pending.clear(); Net.askSeen.clear(); Net.answers.clear();
+}
+function netFail(msg){
+  netReset(); Net.error = msg;
+  gameId++; G = null; UI.mode = 'setup'; UI.setup.online = true;
+  render();
+}
+// ページを閉じるときにも届くよう、用意しておいた「さようなら」をそのまま送る
+function sendBye(){
+  if (Net.role === 'host'){ for (const b of Net.buses) for (const c of b.conns.values()) if (!c.dropped && c.byePkt) c.sendRawSync(c.byePkt); }
+  else if (Net.host && Net.byePkt) Net.host.sendRawSync(Net.byePkt);
+}
+function netLeave(){ sendBye(); netReset(); Net.error = ''; }
+
+/* ---------- ホスト ---------- */
+async function netHost(){
+  netReset(); Net.error = ''; Net.status = '中継サーバーに接続しています…'; render();
+  try { await loadMQTT(); } catch { return netFail('通信ライブラリを読み込めなかった。ネットワークを確かめてほしい。'); }
+  if (!hasCrypto()) return netFail('この開き方では暗号化が使えないため、オンライン対戦ができない。https のページ（GitHub Pages 版）で開いてほしい。');
+  const code = makeCode();
+  const room = await roomKeys(code);
+  if (Net.status !== '中継サーバーに接続しています…' || Net.role) return;   // 待っている間にやめた
+  Object.assign(Net, { code, room, role:'host', seat:0 });
+  Net.buses = brokerList().map(url => {
+    const bus = { url, up:false, conns:new Map(), q:Promise.resolve() };
+    bus.c = mqtt.connect(url, mqttOpts());
+    bus.c.on('connect', () => {
+      bus.c.subscribe(room.topic + '/h', { qos:1 });
+      if (!bus.up){ bus.up = true; if (Net.room === room && Net.status){ Net.status = ''; render(); } }
+    });
+    bus.c.on('message', (t, payload) => { bus.q = bus.q.then(() => hostIncoming(bus, room, String(payload))).catch(() => {}); });
+    bus.c.on('error', () => {});
+    return bus;
+  });
+  Net.joinTimer = setTimeout(() => { if (Net.room === room && !Net.buses.some(b => b.up)) netFail('中継サーバーにつながらなかった。ネットワークを確かめて、もう一度試してほしい。'); }, 12000);
+  Net.beat = setInterval(netHostBeat, BEAT_MS);
+}
+async function hostIncoming(bus, room, s){
+  if (Net.room !== room) return;
+  let env, msg;
+  try { env = JSON.parse(s); msg = await unseal(room.key, env.p); } catch { return; }
+  const from = String(env.f || '').replace(/[^\w-]/g, '').slice(0, 40);
+  if (!from || !msg || typeof msg !== 'object') return;
+  let conn = bus.conns.get(from);
+  if (!conn){
+    if (msg.t !== 'hello' || typeof msg.pub !== 'string') return;
+    let key;
+    try { key = await sharedKey(room.kp.privateKey, msg.pub); } catch { return; }
+    if (Net.room !== room || bus.conns.has(from)) return;
+    conn = new RelayConn(bus, `${room.topic}/c/${from}`, key, { h:room.pub });
+    conn.byePkt = await seal(key, { t:'bye' });
+    bus.conns.set(from, conn);
+    conn.on('data', d => { conn.seen = Date.now(); netHostData(conn, d); });
+  }
+  // 切れたとみなした人から届いたら、名乗り直してもらう
+  if (conn.dropped && msg.t !== 'hello' && msg.t !== 'bye'){ conn.seen = Date.now(); send(conn, { t:'dropped' }); return; }
+  conn.emit('data', msg);
+}
+function lobbyInfo(){
+  return { t:'lobby', code:Net.code, count:UI.setup.count,
+    members:[{ name:myName(), char:UI.setup.char, host:true }, ...Net.members.map(m => ({ name:m.name, char:m.char }))] };
+}
+function netLobbyBroadcast(){
+  if (Net.role !== 'host') return;
+  const info = lobbyInfo();
+  Net.members.forEach((m, k) => send(m.conn, { ...info, you:k + 1 }));
+  render();
+}
+function send(conn, msg){ try { if (conn && conn.open) conn.send(msg); } catch {} }
+function netBroadcast(msg){
+  if (Net.role !== 'host') return;
+  if (M && G) M.players.forEach(p => { if (p.remote) send(p.remote, msg); });
+  else Net.members.forEach(m => send(m.conn, msg));
+}
+function netHostData(conn, d){
+  if (!d || typeof d !== 'object') return;
+  if (d.t === 'hello'){
+    const name = cleanName(d.name) || 'プレイヤー', token = String(d.token || '').slice(0, 32);
+    const char = Number.isInteger(d.char) && CHARACTERS[d.char] ? d.char : 0;
+    if (M && G){
+      // 対戦中：同じ人（同じ合言葉）なら、その席にもどす。つなぎ直しなら最新の状態と待っている問い合わせを送り直す
+      const seat = token && M.players.find(p => p.token === token);
+      if (!seat){ send(conn, { t:'refuse', why:'started' }); setTimeout(() => conn.close(), 300); return; }
+      const back = !seat.remote;
+      if (seat.remote && seat.remote !== conn) seat.remote.dropped = true;
+      seat.remote = conn; conn.dropped = false; seat.human = true; seat.name = seat.baseName;
+      Net.members = Net.members.filter(m => m.token !== token).concat({ conn, name:seat.baseName, char:CHARACTERS.indexOf(seat.char), token });
+      if (back) log(`${seat.name}がもどってきた`, 'good');
+      conn.lastState = '';
+      send(conn, { t:'start', seat:seat.i }); netSyncNow();
+      for (const [id, e] of Net.pending) if (e.p === seat) send(conn, { t:'ask', id, mode:e.mode, extra:enc(e.extra) });
+      render();
+      return;
+    }
+    conn.dropped = false;
+    const same = Net.members.find(m => m.conn === conn || (token && m.token === token));
+    if (same){ Object.assign(same, { conn, name, char, token }); netLobbyBroadcast(); return; }
+    if (Net.members.length >= 5){ send(conn, { t:'refuse', why:'full' }); setTimeout(() => conn.close(), 300); return; }
+    Net.members.push({ conn, name, char, token });
+    if (UI.setup.count < Net.members.length + 1) UI.setup.count = Math.max(3, Net.members.length + 1);
+    netLobbyBroadcast();
+    return;
+  }
+  if (d.t === 'bye'){ netDrop(conn); return; }
+  if (d.t === 'char'){
+    const m = Net.members.find(m => m.conn === conn);
+    if (m && Number.isInteger(d.char) && CHARACTERS[d.char]){ m.char = d.char; netLobbyBroadcast(); }
+    return;
+  }
+  if (d.t === 'answer'){
+    const e = Net.pending.get(d.id);
+    if (!e || e.p.remote !== conn) return;
+    Net.pending.delete(d.id);
+    e.res(sanitizeAnswer(e, decHost(d.v, e)));
+  }
+}
+// ホスト：参加者に生存確認を送り、しばらく何も届かない人は切れたとみなす
+function netHostBeat(){
+  if (Net.role !== 'host') return;
+  const conns = new Set(Net.members.map(m => m.conn));
+  if (M) M.players.forEach(p => p.remote && conns.add(p.remote));
+  for (const c of conns){
+    if (c.dropped) continue;
+    if (Date.now() - (c.seen || 0) > LOST_MS) netDrop(c);
+    else send(c, { t:'ping' });
+  }
+}
+function netDrop(conn){
+  if (Net.role !== 'host' || conn.dropped) return;
+  conn.dropped = true;
+  const m = Net.members.find(m => m.conn === conn);
+  if (m && !(M && G)){ Net.members = Net.members.filter(x => x !== m); netLobbyBroadcast(); return; }
+  Net.members = Net.members.filter(x => x.conn !== conn);
+  if (!M) return;
+  const p = M.players.find(q => q.remote === conn);
+  if (!p) return;
+  p.remote = null; p.human = false; p.name = `${p.baseName}（CPU）`;
+  log(`${p.baseName}の接続が切れた。CPUが代わりに操作する`, 'judge');
+  for (const [id, e] of Net.pending) if (e.p === p){ Net.pending.delete(id); e.res(fallbackAnswer(e)); }
+  render();
+}
+function netStartMatch(){
+  gameId++;
+  const humans = [{ name:myName(), char:UI.setup.char, conn:null, token:'' }, ...Net.members];
+  const n = Math.max(3, humans.length, UI.setup.count);
+  const used = new Set();
+  const charOf = want => { const k = !used.has(want) ? want : shuffle(CHARACTERS.map((c, i) => i).filter(i => !used.has(i)))[0]; used.add(k); return CHARACTERS[k]; };
+  const seats = humans.map(h => ({ human:true, remote:h.conn, token:h.token, char:charOf(h.char), name:h.name }));
+  while (seats.length < n) seats.push({ human:false, remote:null, token:'', char:charOf(rand(CHARACTERS.length)), name:null });
+  M = { game:0, players:seats.map((s, k) => ({ i:k, human:s.human, remote:s.remote, token:s.token, char:s.char,
+    name:s.name || `${s.char.short}（CPU）`, baseName:s.name || s.char.short, vp:0, history:[] })) };
+  M.players.forEach(p => { if (p.remote) send(p.remote, { t:'start', seat:p.i }); });
+  UI.mode = 'wait';
+  nextGame();
+}
+
+/* ホスト → 各プレイヤー：その人から見える状態だけを送る */
+function snapshotFor(v){
+  const r = G.result;
+  return {
+    game:M.game, round:G.round, turn:G.turn, start:G.start, deck:G.deck.length, ending:G.ending,
+    ts:{ played:!!G.ts.played, gifted:!!G.ts.gifted, freeMagic:!!G.ts.freeMagic },
+    players:G.players.map(q => ({
+      i:q.i, name:q.name, char:q.char.key, human:!!q.human, role:(q === v || q.revealed) ? q.role : null,
+      hp:q.hp, alive:q.alive, revealed:q.revealed, manifested:q.manifested, heartSealed:q.heartSealed,
+      vp:q.vp, history:q.history, hitAgo:Math.min(Date.now() - (q.hitAt || 0), 5000),
+      hand:q === v ? q.hand.map(enc) : q.hand.length, field:q.field.map(enc), known:q === v ? q.known : {},
+    })),
+    stage:enc(G.stage), log:G.log.slice(-80),
+    result:r ? { reason:r.reason, text:r.text, gain:G.players.map(q => r.gain.get(q) || []) } : null,
+  };
+}
+function netScheduleSync(){
+  if (Net.role !== 'host' || !G || !M || Net.syncTimer) return;
+  Net.syncTimer = setTimeout(netSyncNow, 100);
+}
+function netSyncNow(){
+  clearTimeout(Net.syncTimer); Net.syncTimer = 0;
+  if (Net.role !== 'host' || !G || !M) return;
+  for (const p of M.players){
+    if (!p.remote || p.remote.dropped) continue;
+    const s = snapshotFor(p), key = JSON.stringify(s);
+    if (key === p.remote.lastState) continue;
+    p.remote.lastState = key;
+    send(p.remote, { t:'state', s });
+  }
+}
+function netNotifyAll(mode){
+  if (Net.role !== 'host') return;
+  netSyncNow();
+  M.players.forEach(p => { if (p.remote) send(p.remote, { t:'notify', mode }); });
+}
+
+/* ホスト：離れた席のプレイヤーに選んでもらう */
+function askP(p, mode, extra = {}){
+  if (Net.role === 'host' && p.remote) return netAsk(p, mode, extra);
+  return ask(mode, extra);
+}
+function netAsk(p, mode, extra){
+  const id = ++Net.seq, gid = gameId;
+  netSyncNow();
+  return new Promise(res => {
+    Net.pending.set(id, { p, mode, extra, res });
+    send(p.remote, { t:'ask', id, mode, extra:enc(extra) });
+  }).then(v => { if (gid !== gameId) throw ABORT; return v; });
+}
+function decHost(v, e){
+  const cards = new Map();
+  const add = list => (list || []).forEach(c => c && c.uid && cards.set(c.uid, c));
+  G.players.forEach(q => { add(q.hand); add(q.field); });
+  add(G.trash); add(G.deck); add(e.extra.cards);
+  return dec(v, { player:i => G.players[i] || null, card:uid => cards.get(uid) || null });
+}
+// 届いた返事を、ゲームのルールで受け付けられる形に直す（おかしなものはパス扱い）
+function sanitizeAnswer(e, v){
+  const { p, mode, extra:x } = e;
+  const inHand = c => !!c && p.hand.includes(c);
+  const uniq = (c, k, a) => a.indexOf(c) === k;
+  try {
+    switch (mode){
+      case 'action': {
+        const pass = { type:'pass', discard:v && !x.magicOnly && inHand(v.discard) ? v.discard : undefined };
+        if (!v || v.type === 'pass') return pass;
+        const free = !x.magicOnly && !G.ts.played && G.round > 1;
+        if (v.type === 'manifest') return free && p.role === 'succubus' && !p.revealed ? { type:'manifest' } : { type:'pass' };
+        if (v.type === 'gift') return free && !G.ts.gifted && canGift(p) ? { type:'gift' } : { type:'pass' };
+        if (v.type !== 'play') return { type:'pass' };
+        const cards = Array.isArray(v.cards) ? v.cards.filter(uniq) : [];
+        const pool = v.fromField ? usableField(p) : p.hand;
+        if (!cards.length || !cards.every(c => c && pool.includes(c))) return { type:'pass' };
+        if (v.fromField ? fieldProblem(p, cards[0], x.magicOnly) : playProblem(p, cards[0], x.magicOnly)) return { type:'pass' };
+        if (v.fromField && cards.length > 1) return { type:'pass' };
+        for (let k = 1; k < cards.length; k++) if (!(faceFor(p, cards[k - 1]).kw.chain && faceFor(p, cards[0]).isAtk && chainable(p, cards[k]))) return { type:'pass' };
+        const tk = targetKind(cards.map(c => faceFor(p, c)));
+        let target = v.target;
+        if (tk === 'other' && (!target || target === p || !target.alive)) return { type:'pass' };
+        if (tk === 'any' && (!target || !target.alive)) target = p;
+        if (tk === 'none') target = null;
+        return { type:'play', cards, fromField:!!v.fromField, target };
+      }
+      case 'defend': {
+        const field0 = usableField(p);
+        let cards = (v && Array.isArray(v.cards) ? v.cards : []).filter(uniq).filter(c => inHand(c) && defUsable(p, c, x.atk));
+        let field = (v && Array.isArray(v.field) ? v.field : []).filter(uniq).filter(c => c && field0.includes(c) && defUsable(p, c, x.atk));
+        if (x.atk.kiss && cards.length + field.length > 1){ if (cards.length){ cards = cards.slice(0, 1); field = []; } else field = field.slice(0, 1); }
+        const mode = ['reflect', 'remove', 'counter'].includes(v && v.mode) && cards.some(c => faceFor(p, c).sp === 'choose') ? v.mode : null;
+        return { cards, field, mode };
+      }
+      case 'cards': {
+        let pick = (Array.isArray(v) ? v : []).filter(uniq).filter(c => c && x.cards.includes(c)).slice(0, x.max);
+        if (pick.length < x.min) pick = lowestN(p, x.cards, x.min);
+        return pick;
+      }
+      case 'player': return x.players.includes(v) ? v : x.players[0];
+      case 'option': return x.options.some(o => o.value === v) ? v : x.options[x.options.length - 1].value;
+      default: return true;
+    }
+  } catch { return fallbackAnswer(e); }
+}
+// 返事が来ないまま接続が切れたとき：CPUの判断で代わりに答える
+function fallbackAnswer(e){
+  const { p, mode, extra:x } = e;
+  try {
+    if (mode === 'action') return cpuPlan(p, !!x.magicOnly);
+    if (mode === 'defend') return cpuDefend(p, x.atk, x.src);
+    if (mode === 'cards') return x.min ? lowestN(p, x.cards, x.min) : [];
+    if (mode === 'player'){ const q = cpuPickEnemy(p); return x.players.includes(q) ? q : x.players[0]; }
+    if (mode === 'option') return x.options[x.options.length - 1].value;
+  } catch {}
+  return mode === 'action' ? { type:'pass' } : mode === 'defend' ? { cards:[], field:[], mode:null } : mode === 'cards' ? [] : true;
+}
+
+/* ---------- 参加する側 ---------- */
+async function netJoin(code){
+  code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (code.length !== 5){ Net.error = '部屋コードは5文字。'; render(); return; }
+  netReset(); Net.error = ''; Net.status = '中継サーバーに接続しています…'; Net.code = code; render();
+  try { await loadMQTT(); } catch { return netFail('通信ライブラリを読み込めなかった。ネットワークを確かめてほしい。'); }
+  if (!hasCrypto()) return netFail('この開き方では暗号化が使えないため、オンライン対戦ができない。https のページ（GitHub Pages 版）で開いてほしい。');
+  const room = await roomKeys(code);
+  if (Net.code !== code || Net.role || Net.error) return;
+  Net.room = room;
+  Net.byePkt = await seal(room.key, { t:'bye' });
+  Net.token = store.get('ss-token-' + code) || randToken();
+  store.set('ss-token-' + code, Net.token);
+  const urls = brokerList();
+  let reached = 0;
+  for (let k = 0; k < urls.length; k++){
+    if (Net.room !== room) return;   // 途中でやめた
+    Net.status = urls.length > 1 ? `部屋をさがしています…（${k + 1}/${urls.length}）` : '部屋をさがしています…'; render();
+    const r = await tryJoin(urls[k], room);
+    if (r === 'found' || Net.room !== room) return;
+    if (r === 'reached') reached++;
+  }
+  netFail(reached ? '部屋が見つからなかった。部屋コードが合っているか、ホストがその画面を開いたままかを確かめてほしい。'
+    : '中継サーバーにつながらなかった。ネットワークを確かめて、もう一度試してほしい。');
+}
+const helloMsg = () => ({ t:'hello', name:myName(), token:Net.token, char:UI.setup.char, pub:Net.room.pub });
+// ひとつの中継サーバーで部屋をさがす。'found'（見つかった）/ 'reached'（つながったが部屋がない）/ 'none'（つながらない）
+function tryJoin(url, room){
+  return new Promise(res => {
+    const me = 'c' + randToken();
+    const bus = { url, c:mqtt.connect(url, mqttOpts()), q:Promise.resolve() };
+    const conn = new RelayConn(bus, room.topic + '/h', room.key, { f:me });
+    let done = false, connected = false, hostKey = null, hostPub = '';
+    const finish = r => {
+      if (done) return;
+      done = true; clearTimeout(timer);
+      if (r === 'found' && Net.room === room){ Net.bus = bus; Net.host = conn; startClientBeat(conn); }
+      else { conn.open = false; try { bus.c.end(true); } catch {} }
+      res(r);
+    };
+    let timer = setTimeout(() => finish('none'), 9000);
+    bus.c.on('connect', () => {
+      // つながるたびに名乗る（つなぎ直したときも、ホストが最新の状態を送り直してくれる）
+      bus.c.subscribe(`${room.topic}/c/${me}`, { qos:1 }, () => { if (Net.room === room) send(conn, helloMsg()); });
+      if (!connected){ connected = true; clearTimeout(timer); timer = setTimeout(() => finish('reached'), 8000); }
+    });
+    bus.c.on('message', (t, payload) => {
+      bus.q = bus.q.then(async () => {
+        if (Net.room !== room) return;
+        const env = JSON.parse(String(payload));
+        if (env.h !== hostPub){ hostKey = await sharedKey(room.kp.privateKey, env.h); hostPub = env.h; }
+        const d = await unseal(hostKey, env.p);
+        if (!d || typeof d !== 'object') return;
+        if (!done){ if (['lobby', 'start', 'refuse'].includes(d.t)) finish('found'); else return; }
+        if (Net.host !== conn) return;
+        Net.lastHost = Date.now();
+        if (Net.weak){ Net.weak = false; render(); }
+        netClientData(d);
+      }).catch(() => {});
+    });
+    bus.c.on('error', () => {});
+  });
+}
+function startClientBeat(conn){
+  Net.lastHost = Date.now();
+  clearInterval(Net.beat);
+  Net.beat = setInterval(() => {
+    if (Net.host !== conn) return;
+    const quiet = Date.now() - Net.lastHost;
+    if (quiet > CLIENT_GIVEUP_MS) return netFail('ホストとの接続が切れた。');
+    const weak = quiet > 9000;
+    if (weak !== Net.weak){ Net.weak = weak; render(); }
+    send(conn, { t:'ping' });
+  }, BEAT_MS);
+}
+const cardCache = new Map();
+function decCard(uid, id){
+  let c = cardCache.get(uid);
+  if (!c && DEF_BY_ID[id]){ c = { uid, def:DEF_BY_ID[id] }; cardCache.set(uid, c); }
+  return c || null;
+}
+const decClient = v => dec(v, { player:i => (G && G.players[i]) || null, card:decCard });
+function netClientData(d){
+  if (!d || typeof d !== 'object') return;
+  switch (d.t){
+    case 'lobby': clearTimeout(Net.joinTimer); Net.role = 'client'; Net.status = ''; Net.lobby = d; render(); break;
+    case 'refuse': netFail(d.why === 'full' ? '部屋が満員だった。' : 'この部屋はもう対戦を始めている。'); break;
+    case 'bye': netFail('ホストが部屋を閉じた。'); break;
+    case 'start': {
+      // つなぎ直しで届き直したときは、開いている選択画面を閉じない
+      const seat = +d.seat || 0, fresh = !G || Net.seat !== seat || UI.mode === 'setup' || Net.role !== 'client';
+      clearTimeout(Net.joinTimer); Net.role = 'client'; Net.seat = seat; Net.status = '';
+      if (fresh){ UI.mode = 'wait'; UI.zoom = null; }
+      render(); break;
+    }
+    case 'dropped': if (Net.room) send(Net.host, helloMsg()); break;
+    case 'state': netApplyState(d.s); break;
+    case 'ask': {
+      if (!G) return;
+      const id = d.id;
+      if (Net.answers.has(id)){ send(Net.host, { t:'answer', id, v:Net.answers.get(id) }); break; }   // 答えが届かなかった
+      if (Net.askSeen.has(id)) break;   // もう開いている
+      Net.askSeen.add(id);
+      ask(String(d.mode), decClient(d.extra || {})).then(v => {
+        const ev = enc(v);
+        Net.answers.set(id, ev);
+        if (Net.answers.size > 40) Net.answers.delete(Net.answers.keys().next().value);
+        send(Net.host, { t:'answer', id, v:ev });
+      }).catch(() => {});
+      break;
+    }
+    case 'notify':
+      if (d.mode === 'final'){ UI.mode = 'final'; UI.resolve = null; render(); }
+      break;
+    case 'fx': if (G && G.players[d.p]) fx(G.players[d.p], String(d.text).slice(0, 20), /^[\w-]{0,20}$/.test(d.cls) ? d.cls : ''); break;
+    case 'cutin': if (G && G.players[d.p] && DEF_BY_ID[d.d]) cutin(d.kind === 'bow' ? 'bow' : 'sun', G.players[d.p], { def:DEF_BY_ID[d.d] }).catch(() => {}); break;
+  }
+}
+function netApplyState(s){
+  if (!s || !Array.isArray(s.players)) return;
+  const same = G && M && M.game === s.game && G.players.length === s.players.length;
+  const ROLES = ['sister', 'succubus', 'fallen'];
+  const players = s.players.map((x, k) => {
+    const q = same ? G.players[k] : {};
+    return Object.assign(q, {
+      i:k, name:cleanName(x.name) || '？', char:CHAR_BY_KEY[x.char] || CHARACTERS[0], human:!!x.human,
+      role:ROLES.includes(x.role) ? x.role : null, hp:+x.hp || 0, alive:!!x.alive, revealed:!!x.revealed, manifested:!!x.manifested,
+      heartSealed:!!x.heartSealed, vp:+x.vp || 0, history:Array.isArray(x.history) ? x.history.map(Number) : [],
+      hitAt:Date.now() - (+x.hitAgo || 5000), sus:{}, known:{},
+    });
+  });
+  G = Object.assign(same ? G : {}, { players, round:+s.round || 1, turn:+s.turn || 0, start:+s.start || 0, ending:s.ending || null,
+    deck:{ length:+s.deck || 0 }, ts:s.ts || {}, trash:[], removed:[], judgeSuccess:new Set(), lastUsed:[], curUsed:[] });
+  // カードや演出の中身は、プレイヤーを作り直したあとで読む
+  s.players.forEach((x, k) => {
+    const q = players[k];
+    q.hand = Array.isArray(x.hand) ? decClient(x.hand).filter(Boolean) : Array(Math.max(0, Math.min(+x.hand || 0, 20))).fill(null);
+    q.field = decClient(x.field || []).filter(Boolean);
+    if (x.known && typeof x.known === 'object') for (const [i, r] of Object.entries(x.known)) if (ROLES.includes(r)) q.known[+i] = r;
+  });
+  G.stage = s.stage ? decClient(s.stage) : null;
+  if (G.stage && G.stage.art && !/^img\/chara\/\w+_(oni|hito)\.jpg$/.test(G.stage.art)) G.stage.art = '';
+  G.log = (Array.isArray(s.log) ? s.log : []).map(l => ({ text:String(l && l.text || ''), cls:/^[\w-]{0,12}$/.test(l && l.cls) ? l.cls : '' }));
+  G.result = s.result ? { reason:String(s.result.reason), text:String(s.result.text || ''),
+    gain:new Map(players.map((q, k) => [q, (s.result.gain[k] || []).map(x => ({ v:+x.v || 0, why:String(x.why || '') }))])) } : null;
+  M = { game:+s.game || 1, players };
+  if (UI.focus) UI.focus = me().hand.find(c => c && c.uid === UI.focus.uid) || usableField(me()).find(c => c.uid === UI.focus.uid) || null;
+  if (UI.target) UI.target = G.players[UI.target.i] || null;
+  if (UI.mode === 'setup') UI.mode = 'wait';
+  render();
+}
+
+/* ================================================================
+   プレイヤーの入力
+   ================================================================ */
+function ask(mode, extra = {}){
+  const id = gameId;
+  return new Promise(res => {
+    UI.mode = mode; UI.sel = []; UI.fsel = []; UI.extra = extra; UI.mfocus = null;
+    UI.resolve = v => { UI.mode = 'wait'; UI.resolve = null; UI.sel = []; UI.fsel = []; res(v); };
+    if (mode === 'defend') UI.focus = null;
+    render();
+  }).then(v => { if (id !== gameId) throw ABORT; return v; });
+}
+
+const selCards = () => UI.sel.map(uid => me().hand.find(c => c.uid === uid)).filter(Boolean);
+const selField = () => UI.fsel.map(uid => usableField(me()).find(c => c.uid === uid)).filter(Boolean);
+
+function actionPlan(){
+  const p = me();
+  const magicOnly = UI.extra.magicOnly;
+  const cards = selCards(), fcards = selField();
+  const list = fcards.length ? fcards : cards;
+  if (!list.length) return { ok:false, label:'カードを選ぶ' };
+  const faces = list.map(c => faceFor(p, c));
+  const prob = fcards.length ? fieldProblem(p, fcards[0], magicOnly) : playProblem(p, cards[0], magicOnly);
+  if (prob){
+    if (!fcards.length && cards.length === 1 && !magicOnly) return { ok:true, discardPass:true, label:'このカードを捨ててパス', act:{ type:'pass', discard:cards[0] }, why:prob };
+    return { ok:false, label:prob };
+  }
+  const tk = targetKind(faces);
+  let tgt = UI.target;
+  if (tk === 'other' && (!tgt || tgt === p || !tgt.alive)) return { ok:false, label:'対象のプレイヤーをタップ', tk };
+  if (tk === 'any' && (!tgt || !tgt.alive)) tgt = p;
+  const verb = faces[0].isAtk ? '攻撃' : '使う';
+  const power = faces[0].isAtk ? `（${faces.reduce((s, f) => s + (f.atk || 0), 0)}）` : '';
+  const who = tk === 'none' ? (faces[0].isAtk ? rangeName(faces[faces.length - 1].range) + 'に' : '') : `${tgt === p ? '自分' : tgt.name}に`;
+  const reveal = !p.revealed && list.some(c => c.def.heart || faceFor(p, c).isJudge) ? '・正体を明かす' : '';
+  return { ok:true, tk, label:`${who}${verb}${power}${reveal}`, act:{ type:'play', cards:list, fromField:!!fcards.length, target:tk === 'none' ? null : tgt } };
+}
+function rangeName(r){ return r.kind === 'all' ? '全体' : r.kind === 'random' ? `ランダム〔${r.set.join('')}〕` : r.kind === 'self' ? '自分' : '単体'; }
+
+function onCard(uid){
+  if (!G) return;
+  const p = me();
+  const c = p.hand.find(x => x.uid === uid);
+  if (!c) return;
+  UI.focus = c;
+  if (UI.mode === 'action'){
+    UI.fsel = [];
+    const i = UI.sel.indexOf(uid);
+    if (i >= 0) UI.sel = UI.sel.slice(0, i);
+    else {
+      const cur = selCards();
+      const last = cur.length ? faceFor(p, cur[cur.length - 1]) : null;
+      if (last && last.kw.chain && faceFor(p, cur[0]).isAtk && chainable(p, c)) UI.sel.push(uid);
+      else UI.sel = [uid];
+    }
+  } else if (UI.mode === 'defend'){
+    const i = UI.sel.indexOf(uid);
+    if (i >= 0) UI.sel.splice(i, 1);
+    else if (defenseSelectable(c, false)){ if (UI.extra.atk.kiss){ UI.sel = [uid]; UI.fsel = []; } else UI.sel.push(uid); }
+  }
+  render();
+}
+function onFieldCard(uid){
+  const p = me();
+  const c = usableField(p).find(x => x.uid === uid);
+  if (!c) return;
+  UI.focus = c;
+  if (UI.mode === 'action'){ UI.sel = []; UI.fsel = UI.fsel[0] === uid ? [] : [uid]; }
+  else if (UI.mode === 'defend'){
+    const i = UI.fsel.indexOf(uid);
+    if (i >= 0) UI.fsel.splice(i, 1);
+    else if (defenseSelectable(c, true)){ if (UI.extra.atk.kiss){ UI.fsel = [uid]; UI.sel = []; } else UI.fsel.push(uid); }
+  }
+  render();
+}
+function defenseSelectable(c){
+  const p = me(), atk = UI.extra.atk;
+  if (!defUsable(p, c, atk)) return false;
+  const faces = [...selCards(), ...selField()].map(x => faceFor(p, x));
+  return validDef(faceFor(p, c), atk, effectiveEl(atk, faces));
+}
+function onPlayer(pid){
+  if (!G || UI.mode !== 'action') return;
+  const q = G.players[pid];
+  if (!q || !q.alive) return;
+  UI.target = q;
+  render();
+}
+async function onControl(kind){
+  if (!UI.resolve) return;
+  const p = me();
+  if (UI.mode === 'action'){
+    if (kind === 'pass') return UI.resolve({ type:'pass' });
+    if (kind === 'manifest') return UI.resolve({ type:'manifest' });
+    if (kind === 'gift') return UI.resolve({ type:'gift' });
+    const plan = actionPlan();
+    if (plan.ok) UI.resolve(plan.act);
+  } else if (UI.mode === 'defend'){
+    const cards = selCards(), field = selField();
+    let mode = null;
+    if (cards.some(c => faceFor(p, c).sp === 'choose')){
+      const resolve = UI.resolve, extra = UI.extra, sel = UI.sel.slice(), fsel = UI.fsel.slice();
+      UI.resolve = null;
+      mode = await new Promise(r => { UI.mode = 'option'; UI.extra = { title:'「どれにしようかな～♥」', body:'効果を1つ選ぶ。', options:[
+        { label:'《反射》☆魔法を跳ね返す', value:'reflect', cls:'' }, { label:'《除去》攻撃を〔無〕属性にする', value:'remove', cls:'' }, { label:'《反撃》受けたダメージ×2を与える', value:'counter', cls:'' }] };
+        UI.resolve = v => r(v); render(); });
+      UI.mode = 'defend'; UI.extra = extra; UI.sel = sel; UI.fsel = fsel; UI.resolve = resolve;
+    }
+    UI.resolve({ cards, field, mode });
+  }
+}
+
+/* ================================================================
+   描画
+   ================================================================ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[ch]));
+
+function kindClass(f){ return f.isJudge ? 'k-judge' : f.isMagic ? 'k-mag' : f.isAtk ? 'k-atk' : f.isSupport ? 'k-sup' : 'k-def'; }
+function kwShort(f){
+  const k = f.kw, out = [];
+  if (f.isAtk && f.range.kind !== 'single') out.push(rangeName(f.range));
+  if (k.chain) out.push('《追撃》');
+  if (k.instakill) out.push('《即死》');
+  if (k.drain) out.push('《吸収》');
+  if (k.reflectAll) out.push('《全反射》'); else if (k.reflectMagic) out.push('《反射》');
+  if (k.nullify) out.push(`《無効》${k.nullify.map(e => EL[e]).join('')}`);
+  if (k.remove) out.push('《除去》');
+  if (k.counter) out.push('《反撃》');
+  if (k.vigor) out.push('《活力》');
+  if (k.heal && !f.sp) out.push(`HP+${k.heal}`);
+  if (k.extra && !k.vigor) out.push('続けて1枚');
+  if (f.isJudge) out.push('断罪');
+  const spText = { tears:'運試し', broom:'魔法破棄', prayer:'引き直し', donation:'交換', confess:'正体公開', peek:'神託確認', amulet:'身代わり', bow:'昇天時発射', jashin:'反動', kiss:'防御1枚まで', drainShield:'反撃5', putInPlace:'♥無効' };
+  if (spText[f.sp]) out.push(spText[f.sp]);
+  return out.join(' ');
+}
+function numsHTML(f, c){
+  const b = [];
+  b.push(`<i class="elc">${EL[f.el]}</i>`);
+  if (f.atk !== null) b.push(`<b class="atk">攻${f.atk}</b>`);
+  if (f.def !== null && f.def > 0) b.push(`<b class="def">防${f.def}</b>`);
+  if (f.cost) b.push(`<span class="cost">HP${f.cost.hp ?? `生存×${f.cost.perAlive}`}</span>`);
+  return b.join('');
+}
+function cardHTML(c, owner, cls = '', order = 0){
+  const top = c.def.top, h = c.def.heart;
+  return `<button type="button" class="card ${kindClass(top)} el-${top.el} ${cls}" data-uid="${c.uid}" aria-label="${esc(top.name)}">
+    ${order ? `<span class="ord">${order}</span>` : ''}
+    <span class="ctop"><span class="marks">${top.marks.join('')}</span><span class="trig">${c.def.trig}</span></span>
+    <span class="cname">${esc(top.name)}</span>
+    <span class="cnums">${numsHTML(top)}</span>
+    <span class="csub">${kwShort(top)}</span>
+    ${h ? `<span class="cheart ${owner && owner.role === 'succubus' ? 'on' : ''}">♥ ${esc(h.name)} ${h.atk !== null ? `攻${h.atk}` : ''}${h.def ? `防${h.def}` : ''}</span>` : ''}
+  </button>`;
+}
+function faceText(f){
+  const parts = [`${f.marks.join('')}〔${EL[f.el]}〕`];
+  if (f.atk !== null) parts.push(`攻撃${f.atk}`);
+  if (f.def !== null) parts.push(`防御${f.def}`);
+  if (f.isAtk) parts.push(`範囲：${rangeName(f.range)}`);
+  else if (f.range.kind === 'self') parts.push('範囲：自分だけ');
+  if (f.cost) parts.push(`コスト：HP${f.cost.hp ?? `−生存人数×${f.cost.perAlive}`}`);
+  return parts.join('　') + (f.text ? `\n${f.text}` : '');
+}
+function cardInfo(c, owner){
+  let s = `<b>${esc(c.def.top.name)}</b>　トリガー〔${c.def.trig}〕　${esc(faceText(c.def.top))}`;
+  if (c.def.heart) s += `\n<b>♥ ${esc(c.def.heart.name)}</b>（サキュバスが使う面）　${esc(faceText(c.def.heart))}\n♥カードを使うと、正体を明かしていない場合は明かすことになる。`;
+  return s;
+}
+function chip(f){ return `<span class="chip el-${f.el} ${f.isHeart ? 'heart' : ''}">${esc(f.name)}${f.atk ? ` ${f.atk}` : f.def ? ` 防${f.def}` : ''}</span>`; }
+const faceSrc = (c, side) => `img/face/${c.key}_${side}.jpg`;
+const artSrc = (c, side) => `img/chara/${c.key}_${side}.jpg`;
+const cardSrc = def => `img/cards/${String(def.id).padStart(3, '0')}.jpg`;
+// 強化案（sim/patches/buff2.json）と回復カードの範囲変更で、シートから値を変えたカード。実物カードの画像は変更前のまま
+const BUFFED_IDS = new Set([1, 2, 3, 4, 5, 6, 8, 12, 13, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 31, 32, 33, 37, 38, 44, 45, 68, 70, 72, 76, 77, 78, 96, 97, 115, 116, 117, 118]);
+const zoomNote = src => { const m = /img\/cards\/(\d+)\.jpg$/.exec(src || ''); return m && BUFFED_IDS.has(Number(m[1])) ? '<p class="zoomnote">このカードは数値・範囲・効果を変更しています。画像は変更前のもので、ゲームでは画面の説明文の値を使います。</p>' : ''; };
+function portrait(c, side){ return `<span class="gem ${side === 'oni' ? 'oni' : ''}" style="--gem:${c.gem}">${c.glyph}<img src="${faceSrc(c, side)}" alt="" onerror="this.remove()"></span>`; }
+function gem(p){ return portrait(p.char, isSucc(p) ? 'oni' : 'hito'); }
+function roleBadge(p, viewer){
+  if (p.revealed) return `<span class="role ${p.role}">${ROLE[p.role]}</span>`;
+  if (p === viewer) return `<span class="role private ${p.role}" title="あなただけが知っている">${ROLE[p.role]}</span>`;
+  const k = viewer.known[p.i];
+  if (k) return `<span class="role private ${k}" title="秘密の懺悔で確認">${ROLE[k]}?</span>`;
+  return `<span class="role">？</span>`;
+}
+function bar(p){ return `<div class="bar"><i style="width:${(p.hp / HP_CAP) * 100}%"></i><b>HP ${p.hp}</b></div>`; }
+function isActive(p){ return !G.ending && G.players[G.turn] === p && p.alive; }
+const isHit = p => Date.now() - p.hitAt < 500;
+
+function render(){
+  const inGame = !!G && UI.mode !== 'setup';
+  $('#setup').hidden = inGame;
+  $('#game').hidden = !inGame;
+  $('#btnSpeed').hidden = Net.role === 'client';
+  if (!inGame){ renderSetup(); $('#meta').textContent = ''; renderModal(); drawArrows(); return; }
+  $('#meta').textContent = `第${M.game}/${GAMES}戦・${G.round}巡目・山札${G.deck.length}${Net.weak ? '・通信待ち…' : ''}`;
+  const p0 = me();
+  const plan = UI.mode === 'action' ? actionPlan() : null;
+  const pickable = q => UI.mode === 'action' && plan && plan.tk && q.alive && (plan.tk === 'any' || q !== p0);
+
+  $('#foes').innerHTML = G.players.filter(q => q !== p0).map(q => {
+    const cls = ['pl'];
+    if (!q.alive) cls.push('dead');
+    if (isActive(q)) cls.push('active');
+    if (isHit(q)) cls.push('hit');
+    if (pickable(q)) cls.push('pickable');
+    if (pickable(q) && UI.target === q) cls.push('target');
+    cls.push(...duelRole(q));
+    return `<button type="button" class="${cls.join(' ')}" data-pid="${q.i}">
+      <div class="phead">${gem(q)}<span class="pname">${esc(q.name)}</span>${roleBadge(q, p0)}</div>
+      ${bar(q)}
+      <div class="stats"><span>手札 ${q.hand.length}</span><span class="vp">勝点 ${q.vp}</span></div>
+      ${q.field.length || q.heartSealed || !q.alive ? `<div class="pfield">${q.field.map(c => chip(faceFor(q, c))).join('')}${q.heartSealed ? '<span class="badge seal">♥封印</span>' : ''}${!q.alive ? '<span class="badge">昇天</span>' : ''}</div>` : ''}
+    </button>`;
+  }).join('');
+
+  const mp = $('#mePanel');
+  mp.className = 'mepanel' + (isActive(p0) ? ' active' : '') + (isHit(p0) ? ' hit' : '') + (pickable(p0) ? ' pickable' : '') + (pickable(p0) && UI.target === p0 ? ' target' : '') + duelRole(p0).map(c => ' ' + c).join('');
+  mp.dataset.pid = 0;
+  mp.innerHTML = `${gem(p0)}<b>あなた（${esc(p0.char.short)}）</b>${roleBadge(p0, p0)}${bar(p0)}
+    <div class="stats"><span>手札 ${p0.hand.length}/${handMax(p0)}</span><span class="vp">勝点 ${p0.vp}</span>${p0.heartSealed ? '<span class="badge seal">♥封印</span>' : ''}</div>`;
+
+  renderStage(); renderLog(); renderControls(plan); renderHand(); renderModal();
+  requestAnimationFrame(drawArrows);
+  netScheduleSync();
+}
+
+/* ---------- 攻撃の矢印 ---------- */
+// いまの攻撃で「攻撃している人」「狙われている人」
+function duelLinks(){
+  const s = G && G.stage, out = [];
+  if (!s || !s.src) return out;
+  const color = s.atk ? `var(--el-${s.atk.el})` : 'var(--rose)';
+  if (s.dst && s.dst !== s.src) out.push({ from:s.src, to:s.dst, color });
+  if (s.flips) s.flips.filter(x => x.ok).forEach(x => out.push({ from:s.src, to:x.t, color }));
+  return out;
+}
+function duelRole(p){
+  const links = duelLinks(), r = [];
+  if (links.some(l => l.from === p)) r.push('attacker');
+  if (links.some(l => l.to === p)) r.push('defender');
+  return r;
+}
+function panelOf(p){ return document.querySelector(p === me() ? '#mePanel' : `.pl[data-pid="${p.i}"]`); }
+function edgePoint(r, tx, ty, pad){
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2, dx = tx - cx, dy = ty - cy;
+  const k = Math.min(dx ? (r.width / 2 + pad) / Math.abs(dx) : Infinity, dy ? (r.height / 2 + pad) / Math.abs(dy) : Infinity, 1);
+  return [cx + dx * k, cy + dy * k];
+}
+function arrowSVG(a, b, color, cls){
+  const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+  if (!ra.width || !rb.width) return '';
+  const ca = [ra.left + ra.width / 2, ra.top + ra.height / 2], cb = [rb.left + rb.width / 2, rb.top + rb.height / 2];
+  const p0 = edgePoint(ra, cb[0], cb[1], 2), p1 = edgePoint(rb, ca[0], ca[1], 6);
+  const dx = p1[0] - p0[0], dy = p1[1] - p0[1], len = Math.hypot(dx, dy) || 1;
+  const bend = Math.max(26, Math.min(90, len * 0.25));
+  const c = [(p0[0] + p1[0]) / 2 - dy / len * bend, (p0[1] + p1[1]) / 2 + dx / len * bend];
+  // 矢じり：曲線の終点での向き
+  const tx = p1[0] - c[0], ty = p1[1] - c[1], tl = Math.hypot(tx, ty) || 1, ux = tx / tl, uy = ty / tl;
+  const hl = cls ? 12 : 18, hw = cls ? 7 : 10;
+  const base = [p1[0] - ux * hl, p1[1] - uy * hl];
+  const head = `${p1[0]},${p1[1]} ${base[0] - uy * hw},${base[1] + ux * hw} ${base[0] + uy * hw},${base[1] - ux * hw}`;
+  const d = `M${p0[0]},${p0[1]} Q${c[0]},${c[1]} ${base[0]},${base[1]}`;
+  return `<g class="${cls}" style="color:${color}"><path class="glow" d="${d}"/><path class="shaft" d="${d}"/><polygon class="head" points="${head}"/></g>`;
+}
+function drawArrows(){
+  const svg = $('#arrows');
+  if (!svg) return;
+  let h = '';
+  if (G && !$('#game').hidden){
+    for (const l of duelLinks()){ const a = panelOf(l.from), b = panelOf(l.to); if (a && b) h += arrowSVG(a, b, l.color, ''); }
+    // 自分の番：選んだ対象へ点線の矢印
+    if (UI.mode === 'action' && UI.target && UI.target !== me() && UI.target.alive){
+      const plan = actionPlan();
+      if (plan.ok && plan.tk && plan.tk !== 'none'){ const a = panelOf(me()), b = panelOf(UI.target); if (a && b) h += arrowSVG(a, b, 'var(--rose)', 'preview'); }
+    }
+  }
+  svg.innerHTML = h;
+}
+
+function renderSetup(){
+  const s = UI.setup;
+  // 入力中の欄は描き直しても続きから打てるようにする
+  const act = document.activeElement, focusId = act && act.id && act.closest && act.closest('#setup') ? act.id : null;
+  const caret = focusId ? [act.selectionStart, act.selectionEnd] : null;
+  const tabs = Net.role ? '' : `<div class="seg modeseg" role="tablist">
+      <button type="button" data-online="0" class="${s.online ? '' : 'on'}">CPUと遊ぶ</button>
+      <button type="button" data-online="1" class="${s.online ? 'on' : ''}">オンライン対戦</button></div>`;
+  const hero = `<div class="hero">
+      <span class="eyebrow">異端審問バトルロイヤル</span>
+      <h1>サキュバス<br><span>シスターズ</span></h1>
+      <p>神託でシスターとサキュバスに分かれ、正体を隠したまま武器・盾・魔法のカードで戦う。サキュバスを見つけて昇天させるか、最後の1人まで生き残るか。3戦して勝利点を競う。</p>
+    </div>${tabs}`;
+  $('#setup').innerHTML = hero + (s.online || Net.role ? onlineSetupHTML() : offlineSetupHTML());
+  if (focusId){ const el = document.getElementById(focusId); if (el){ el.focus(); try { el.setSelectionRange(caret[0], caret[1]); } catch {} } }
+}
+function countHTML(n, note, min = 3, disabled = false){
+  return `<div class="sect"><h2>人数</h2>
+      <div class="seg">${[3, 4, 5, 6].map(k => `<button type="button" data-count="${k}" class="${k === n ? 'on' : ''}" ${disabled || k < min ? 'disabled' : ''}>${k}人</button>`).join('')}</div>
+      <div class="seg-note">${note}</div>
+    </div>`;
+}
+function castNote(n){ const f = fallenCount(n); return `神託はサキュバス1${f ? `・堕天使${f}` : ''}・シスター${n - 1 - f}。`; }
+function charsHTML(){
+  const s = UI.setup, c0 = CHARACTERS[s.char];
+  return `<div class="sect"><h2>あなたのキャラクター</h2>
+      <div class="seg-note">サキュバスになって【顕現】したときに、ここに書かれた能力が使える。共通：${COMMON_SUCC}</div>
+      <div class="preview">
+        <button type="button" data-zoom="${artSrc(c0, 'hito')}"><img src="${artSrc(c0, 'hito')}" alt="${esc(c0.name)}（シスターの姿）">シスターの姿</button>
+        <button type="button" data-zoom="${artSrc(c0, 'oni')}"><img src="${artSrc(c0, 'oni')}" alt="${esc(c0.name)}（サキュバスの姿）">サキュバスの姿</button>
+        <div class="ptext"><b>${esc(c0.name)}</b><span>${esc(c0.common || COMMON_SUCC)}</span><span>${esc(c0.text)}</span><span>画像をタップすると大きく表示する。</span></div>
+      </div>
+      <div class="chars">${CHARACTERS.map((c, i) => `<button type="button" class="char ${i === s.char ? 'on' : ''}" data-char="${i}">
+        ${portrait(c, 'hito')}
+        <span><span class="nm">${esc(c.name)}</span><br><span class="tx">${c.common ? esc(c.common) + '<br>' : ''}${esc(c.text)}</span></span></button>`).join('')}</div>
+    </div>`;
+}
+function offlineSetupHTML(){
+  const n = UI.setup.count;
+  return countHTML(n, `あなた＋CPU${n - 1}人。${castNote(n)}`) + charsHTML() +
+    `<div class="start-row"><button type="button" class="btn" data-start="1">3戦マッチを始める</button><button type="button" class="btn sub" id="btnRules2">ルールを読む</button></div>`;
+}
+function memberListHTML(list, meIndex){
+  return `<ul class="members">${list.map((m, k) => `<li>${portrait(CHARACTERS[m.char] || CHARACTERS[0], 'hito')}<span><b>${esc(m.name)}</b>${k === meIndex ? '<em>あなた</em>' : ''}${m.host ? '<em>ホスト</em>' : ''}<br><small>${esc((CHARACTERS[m.char] || CHARACTERS[0]).name)}</small></span></li>`).join('')}</ul>`;
+}
+function onlineSetupHTML(){
+  const s = UI.setup;
+  const msg = Net.error ? `<p class="netmsg bad" role="alert">${esc(Net.error)}</p>` : Net.status ? `<p class="netmsg">${esc(Net.status)}</p>` : '';
+  if (Net.role === 'host' && Net.code && !Net.status){
+    const humans = Net.members.length + 1, n = Math.max(s.count, humans, 3);
+    const list = [{ name:myName(), char:s.char, host:true }, ...Net.members];
+    return `<div class="sect"><h2>部屋コード</h2>
+        <div class="roomcode">${esc(Net.code)}</div>
+        <div class="seg-note">友だちには、この部屋コードか下の招待URLを送る。開いた人がここに並ぶ。</div>
+        <div class="netrow"><input id="netURL" readonly value="${esc(inviteURL())}" aria-label="招待URL"><button type="button" class="btn sub" data-copy="1">URLをコピー</button></div>
+      </div>
+      <div class="sect"><h2>参加者（${humans}人）</h2>${memberListHTML(list, 0)}<div class="seg-note">キャラクターが重なった人は、始めるときに別のキャラクターになる。</div></div>
+      ${countHTML(n, `人間${humans}人${n > humans ? `＋CPU${n - humans}人` : ''}。${castNote(n)}`, Math.max(3, humans))}
+      ${charsHTML()}${msg}
+      <div class="start-row"><button type="button" class="btn" data-start="1">3戦マッチを始める</button><button type="button" class="btn sub" data-leave="1">部屋を閉じる</button></div>`;
+  }
+  if (Net.role === 'client' && Net.lobby){
+    const L = Net.lobby, n = Math.max(+L.count || 3, L.members.length, 3);
+    return `<div class="sect"><h2>部屋 ${esc(String(L.code || Net.code))} に参加中</h2>
+        <div class="seg-note">ホストが「始める」を押すと対戦が始まる。人数はホストが決める（いまは${n}人${n > L.members.length ? `・CPU${n - L.members.length}人` : ''}）。</div>
+        ${memberListHTML(L.members.map(m => ({ name:cleanName(m.name), char:+m.char || 0, host:!!m.host })), +L.you)}
+        <div class="seg-note">キャラクターが重なった人は、始めるときに別のキャラクターになる。</div>
+      </div>
+      ${charsHTML()}${msg}
+      <div class="start-row"><button type="button" class="btn sub" data-leave="1">部屋を出る</button></div>`;
+  }
+  const busy = !!Net.status;
+  return `<div class="sect"><h2>オンライン対戦</h2>
+      <div class="seg-note">部屋を作った人のブラウザでゲームが進み、ほかの人は自分の番に操作する。空いた席はCPUが入る。通信は公開の中継サーバーを通るが、暗号化していて、手札は本人にしか読めない。</div>
+      <label class="netlabel">あなたの名前<input id="netName" maxlength="12" autocomplete="nickname" value="${esc(s.name)}" placeholder="プレイヤー"></label>
+      <div class="netrow"><button type="button" class="btn" data-host="1" ${busy ? 'disabled' : ''}>部屋を作る</button></div>
+      <div class="netrow"><input id="netCode" maxlength="5" autocomplete="off" autocapitalize="characters" value="${esc(s.joinCode)}" placeholder="部屋コード（5文字）" aria-label="部屋コード"><button type="button" class="btn sub" data-join="1" ${busy ? 'disabled' : ''}>部屋に入る</button></div>
+      ${msg}
+      ${/github\.io$|^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '' : `<p class="netmsg">この画面ではつながらないことがある。そのときは GitHub Pages 版（<a href="${PAGES_URL}" target="_blank" rel="noopener">${PAGES_URL}</a>）で遊んでほしい。</p>`}
+    </div>
+    ${charsHTML()}`;
+}
+
+function renderStage(){
+  const s = G.stage;
+  if (!s){ $('#stage').innerHTML = `<div class="stitle">神託の刻</div>`; return; }
+  let h = '';
+  if (s.dst && s.dst !== s.src){
+    h += `<div class="duel"><div class="who">${gem(s.src)}<span>${esc(s.src.name)}</span></div><span class="arrow">➝</span><div class="who">${gem(s.dst)}<span>${esc(s.dst.name)}</span></div></div>`;
+  } else {
+    h += `<div class="duel"><div class="who">${gem(s.src)}</div><div class="stitle">${esc(s.title)}</div></div>`;
+  }
+  if (s.art) h += `<img class="art" src="${s.art}" alt="">`;
+  if (s.faces && s.faces.length) h += `<div class="chips">${s.faces.map(chip).join('')}</div>`;
+  if (s.atk) h += `<div class="power"><b style="color:var(--el-${s.atk.el})">〔${EL[s.atk.el]}〕</b> ${s.atk.instakill ? '<b>即死</b>' : `攻撃力 <b>${s.atk.power}</b>`}${s.atk.magic ? '・魔法' : ''}${s.atk.kiss ? '・防御1枚まで' : ''}</div>`;
+  if (s.flips) h += `<div class="flips">${s.flips.map(x => `<span class="${x.ok ? 'ok' : 'ng'}">${esc(x.t.name)}：${esc(x.c.def.top.name)}〔${x.c.def.trig}〕${x.ok ? ' 命中' : ' 外れ'}</span>`).join('')}</div>`;
+  if (s.def) h += s.def.length ? `<div class="chips"><span class="power">防御</span>${s.def.map(chip).join('')}</div>` : `<div class="power">防御なし</div>`;
+  if (s.result) h += `<div class="result ${s.result.cls}">${esc(s.result.text)}</div>`;
+  $('#stage').innerHTML = h;
+}
+function renderLog(){
+  const el = $('#log');
+  el.innerHTML = G.log.slice(-80).map(l => `<li class="${l.cls}">${esc(l.text)}</li>`).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function renderControls(plan){
+  const p = me();
+  let prompt = '', ctrl = '';
+  if (UI.mode === 'action'){
+    prompt = UI.extra.magicOnly
+      ? '<strong>《活力》</strong>　続けて☆魔法をもう1枚使える（HP消費なし）。'
+      : `<strong>あなたのターン</strong>　カードを選んで使うか、パスする。${plan.tk && plan.tk !== 'none' ? '対象はプレイヤーをタップ。' : ''}`;
+    ctrl += `<button type="button" class="btn" data-ctl="go" ${plan.ok ? '' : 'disabled'}>${esc(plan.label)}</button>`;
+    ctrl += `<button type="button" class="btn sub" data-ctl="pass">パス</button>`;
+    if (!UI.extra.magicOnly && !G.ts.played && G.round > 1){
+      if (p.role === 'succubus' && !p.revealed) ctrl += `<button type="button" class="btn sub" data-ctl="manifest">顕現する</button>`;
+      if (!G.ts.gifted && canGift(p)) ctrl += `<button type="button" class="btn sub" data-ctl="gift">供与する</button>`;
+    }
+  } else if (UI.mode === 'defend'){
+    const { atk, src } = UI.extra;
+    const faces = [...selCards(), ...selField()].map(c => faceFor(p, c));
+    const pr = predict(p, atk, faces, faces.some(f => f.sp === 'choose') ? 'choose' : null);
+    prompt = `<strong>${esc(src.name)}の${esc(atk.name)}</strong>（${atkLabel(atk)}）があなたを狙う！ 光っているカードで防御できる。${atk.kiss ? '防御は1枚まで。' : ''}`;
+    ctrl = `<button type="button" class="btn holy" data-ctl="def">${faces.length ? `防御する（${pr.text}）` : `そのまま受ける（${pr.text}）`}</button>`;
+  } else if (G.ending && Net.role === 'host' && Net.pending.size){
+    prompt = 'ほかのプレイヤーの確認を待っています…';
+  } else if (!G.ending){
+    const cur = G.players[G.turn];
+    prompt = !p.alive ? 'あなたは昇天した。ゲームの行方を見守ろう。' : cur && cur !== p ? `${esc(cur.name)}のターン…` : '';
+  }
+  $('#prompt').innerHTML = prompt;
+  $('#controls').innerHTML = ctrl;
+
+  let info;
+  const f = UI.focus && (p.hand.includes(UI.focus) || usableField(p).includes(UI.focus)) ? UI.focus : null;
+  if (f){
+    info = cardInfo(f, p) + `<button type="button" class="btn-ghost zoombtn" data-zoom="${cardSrc(f.def)}">実物カードを見る</button>`;
+    if (UI.mode === 'action'){ const why = p.hand.includes(f) ? playProblem(p, f, UI.extra.magicOnly) : fieldProblem(p, f, UI.extra.magicOnly); if (why) info += `\n（${why}）`; }
+  } else if (UI.mode === 'defend'){
+    info = '属性つきの攻撃は同じ属性の防御カードでしか守れない。無属性の攻撃はどの防御カードでも守れる。防御カードは何枚でも重ねられる。';
+  } else if (UI.mode === 'action'){
+    info = '《追撃》カードを選ぶと、続けて▲カードを重ねられる（番号の順に使う）。使えないカードを1枚選ぶと、捨ててパスできる。';
+  } else info = 'カードをタップすると説明が出る。';
+  $('#info').innerHTML = info;
+}
+
+function renderHand(){
+  const p = me();
+  const fieldCards = usableField(p);
+  if (fieldCards.length){
+    $('#myField').innerHTML = `<span class="rowlabel">場の魔法</span>` + fieldCards.map(c => {
+      const f = faceFor(p, c); const own = p.field.includes(c);
+      let cls = '';
+      if (UI.fsel.includes(c.uid)) cls = 'sel';
+      else if (UI.mode === 'action' && fieldProblem(p, c, UI.extra.magicOnly)) cls = 'off';
+      else if (UI.mode === 'defend' && !defenseSelectable(c)) cls = 'off';
+      return `<button type="button" class="fcard el-${f.el} ${cls}" data-fuid="${c.uid}">${own ? '' : '他人の場：'}${esc(f.name)}　HP${magicCost(p, f)}</button>`;
+    }).join('');
+  } else $('#myField').innerHTML = '';
+
+  if (!p.alive){ $('#hand').innerHTML = '<div class="empty">あなたは昇天した。</div>'; return; }
+  if (!p.hand.length){ $('#hand').innerHTML = '<div class="empty">手札がない。</div>'; return; }
+  $('#hand').innerHTML = p.hand.map(c => {
+    const cls = [];
+    const oi = UI.sel.indexOf(c.uid);
+    if (oi >= 0) cls.push('sel');
+    if (UI.mode === 'action'){
+      const cur = selCards();
+      const last = cur.length ? faceFor(p, cur[cur.length - 1]) : null;
+      const canAdd = last && last.kw.chain && faceFor(p, cur[0]).isAtk && chainable(p, c);
+      if (oi < 0 && !canAdd && playProblem(p, c, UI.extra.magicOnly)) cls.push('off');
+      if (oi < 0 && canAdd) cls.push('usable');
+    } else if (UI.mode === 'defend'){
+      if (oi < 0) cls.push(defenseSelectable(c) ? 'usable' : 'off');
+    }
+    return cardHTML(c, p, cls.join(' '), UI.mode === 'action' && UI.sel.length > 1 && oi >= 0 ? oi + 1 : 0);
+  }).join('');
+}
+
+function renderModal(){
+  const m = $('#modal');
+  let h = '';
+  if (UI.zoom) h = `<div class="sheet zoom"><img src="${UI.zoom}" alt="" onerror="this.replaceWith('画像がありません')">${zoomNote(UI.zoom)}<div class="row"><button type="button" class="btn" data-zoomclose="1">閉じる</button></div></div>`;
+  else if (UI.rules) h = rulesHTML();
+  else if (UI.mode === 'notice'){
+    const x = UI.extra;
+    h = `<div class="sheet"><h2>${esc(x.title)}</h2>${x.role ? `<div class="bigrole ${x.role}">${ROLE[x.role]}</div>` : ''}${x.art ? `<img class="art" src="${x.art}" alt="">` : ''}<p style="white-space:pre-line">${esc(x.body)}</p>
+      <div class="row"><button type="button" class="btn" data-ok="1">わかった</button></div></div>`;
+  } else if (UI.mode === 'option'){
+    const x = UI.extra;
+    h = `<div class="sheet"><h2>${esc(x.title)}</h2><p>${esc(x.body)}</p>${x.card ? `<div class="hand">${cardHTML(x.card, me())}</div>` : ''}
+      <div class="row">${x.options.map((o, i) => `<button type="button" class="btn ${o.cls || ''}" data-opt="${i}">${esc(o.label)}</button>`).join('')}</div></div>`;
+  } else if (UI.mode === 'cards'){
+    const x = UI.extra;
+    const n = UI.sel.length, okN = n >= x.min && n <= x.max;
+    const fc = UI.mfocus ? x.cards.find(c => c.uid === UI.mfocus) : null;
+    h = `<div class="sheet"><h2>${esc(x.title)}</h2><p>${esc(x.body)}</p>
+      <div class="hand">${x.cards.map(c => cardHTML(c, x.owner, UI.sel.includes(c.uid) ? 'sel' : '')).join('')}</div>
+      <div class="info">${fc ? cardInfo(fc, x.owner) + `<button type="button" class="btn-ghost zoombtn" data-zoom="${cardSrc(fc.def)}">実物カードを見る</button>` : 'カードをタップして選ぶ。'}</div>
+      <div class="row"><span class="muted" style="margin-right:auto">${n}枚選択${x.min === x.max ? `（${x.min}枚選ぶ）` : `（${x.min}〜${x.max}枚）`}</span>
+      <button type="button" class="btn" data-mc="ok" ${okN ? '' : 'disabled'}>${n ? '決定' : '選ばずに決定'}</button></div></div>`;
+  } else if (UI.mode === 'player'){
+    const x = UI.extra;
+    h = `<div class="sheet"><h2>${esc(x.title)}</h2><p>${esc(x.body)}</p>
+      <div class="plist">${x.players.map(q => `<button type="button" data-pick="${q.i}">${gem(q)}<span>${esc(q.name)}　HP ${q.hp}</span>${roleBadge(q, me())}</button>`).join('')}</div></div>`;
+  } else if (UI.mode === 'result' && G.result){
+    const r = G.result;
+    h = `<div class="sheet"><h2>第${M.game}戦 終了</h2><p>${esc(r.text)}</p>
+      <div class="tbl-wrap"><table class="score"><tr><th>プレイヤー</th><th>神託</th><th>状態</th><th>内訳</th><th class="num">今回</th><th class="num">合計</th></tr>
+      ${G.players.map(p => { const g = r.gain.get(p); const d = g.reduce((s, x) => s + x.v, 0);
+        return `<tr><td class="nm">${esc(p === me() ? `あなた（${p.char.short}）` : p.name)}</td><td><span class="role ${p.role}">${ROLE[p.role]}</span></td><td>${p.alive ? '生存' : '昇天'}</td>
+        <td>${g.map(x => `${esc(x.why)} ${x.v > 0 ? '+' : ''}${x.v}`).join('、') || '—'}</td><td class="num ${d > 0 ? 'plus' : d < 0 ? 'minus' : ''}">${d > 0 ? '+' : ''}${d}</td><td class="num">${p.vp}</td></tr>`; }).join('')}
+      </table></div>
+      <div class="row"><button type="button" class="btn" data-ok="1">${M.game < GAMES ? `第${M.game + 1}戦へ` : '最終結果へ'}</button></div></div>`;
+  } else if (UI.mode === 'final'){
+    const ranked = M.players.slice().sort((a, b) => b.vp - a.vp);
+    const top = ranked[0].vp;
+    const winners = ranked.filter(p => p.vp === top);
+    h = `<div class="sheet"><h2>${winners.includes(M.players[0]) ? 'あなたが天界の覇者！' : `天界の覇者：${esc(winners.map(p => p.name).join('・'))}`}</h2>
+      <div class="tbl-wrap"><table class="score"><tr><th>順位</th><th>プレイヤー</th>${M.players[0].history.map((_, i) => `<th class="num">${i + 1}戦</th>`).join('')}<th class="num">合計</th></tr>
+      ${ranked.map(p => `<tr><td>${ranked.filter(q => q.vp > p.vp).length + 1}位</td><td class="nm">${esc(p === me() ? `あなた（${p.char.short}）` : p.name)}</td>${p.history.map(v => `<td class="num">${v > 0 ? '+' : ''}${v}</td>`).join('')}<td class="num">${p.vp}</td></tr>`).join('')}
+      </table></div>
+      <div class="row"><button type="button" class="btn sub" data-home="1">${Net.role ? '部屋を出る' : 'タイトルへ'}</button>${Net.role === 'client' ? '' : `<button type="button" class="btn" data-again="1">${Net.role ? '同じメンバーでもう一度' : '同じ設定でもう一度'}</button>`}</div></div>`;
+  }
+  m.hidden = !h;
+  if (h) m.innerHTML = h;
+}
+
+function rulesHTML(){
+  return `<div class="sheet"><h2>ルール（260717版）</h2>
+    <h3>勝ち方</h3>
+    <ul>
+      <li>神託でサキュバス1人・シスター・堕天使（4人以上で1人）に分かれる。3〜6人で遊ぶ。自分の神託だけが見える。</li>
+      <li>サキュバスが昇天すればシスター陣営の勝ち。サキュバスが最後の1人になるか、生き残りがサキュバスと堕天使だけになればサキュバス陣営の勝ち。山札が尽きても終わる。</li>
+      <li>3戦して勝利点の合計を競う。</li>
+    </ul>
+    <h3>ターン</h3>
+    <ul>
+      <li>【ドロー】手札が6枚になるまで引く（引けなければゲーム終了）。</li>
+      <li>【オラクル】2巡目から。サキュバスは【顕現】（HPが30に戻る・手札上限＋1・攻撃がすべて《吸収》・手札を補充）。堕天使は顕現に合わせて【告解】でき、以後【供与】でカードをサキュバスに渡せる。</li>
+      <li>【アタック】カードを1枚使う。《追撃》があれば▲カードを続けて重ね、ダメージを足せる（属性は最初のカード、範囲は最後のカード）。</li>
+      <li>攻撃された人は防御カードを何枚でも出せる。属性つきの攻撃は同じ属性の防御でしか守れない。無属性の攻撃はどの防御でも守れる。</li>
+      <li>☆魔法はHPを払って使い、使ったあとは自分の場に残る。場の魔法はまたHPを払えば何度でも使える。</li>
+      <li>ランダム範囲（例：〔A B C〕）は、自分以外の全員が山札を1枚めくり、そのトリガーが一致した人にだけ当たる。</li>
+      <li>†カードはシスター専用（断罪）。♥カードはシスター・堕天使は上の効果、サキュバスは下の効果を使う。どちらも1巡目は使えず、使うと正体が明かされる。</li>
+    </ul>
+    <h3>勝利点</h3>
+    <ul>
+      <li>サキュバスが最後の1人、または生き残りがサキュバスと堕天使だけ：サキュバスと堕天使に＋3。</li>
+      <li>サキュバスが昇天：生存者全員＋1、サキュバスと堕天使は−2、断罪を成功させた人＋1、生存者が1人ならその人に＋3。</li>
+      <li>山札切れ：生存者全員＋1、サキュバス−2。全員昇天なら計算なし。</li>
+    </ul>
+    <h3>デジタル版で解釈したところ</h3>
+    <ul>
+      <li>文書で名前が入れ替わっている「天罰／必殺」は、シートの記号どおり †＝シスター専用（断罪）、♥＝両面カードとして扱う。</li>
+      <li>†カードは使う時点で正体を明かす（まだなら自動で明かす）。</li>
+      <li>《反撃》の「受けたダメージ」は、防御したあとに実際に受けたダメージ。</li>
+      <li>《反射》《無効》《除去》や「立場をわからせる」は、効果が働く攻撃なら属性に関係なく出せる。</li>
+      <li>《追撃》で重ねた杖の「属性を変えてもよい」は、常に変える。</li>
+      <li>昇天はダメージを受けた時点ですぐに処理する。</li>
+      <li>回復カードは自分にだけ使える。</li>
+      <li>仮ルール：何もしないときはパスでき、そのとき手札を1枚捨ててもよい（手札が回らなくなるのを防ぐため）。</li>
+    </ul>
+    <div class="row"><button type="button" class="btn" data-closerules="1">閉じる</button></div></div>`;
+}
+
+function fx(p, text, cls){
+  if (Net.role === 'host') netBroadcast({ t:'fx', p:p.i, text, cls });
+  const el = document.querySelector(p === me() ? '#mePanel' : `.pl[data-pid="${p.i}"]`);
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  if (!r.width) return;
+  const s = document.createElement('span');
+  s.className = `float ${cls}`;
+  s.textContent = text;
+  s.style.left = `${r.left + r.width / 2 + (Math.random() * 30 - 15)}px`;
+  s.style.top = `${r.top + Math.min(r.height / 2, 30)}px`;
+  $('#fx').appendChild(s);
+  setTimeout(() => s.remove(), 1200);
+}
+
+/* ================================================================
+   イベント
+   ================================================================ */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button');
+  if (!t) return;
+  const d = t.dataset;
+  if (d.zoom){ UI.zoom = d.zoom; render(); return; }
+  if (d.zoomclose){ UI.zoom = null; render(); return; }
+  if (d.closerules){ UI.rules = false; render(); return; }
+  if (t.id === 'btnRules2'){ UI.rules = true; render(); return; }
+  if (d.online !== undefined){ UI.setup.online = d.online === '1'; Net.error = ''; render(); return; }
+  if (d.host){ netHost(); return; }
+  if (d.join){ netJoin(UI.setup.joinCode); return; }
+  if (d.leave){ netLeave(); render(); return; }
+  if (d.copy){ const u = inviteURL(); (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => { t.textContent = 'コピーした'; }, () => { const i = $('#netURL'); if (i){ i.focus(); i.select(); } }); return; }
+  if (d.count){ if (Net.role === 'client') return; UI.setup.count = +d.count; if (Net.role === 'host') netLobbyBroadcast(); render(); return; }
+  if (d.char){ UI.setup.char = +d.char; if (Net.role === 'client') send(Net.host, { t:'char', char:UI.setup.char }); if (Net.role === 'host') netLobbyBroadcast(); render(); return; }
+  if (d.start){ if (Net.role === 'host') netStartMatch(); else { UI.mode = 'wait'; startMatch(); } return; }
+  if (d.again){ if (Net.role === 'host') netStartMatch(); else startMatch(); return; }
+  if (d.home){ gameId++; if (Net.role) netLeave(); UI.mode = 'setup'; UI.resolve = null; G = null; render(); return; }
+  if (d.ok && UI.resolve){ UI.resolve(true); return; }
+  if (d.opt !== undefined && UI.resolve){ UI.resolve(UI.extra.options[+d.opt].value); return; }
+  if (d.pick !== undefined && UI.resolve){ UI.resolve(G.players[+d.pick]); return; }
+  if (d.mc === 'ok' && UI.resolve){ const x = UI.extra; UI.resolve(UI.sel.map(uid => x.cards.find(c => c.uid === uid))); return; }
+  if (d.uid && t.closest('#modal')){
+    const uid = +d.uid;
+    if (UI.mode === 'cards'){
+      UI.mfocus = uid;
+      const i = UI.sel.indexOf(uid);
+      if (i >= 0) UI.sel.splice(i, 1);
+      else if (UI.extra.max === 1) UI.sel = [uid];
+      else if (UI.sel.length < UI.extra.max) UI.sel.push(uid);
+      render();
+    }
+    return;
+  }
+  if (d.uid){ onCard(+d.uid); return; }
+  if (d.fuid){ onFieldCard(+d.fuid); return; }
+  if (d.ctl){ onControl(d.ctl); return; }
+  if (d.pid !== undefined) onPlayer(+d.pid);
+});
+document.addEventListener('click', e => {
+  // 自分のパネル（button ではない）を対象に選ぶ
+  const mp = e.target.closest('#mePanel');
+  if (mp && !e.target.closest('button') && G) onPlayer(me().i);
+});
+window.addEventListener('resize', drawArrows);
+window.addEventListener('scroll', drawArrows, { passive:true });
+$('#btnRules').addEventListener('click', () => { UI.rules = true; render(); });
+$('#btnSpeed').addEventListener('click', e => {
+  speed = speed === 1 ? 0.45 : speed === 0.45 ? 0.15 : 1;
+  e.currentTarget.textContent = `速度：${speed === 1 ? '普通' : speed === 0.45 ? '速い' : '最速'}`;
+});
+$('#btnRestart').addEventListener('click', () => { gameId++; if (Net.role) netLeave(); UI.mode = 'setup'; UI.rules = false; UI.resolve = null; G = null; render(); });
+document.addEventListener('input', e => {
+  if (e.target.id === 'netName'){ UI.setup.name = cleanName(e.target.value); store.set('ss-name', UI.setup.name); }
+  if (e.target.id === 'netCode'){ UI.setup.joinCode = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'netCode') netJoin(UI.setup.joinCode); });
+window.addEventListener('pagehide', () => sendBye());
+// 招待URL（?room=コード）から開いたら、オンライン対戦の画面にする
+UI.setup.name = cleanName(store.get('ss-name') || '');
+{ const room = new URLSearchParams(location.search).get('room'); if (room){ UI.setup.online = true; UI.setup.joinCode = room.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); } }
+
+render();
+</script>
+</body>
+</html>

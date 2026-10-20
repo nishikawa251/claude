@@ -1,0 +1,26 @@
+[
+ {
+  "label": "能力調整案 第3版（チアモ・ミヨミ）",
+  "desc": "カード強化案を入れる前の最後の調査。♥・☆カードのTier表つき。",
+  "url": "https://claude.ai/artifact/S74KeRm9knoh77PpxitZuW",
+  "commit": "afefa62"
+ },
+ {
+  "label": "能力調整案 第2版（ミロク・ジャスイ・ボタン・ツバキ・クルル）",
+  "desc": "",
+  "url": "https://claude.ai/artifact/54xpQaggkNeStvX3bnTrdA",
+  "commit": "2b3ca99"
+ },
+ {
+  "label": "能力調整案 第1版（チアモ・カギコ・ボタン・クルル）",
+  "desc": "3〜6人制と、堕天使CPUの供与を入れた最初の調整。",
+  "url": "https://claude.ai/artifact/T9W9rfa7WQwMEsZULpwqmA",
+  "commit": "568a3be"
+ },
+ {
+  "label": "初版（調整前）",
+  "desc": "もとのルール・能力、4〜8人で70,000戦。",
+  "url": "https://claude.ai/artifact/BcLufjLGkGpmVsM4JpBRjy",
+  "commit": "d7daf91"
+ }
+]

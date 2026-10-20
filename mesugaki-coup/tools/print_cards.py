@@ -30,10 +30,13 @@ ap.add_argument('--art', default=None, help='Bombergirl 立ち絵（<name>000.pn
 ap.add_argument('--index', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'index.html'))
 ap.add_argument('--size', default='91x55', help='仕上がり mm（長辺x短辺）')
 ap.add_argument('--bleed', type=float, default=1.5, help='塗り足し mm（各辺）')
+ap.add_argument('--samples', action='store_true', help='見本（数枚の表裏を1枚の画像に）だけ出す')
 ap.add_argument('--lion', action='store_true', help='ライオン名刺 異種テンプレート向けの回転済み画像と面付けシートも出す')
 ap.add_argument('--dpi', type=int, default=350)
 ap.add_argument('--chars', default='momoko,grimaloe,aqua,pin,shiro,kuro', help='印刷するキャラ id を6つ（既定：モモコ・グリムアロエ・アクア・パイン・シロ・クロ）')
-ap.add_argument('--font', default=None, help='日本語フォント（TTF/OTF）。省略時は IPA ゴシックを探す')
+ap.add_argument('--font', default=None, help='本文フォント（太めのTTF/OTF）。省略時は tools/fonts/MPLUS1p-Bold.ttf')
+ap.add_argument('--font-head', default=None, help='見出しフォント。省略時は tools/fonts/DelaGothicOne-Regular.ttf')
+ap.add_argument('--font-black', default=None, help='大見出し用のさらに太いフォント。省略時は tools/fonts/MPLUS1p-Black.ttf')
 args = ap.parse_args()
 
 OUT = args.out
@@ -50,27 +53,34 @@ SAFE = round(3 * MM)             # 仕上がり線から内側の安全マージ
 LW, LH = PH, PW
 
 
-def find_font():
-    if args.font:
-        return args.font
-    for c in ['/usr/share/fonts/opentype/ipafont-gothic/ipagp.ttf', '/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf',
-              '/usr/share/fonts/truetype/fonts-japanese-gothic.ttf', '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
-              '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc']:
-        if os.path.exists(c):
-            return c
-    raise SystemExit('日本語フォントが見つからない。--font で指定してください')
+HERE = os.path.dirname(os.path.abspath(__file__))
 
 
-FONT_PATH = find_font()
+def find_font(given, names):
+    if given:
+        return given
+    for n in names:
+        for d in [os.path.join(HERE, 'fonts'), '/usr/share/fonts/opentype/ipafont-gothic', '/usr/share/fonts/truetype']:
+            c = os.path.join(d, n)
+            if os.path.exists(c):
+                return c
+    raise SystemExit(f'フォントが見つからない: {names}。--font / --font-head で指定してください')
+
+
+FONT_BODY = find_font(args.font, ['MPLUS1p-Bold.ttf', 'ipagp.ttf', 'fonts-japanese-gothic.ttf'])
+FONT_HEAD = find_font(args.font_head, ['DelaGothicOne-Regular.ttf', 'MPLUS1p-Black.ttf', 'ipagp.ttf'])
+FONT_BLACK = find_font(args.font_black, ['MPLUS1p-Black.ttf', 'MPLUS1p-Bold.ttf', 'ipagp.ttf'])
 _fonts = {}
 
 
-def font(pt):
-    """pt はポイント指定。dpi に合わせて px に換算"""
+def font(pt, kind='body'):
+    """pt はポイント指定。dpi に合わせて px に換算。kind: body（太ゴシック）/ head（見出し）/ black（極太）"""
+    path = {'body': FONT_BODY, 'head': FONT_HEAD, 'black': FONT_BLACK}[kind]
     px = max(6, round(pt * args.dpi / 72))
-    if px not in _fonts:
-        _fonts[px] = ImageFont.truetype(FONT_PATH, px)
-    return _fonts[px]
+    key = (path, px)
+    if key not in _fonts:
+        _fonts[key] = ImageFont.truetype(path, px)
+    return _fonts[key]
 
 
 # ---------------------------------------------------------------- ゲーム定義を index.html から読む
@@ -185,10 +195,10 @@ def role_front(rid):
     hb = int(13 * MM)
     d.rounded_rectangle((inner[0], inner[1], inner[2], inner[1] + hb), radius=int(3 * MM), fill=col)
     d.rectangle((inner[0], inner[1] + hb // 2, inner[2], inner[1] + hb), fill=col)
-    text_center(d, PW / 2, inner[1] + int(2.2 * MM), R['name'], font(15), fill=(255, 255, 255))
+    text_center(d, PW / 2, inner[1] + int(1.8 * MM), R['name'], font(16 if len(R['name']) <= 5 else 12.5, 'head'), fill=(255, 255, 255))
     text_center(d, PW / 2, inner[1] + int(8.6 * MM), 'GAKI CARD', font(6), fill=mix(col, (255, 255, 255), 0.75))
     # 大きなマーク（頭文字）
-    text_center(d, PW / 2, inner[1] + hb + int(4 * MM), R['name'][0], font(60), fill=mix(col, PAPER, 0.78))
+    text_center(d, PW / 2, inner[1] + hb + int(4 * MM), R['name'][0], font(56, 'head'), fill=mix(col, PAPER, 0.8))
     y = inner[1] + hb + int(31 * MM)
     x0, wdt = inner[0] + int(3 * MM), inner[2] - inner[0] - int(6 * MM)
     # できる
@@ -196,17 +206,17 @@ def role_front(rid):
     d.text((x0, y), 'できる', font=font(7), fill=col)
     if R['action']:
         A = ACTIONS[R['action']]
-        d.text((x0, y + int(3.4 * MM)), A['name'], font=font(11), fill=INK)
+        d.text((x0, y + int(3.4 * MM)), A['name'], font=font(10.5, 'black'), fill=INK)
         draw_text_block(d, (x0, y + int(8.6 * MM)), A['desc'], font(6.5), wdt, fill=DIM)
     else:
-        d.text((x0, y + int(3.4 * MM)), 'なし', font=font(11), fill=INK)
+        d.text((x0, y + int(3.4 * MM)), 'なし', font=font(10.5, 'black'), fill=INK)
         draw_text_block(d, (x0, y + int(8.6 * MM)), 'アクションは持たない。ブロック専門', font(6.5), wdt, fill=DIM)
     y += int(17.5 * MM)
     # ブロック
     d.rounded_rectangle((inner[0] + int(2 * MM), y - int(1.5 * MM), inner[2] - int(2 * MM), y + int(13 * MM)), radius=int(1.5 * MM), fill=mix(col, (255, 255, 255), 0.9))
     d.text((x0, y), '「は？」ブロック', font=font(7), fill=col)
     blocks = '・'.join(ACTIONS[b]['name'] for b in R['blocks']) or 'なし'
-    d.text((x0, y + int(3.4 * MM)), blocks, font=font(11 if len(blocks) < 12 else 9), fill=INK)
+    d.text((x0, y + int(3.4 * MM)), blocks, font=font(10.5 if len(blocks) < 12 else 8.5, 'black'), fill=INK)
     draw_text_block(d, (x0, y + int(8.6 * MM)), f'「{R["line"]}」', font(6.5), wdt, fill=DIM)
     # 公開のひとこと
     text_center(d, PW / 2, inner[3] - int(7 * MM), f'公開：「{R["phrase"]}」', font(6), fill=DIM)
@@ -218,7 +228,7 @@ def role_back():
     im = stripes(PW, PH, (76, 42, 94), (59, 31, 75), step=int(2.2 * MM)); d = ImageDraw.Draw(im)
     d.rounded_rectangle((BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE), radius=int(3 * MM), outline=(122, 74, 142), width=int(0.8 * MM))
     text_center(d, PW / 2, PH / 2 - int(14 * MM), '♥', font(44), fill=(217, 184, 230))
-    text_center(d, PW / 2, PH / 2 + int(4 * MM), 'GAKI', font(14), fill=(217, 184, 230))
+    text_center(d, PW / 2, PH / 2 + int(4 * MM), 'GAKI', font(14, 'head'), fill=(217, 184, 230))
     text_center(d, PW / 2, PH / 2 + int(11 * MM), 'メスガキ・クー', font(7), fill=(180, 150, 200))
     return im
 
@@ -233,7 +243,7 @@ def trigger_front(tid):
     text_center(d, PW / 2, inner[1] + int(3 * MM), 'TRIGGER', font(6), fill=(138, 152, 214))
     # 名前（長いと縮小）
     name = T['name']; fs = 15 if len(name) <= 6 else 12 if len(name) <= 8 else 10
-    text_center(d, PW / 2, inner[1] + int(8 * MM), name, font(fs), fill=(255, 255, 255))
+    text_center(d, PW / 2, inner[1] + int(8 * MM), name, font(fs, 'head'), fill=(255, 255, 255))
     d.line((inner[0] + int(4 * MM), inner[1] + int(17 * MM), inner[2] - int(4 * MM), inner[1] + int(17 * MM)), fill=edge, width=int(0.4 * MM))
     # 常時／1回 の帯
     tag = '常時' if T['persistent'] else ('1回' if '（1回）' in T['text'] else '発動時')
@@ -256,7 +266,7 @@ def trigger_front(tid):
 def trigger_back():
     im = stripes(PW, PH, (43, 49, 72), (35, 40, 66), step=int(2.2 * MM)); d = ImageDraw.Draw(im)
     d.rounded_rectangle((BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE), radius=int(3 * MM), outline=(90, 106, 168), width=int(0.8 * MM))
-    text_center(d, PW / 2, PH / 2 - int(6 * MM), 'TRIGGER', font(14), fill=(138, 152, 214))
+    text_center(d, PW / 2, PH / 2 - int(6 * MM), 'TRIGGER', font(14, 'head'), fill=(138, 152, 214))
     text_center(d, PW / 2, PH / 2 + int(3 * MM), 'メスガキ・クー', font(7), fill=(110, 120, 170))
     return im
 
@@ -351,7 +361,7 @@ def char_cards(cid):
         f = fronts[i].copy(); d = ImageDraw.Draw(f)
         # 上半身の表だけ、隅に名前
         if half == 'top':
-            name = CHAR_NAME[cid]; fnt = font(7); tw = fnt.getlength(name) + int(3 * MM)
+            name = CHAR_NAME[cid]; fnt = font(7, 'black'); tw = fnt.getlength(name) + int(3 * MM)
             d.rounded_rectangle((BL + SAFE, BL + SAFE, BL + SAFE + tw, BL + SAFE + int(5.2 * MM)), radius=int(1 * MM), fill=(255, 255, 255))
             d.text((BL + SAFE + int(1.5 * MM), BL + SAFE + int(0.9 * MM)), name, font=fnt, fill=INK)
         out[half] = (f, backs[i])
@@ -363,7 +373,7 @@ def quick_front():
     im = Image.new('RGB', (PW, PH), PAPER); d = ImageDraw.Draw(im)
     inner = (BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE)
     d.rounded_rectangle(inner, radius=int(3 * MM), outline=(255, 95, 168), width=int(0.6 * MM))
-    text_center(d, PW / 2, inner[1] + int(2.5 * MM), 'アクション早見表', font(10), fill=(184, 48, 106))
+    text_center(d, PW / 2, inner[1] + int(2.5 * MM), 'アクション早見表', font(9.5, 'head'), fill=(184, 48, 106))
     y = inner[1] + int(9 * MM); x0 = inner[0] + int(2 * MM); wdt = inner[2] - inner[0] - int(4 * MM)
     rows = [
         ('ふ～ん♥', 'なし', '1♥獲得', 'ブロック不可・チャレンジ不可'),
@@ -378,12 +388,12 @@ def quick_front():
     for i, (n, cond, eff, blk) in enumerate(rows):
         if i % 2 == 0:
             d.rectangle((inner[0] + int(1 * MM), y - int(0.8 * MM), inner[2] - int(1 * MM), y + int(8.6 * MM)), fill=(250, 236, 243))
-        d.text((x0, y), n, font=font(7.5), fill=(184, 48, 106))
+        d.text((x0, y), n, font=font(7.5, 'black'), fill=(184, 48, 106))
         draw_text_block(d, (colx, y + int(0.3 * MM)), cond, font(5), colw, fill=DIM, spacing=1.2)
         draw_text_block(d, (x0, y + int(4.2 * MM)), eff, font(5.4), lw, fill=INK, spacing=1.2)
         draw_text_block(d, (colx, y + int(4.4 * MM)), blk, font(4.8), colw, fill=DIM, spacing=1.2)
-        y += int(9.8 * MM)
-    draw_text_block(d, (x0, y + int(1 * MM)), '役職つきのアクションは持っていなくても宣言できる（ハッタリ）。チャレンジされて持っていなければプライドを1つ失う。本当に持っていればチャレンジした側が失い、公開した札は捨て札にして山札から引き直す。', font(5.2), wdt, fill=DIM, spacing=1.4)
+        y += int(9.3 * MM)
+    draw_text_block(d, (x0, y + int(0.6 * MM)), '役職つきのアクションは持っていなくても宣言できる（ハッタリ）。チャレンジされて持っていなければプライドを1つ失う。本当なら相手が失う。', font(4.8), wdt, fill=DIM, spacing=1.35)
     return im
 
 
@@ -391,7 +401,7 @@ def quick_back():
     im = Image.new('RGB', (PW, PH), PAPER); d = ImageDraw.Draw(im)
     inner = (BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE)
     d.rounded_rectangle(inner, radius=int(3 * MM), outline=(90, 106, 168), width=int(0.6 * MM))
-    text_center(d, PW / 2, inner[1] + int(2.5 * MM), '手番とプライド', font(10), fill=(60, 70, 130))
+    text_center(d, PW / 2, inner[1] + int(2.5 * MM), '手番とプライド', font(9.5, 'head'), fill=(60, 70, 130))
     x0 = inner[0] + int(2.5 * MM); wdt = inner[2] - inner[0] - int(5 * MM); y = inner[1] + int(10 * MM)
     secs = [
         ('準備', f'メスガキカードを上下に置き、ガキカード2枚を伏せ、トリガー2枚を上下に1枚ずつ伏せる。全員2♥。'),
@@ -400,7 +410,7 @@ def quick_back():
         ('脱落・勝利', '上下とも裏返ったら脱落。最後の1人が勝ち。♥コレクターを持つ人は9♥集めても勝ち。'),
     ]
     for h, body in secs:
-        d.text((x0, y), h, font=font(7.5), fill=(60, 70, 130)); y += int(4.2 * MM)
+        d.text((x0, y), h, font=font(7.5, 'black'), fill=(60, 70, 130)); y += int(4.4 * MM)
         y = draw_text_block(d, (x0, y), body, font(6), wdt, fill=INK, spacing=1.4) + int(2.2 * MM)
     return im
 
@@ -409,9 +419,9 @@ def title_front():
     im = stripes(PW, PH, (56, 22, 60), (44, 16, 48), step=int(2.4 * MM)); d = ImageDraw.Draw(im)
     d.rounded_rectangle((BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE), radius=int(3 * MM), outline=(255, 95, 168), width=int(0.8 * MM))
     text_center(d, PW / 2, PH / 2 - int(22 * MM), '♥', font(30), fill=(255, 95, 168))
-    text_center(d, PW / 2, PH / 2 - int(9 * MM), 'メスガキ・クー', font(17), fill=(255, 255, 255))
+    text_center(d, PW / 2, PH / 2 - int(9 * MM), 'メスガキ・クー', font(15, 'head'), fill=(255, 255, 255))
     text_center(d, PW / 2, PH / 2 + int(1 * MM), 'MESUGAKI COUP', font(7), fill=(217, 184, 230))
-    text_center(d, PW / 2, PH / 2 + int(12 * MM), '3〜6人 ／ 15〜30分', font(7), fill=(255, 209, 102))
+    text_center(d, PW / 2, PH / 2 + int(12 * MM), '3〜6人 ／ 15〜30分', font(7, 'black'), fill=(255, 209, 102))
     text_center(d, PW / 2, PH / 2 + int(18 * MM), 'ハッタリと「は？」でわからせ合う', font(6), fill=(217, 184, 230))
     return im
 
@@ -420,13 +430,13 @@ def title_back():
     im = Image.new('RGB', (PW, PH), PAPER); d = ImageDraw.Draw(im)
     inner = (BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE)
     d.rounded_rectangle(inner, radius=int(3 * MM), outline=(255, 95, 168), width=int(0.6 * MM))
-    text_center(d, PW / 2, inner[1] + int(2.5 * MM), '内容物', font(10), fill=(184, 48, 106))
+    text_center(d, PW / 2, inner[1] + int(2.5 * MM), '内容物', font(9.5, 'head'), fill=(184, 48, 106))
     x0 = inner[0] + int(3 * MM); y = inner[1] + int(11 * MM)
     items = [('ガキカード', f'{len(ROLES) * 3}枚（5種×3）'), ('メスガキカード', f'{len(PRINT_CHARS) * 2}枚（{len(PRINT_CHARS)}キャラ×上下・両面）'),
              ('トリガーカード', f'{len(TRIG18)}枚'), ('早見表', '6枚'), ('タイトルカード', '1枚（この札）'), ('♥トークン', '50個（別途用意）'), ('ルールブック', '別紙')]
     vx = x0 + int(22 * MM); vw = inner[2] - int(3 * MM) - vx
     for n, v in items:
-        d.text((x0, y), n, font=font(6.8), fill=INK); y2 = draw_text_block(d, (vx, y + int(0.3 * MM)), v, font(5.6), vw, fill=DIM, spacing=1.25); y = max(y + int(6.2 * MM), y2 + int(1.2 * MM))
+        d.text((x0, y), n, font=font(6.8, 'black'), fill=INK); y2 = draw_text_block(d, (vx, y + int(0.3 * MM)), v, font(5.6), vw, fill=DIM, spacing=1.25); y = max(y + int(6.2 * MM), y2 + int(1.2 * MM))
     draw_text_block(d, (x0, y + int(3 * MM)), 'トリガーは「基本デッキ」12枚か「おすすめデッキ」12枚のどちらかを使う（組み合わせは早見表の裏とルールブック参照）。', font(5.5), inner[2] - inner[0] - int(6 * MM), fill=DIM, spacing=1.4)
     return im
 
@@ -447,6 +457,19 @@ qf, qb = quick_front(), quick_back()
 for k in range(6):
     n += 1; cards.append((n, 'ref', f'早見表_{k + 1}', qf, qb, 'P'))
 n += 1; cards.append((n, 'title', 'タイトル', title_front(), title_back(), 'P'))
+
+if args.samples:
+    picks = [cards[0], cards[12], cards[15], cards[16], next(c for c in cards if c[1] == 'trigger' and c[2] == 'おしおき返し'), next(c for c in cards if c[1] == 'trigger' and c[2] == '復讐の誓い'), next(c for c in cards if c[1] == 'ref'), cards[-1]]
+    tiles = []
+    for num, kind, name, f, b, ori in picks:
+        for im in (f, b):
+            t = trim_guides(im); h = 1100; t = t.resize((int(t.size[0] * h / t.size[1]), h)); tiles.append(t)
+    W = sum(t.size[0] for t in tiles) + 12 * (len(tiles) + 1)
+    sheet = Image.new('RGB', (W, 1100 + 24), (60, 60, 60)); x = 12
+    for t in tiles:
+        sheet.paste(t, (x, 12)); x += t.size[0] + 12
+    sheet.save(os.path.join(OUT, 'samples.png'))
+    print('samples ->', os.path.join(OUT, 'samples.png')); sys.exit(0)
 
 for num, kind, name, f, b, ori in cards:
     base = f'{num:02d}_{kind}_{name}'.replace('/', '-')

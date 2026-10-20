@@ -235,6 +235,20 @@ button{font:inherit;color:inherit}
 .figure{perspective:700px}
 .ccard.flipcard{overflow:visible}
 .flipper{position:relative;width:var(--cw);aspect-ratio:416/298;transform-style:preserve-3d;transition:transform .85s cubic-bezier(.3,.1,.2,1)}
+/* 山札・捨て札 */
+.piles{display:flex;gap:26px;justify-content:center;align-items:flex-end;padding:4px 0 2px}
+.pile{display:flex;flex-direction:column;align-items:center;gap:5px}
+.pstack{position:relative;width:62px;height:46px}
+.pstack span{position:absolute;inset:0;background:repeating-linear-gradient(45deg,#4c2a5e 0 6px,#3b1f4b 6px 12px);box-shadow:0 0 0 2px #7a4a8e inset,0 2px 0 0 rgba(0,0,0,.45)}
+.pstack span:nth-child(2){transform:translate(2px,-3px)} .pstack span:nth-child(3){transform:translate(4px,-6px)}
+.pstack span[hidden]{display:none}
+.pstack::after{content:'♥';position:absolute;inset:0;display:grid;place-items:center;color:#d9b8e6;font-size:16px;pointer-events:none}
+.pile.disc .pstack span{background:repeating-linear-gradient(45deg,#5a2a33 0 6px,#45202a 6px 12px);box-shadow:0 0 0 2px #8e4a5a inset,0 2px 0 0 rgba(0,0,0,.45)}
+.pile.disc .pstack::after{content:'✕';color:#e6a6b8;font-size:14px}
+.pstack.empty span{opacity:.2} .pstack.empty::after{opacity:.35}
+.pstack.bump{animation:bump .35s ease-out}
+.plbl{font-size:11px;color:var(--dim);letter-spacing:.06em} .plbl b{color:var(--ink);font-size:13px;margin-left:2px}
+.flycard{position:fixed;left:0;top:0;z-index:60;pointer-events:none;transition:transform .5s cubic-bezier(.25,.8,.3,1),opacity .5s;will-change:transform;box-shadow:0 10px 30px rgba(0,0,0,.6)}
 /* ドアップ演出 */
 .zoom{position:fixed;inset:0;z-index:38;display:grid;place-items:center;align-content:center;gap:14px;background:rgba(10,4,14,0);transition:background .35s;cursor:pointer;padding:16px}
 .zoom.in{background:rgba(10,4,14,.72)}
@@ -278,7 +292,7 @@ button{font:inherit;color:inherit}
 @keyframes losein{from{opacity:0;transform:scale(.6) translateY(30px)}to{opacity:1;transform:none}}
 .cut.lose .cutlabel{color:#aeb6d8;text-shadow:0 0 14px rgba(140,150,210,.7),0 4px 0 #1a1c33;letter-spacing:.35em;animation-delay:.55s}
 .cutline{font-size:14px;color:var(--pink);animation:rise .4s ease-out both;animation-delay:.9s}
-/* チャレンジ成功後などの「山札に戻して引き直す」演出 */
+/* チャレンジ成功後などの「捨て札にして引き直す」演出 */
 .cut.swap{background:rgba(10,4,14,.62)}
 .cut.swap .cutlabel{font-size:clamp(22px,4vw,34px);letter-spacing:.2em}
 .swapstage{position:relative;width:190px;height:132px;display:grid;place-items:center}
@@ -477,6 +491,7 @@ button{font:inherit;color:inherit}
     <div id="opps" class="seats"></div>
     <div class="center">
       <div id="actionBanner" class="abanner" hidden></div>
+      <div id="piles" class="piles" aria-label="山札と捨て札"><div class="pile" id="pileDeck"><div class="pstack"><span></span><span></span><span></span></div><div class="plbl">山札 <b>0</b></div></div><div class="pile disc" id="pileDisc"><div class="pstack"><span></span><span></span><span></span></div><div class="plbl">捨て札 <b>0</b></div></div></div>
       <div id="deckInfo" class="deck"></div>
       <div id="effects" class="effects" hidden></div>
     </div>
@@ -559,7 +574,7 @@ const TRIGGERS = [
   { id:'t7', name:'まわして',      text:'全員手札を1枚選び、右隣のプレイヤーに渡す。' },
   { id:'t8', name:'値上げ',        text:'自分以外のプレイヤーは「ざぁ～こ♥」の使用条件が「8♥を支払う」になる', persistent:true },
   { id:'t9', name:'♥コレクター',   text:`自分の勝利条件に「${RULES.collectorGoal}♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう`, persistent:true },
-  { id:'t10', name:'ルール改変',    text:'以後、自分の「ダサすぎ♥」は通常か審問（相手の手札1枚を見て山札と交換させる）かを宣言時に選べる。審問は幼馴染ガキでブロック可', persistent:true },
+  { id:'t10', name:'ルール改変',    text:'以後、自分の「ダサすぎ♥」は通常か審問（相手の手札1枚を見て、捨てさせて山札から引き直させる）かを宣言時に選べる。審問は幼馴染ガキでブロック可', persistent:true },
   { id:'t11', name:'みちづれのキス', text:'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）' },
   { id:'t12', name:'仕返し',        text:'自分を脱がせた相手から3♥奪う' },
   { id:'t13', name:'山分け',        text:'自分より♥の多い全員から1♥ずつもらう' },
@@ -577,19 +592,21 @@ const TRIGGERS = [
   { id:'t24', name:'復讐の誓い',     text:'以後、自分を脱がせた相手に対する自分のアクションは、チャレンジもブロックもされない', persistent:true },
   { id:'t25', name:'ごほうび',       text:'以後、自分がチャレンジに成功するたびに2♥もらう', persistent:true },
   { id:'t26', name:'内緒話',         text:'相手1人を選び、互いに手札1枚をこっそり見せ合う（見せる札は本人が選ぶ）' },
-  { id:'t27', name:'お色直し',       text:'自分の手札をすべて山札に戻し、同じ枚数を引き直す' },
+  { id:'t27', name:'お色直し',       text:'自分の手札をすべて捨て札にして、同じ枚数を山札から引く' },
   { id:'t28', name:'道連れ',         text:'自分を脱がせた相手の手札が2枚なら、その相手もプライドを1つ失う' },
 ];
 // トリガーデッキ：基本／新カードの2プリセット＋カスタム。ゲームに使うのは DECK.ids の12枚
 const DECK_PRESETS = {
   basic: ['t1','t2','t3','t5','t6','t8','t9','t10','t11','t12','t14','t17'],
   fresh: ['t18','t19','t20','t21','t22','t23','t24','t25','t26','t27','t28','t16'],
+  // おすすめ：「おもしろさ」＋「バランス」の総合評価が高い12枚（基本・新カード混成。分析ページ参照）
+  mix:   ['t1','t5','t28','t19','t9','t21','t17','t24','t20','t18','t11','t8'],
 };
 const DECK_SIZE = 12;
 for(const t of TRIGGERS) t.set = DECK_PRESETS.basic.includes(t.id) ? 'basic' : DECK_PRESETS.fresh.includes(t.id) ? 'fresh' : 'bench';
 const SET_LABEL = { basic:'基本', fresh:'新カード', bench:'2軍' };
 let DECK = { preset:'basic', ids: DECK_PRESETS.basic.slice() };
-const deckLabel = ()=> DECK.preset==='basic' ? '基本デッキ' : DECK.preset==='fresh' ? '新カードデッキ' : 'カスタム';
+const deckLabel = ()=> ({basic:'基本デッキ', fresh:'新カードデッキ', mix:'おすすめデッキ'})[DECK.preset] || 'カスタム';
 function setDeck(preset, ids){
   DECK.preset=preset; DECK.ids=(ids||DECK_PRESETS[preset]).slice();
   try{ localStorage.setItem('mesugaki-coup-deck', JSON.stringify(DECK)); }catch(e){}
@@ -663,10 +680,15 @@ const othersOf = p => S.players.filter(q=>q.alive && q!==p);
 function orderFrom(p){ const n=S.players.length, out=[]; for(let k=1;k<n;k++){ const q=S.players[(p.i+k)%n]; if(q.alive) out.push(q); } return out; }
 function coupCost(p){ const taxed=S.players.some(q=>q!==p && q.alive && q.flags.coupTax); return RULES.coupCost + (taxed?RULES.coupCostTaxed-RULES.coupCost:0) - (p.flags.coupDiscount?2:0); }
 const hasRole = (p,r) => p.hand.some(c=>c.role===r);
-function drawCard(){ return { role:S.deck.pop(), faceUp:false }; }
+function drawCard(){
+  if(!S.deck.length && S.discard && S.discard.length){ S.deck=S.discard; S.discard=[]; shuffle(S.deck); log('山札が尽きたので、捨て札を切り直して山札にした', 'sys'); }
+  return { role:S.deck.pop(), faceUp:false };
+}
+// 捨て札：公開・交換で手放したガキカードの置き場。山札が尽きたら切り直して山札になる
+function discardRole(role){ (S.discard||(S.discard=[])).push(role); }
 // みちづれのキスなどで p だけがこっそり見たカードか
 function seenBy(c,p){ return !!(c.seenBy && c.seenBy.includes(p.i)); }
-function returnToDeck(role){ S.deck.push(role); shuffle(S.deck); }
+function returnToDeck(role){ discardRole(role); }
 const rname = r => ROLES[r].name;
 const half = k => k==='top'?'上半身':'下半身';
 
@@ -693,7 +715,7 @@ function newGame(n, myChar, opts){
   for(const p of S.players) for(let k=0;k<deal;k++) p.trigHand.push(tdeck.pop());
   S.tdeck=tdeck; S.setupDone=false;
   if(auto){ S.players[0].cpu=true; S.players[0].name=`${S.players[0].ch.name}（おまかせ）`; }
-  S.deck=deck; S.turn=rnd(n); S.flags={}; S.winner=null; S.log=[]; S.current=null; S.target=null; S.acts=[]; S.deaths=0;
+  S.deck=deck; S.discard=[]; S.turn=rnd(n); S.flags={}; S.winner=null; S.log=[]; S.current=null; S.target=null; S.acts=[]; S.deaths=0;
   TUT.active=false; S.playable=null; S.targetable=null; S.action=null;
   if(opts.tutorial) tutSetup();
   if(!S.headless){ setHighlight(null); document.querySelectorAll('#cut,.cutin').forEach(e=>e.remove()); $('#modalEnd').classList.remove('show'); render(); }
@@ -864,11 +886,11 @@ async function resolveChallenge(claimant, challenger, role){
   if(idx>=0){
     SFX.play('chime');
     say(claimant, ROLES[role].phrase);
-    log(`${claimant.name} は ${rname(role)} を公開！「${ROLES[role].phrase}」 公開したカードは山札に戻し、1枚引き直す`);
+    log(`${claimant.name} は ${rname(role)} を公開！「${ROLES[role].phrase}」 公開したカードは捨て札にして、山札から1枚引き直す`);
     returnToDeck(role); claimant.hand[idx]=drawCard(); markFresh(claimant.hand[idx]);
     render();
     await fxSwap(claimant, role, `${claimant.name} は ${rname(role)} を公開！`, '本物だった', true);
-    render(); await wait(300);
+    render(); await fxDiscard(claimant, 1, role); await fxDraw(claimant, 1); await wait(200);
     await loseInfluence(challenger, claimant, 'チャレンジ失敗');
     return true;
   } else {
@@ -983,6 +1005,7 @@ async function resolveTrigger(p, card, by){
       const old=p.hand[res.hand].role;
       p.hand[res.hand]={role:S.deck[res.deck], faceUp:false};
       S.deck[res.deck]=old; shuffle(S.deck);
+      if(!S.headless){ render(); await flyCard(handRect(p), pileRect('deck')); await flyCard(pileRect('deck'), handRect(p)); renderPiles(); }
       log(`${p.name} は山札を見て手札を1枚入れ替えた`);
       return;
     }
@@ -1039,7 +1062,7 @@ async function resolveTrigger(p, card, by){
     }
     case 't8': p.flags.coupTax=true; log(`${p.name} 以外は「ざぁ～こ♥」に8♥必要になった`); return;
     case 't9': { p.flags.win15=true; const got=shareUp(p); log(`${p.name} は${RULES.collectorGoal}♥集めても勝利になった${liftNote()}。♥の多い相手から1♥ずつもらった（+${got}♥）`); return; }
-    case 't10': p.flags.examine=true; log(`${p.name} の「ダサすぎ♥」は、通常か審問（相手の手札1枚を見て山札と交換させる）かを選べるようになった。審問は幼馴染ガキでブロック可`, 'sys'); return;
+    case 't10': p.flags.examine=true; log(`${p.name} の「ダサすぎ♥」は、通常か審問（相手の手札1枚を見て、捨てさせて山札から引き直させる）かを選べるようになった。審問は幼馴染ガキでブロック可`, 'sys'); return;
     case 't11': {
       if(!by || by===p || !by.hand.length){ log(`脱がせた相手がいないので不発`); return; }
       const hidden=by.hand.filter(c=>!c.faceUp && !seenBy(c,p));
@@ -1079,7 +1102,7 @@ async function resolveTrigger(p, card, by){
     case 't16': {
       if(p.hand.length>0){ log(`${p.name} はまだプライドが残っているので「着替え」は不発`); return; }
       if(!S.deck.length){ log(`山札がないので「着替え」は不発`); return; }
-      const c=drawCard(); p.hand.push(c); markFresh(c); SFX.play('chime');
+      const c=drawCard(); p.hand.push(c); markFresh(c); SFX.play('chime'); await fxDraw(p, 1);
       const lost=p.hearts; p.hearts=0; p.flags.skipTurns=(p.flags.skipTurns||0)+1;
       say(p, 'まだ終わってないし♥');
       log(`${p.name} は着替えて立ち直った！ 山札から1枚引いてプライド1で続行${lost?`（♥${lost}はすべて失った）`:''}。次の手番は1回飛ばす`, p.cpu?'sys':'me');
@@ -1137,8 +1160,9 @@ async function resolveTrigger(p, card, by){
     }
     case 't27': {
       if(!p.hand.length){ log(`${p.name} は手札がないので不発`); return; }
-      const n=p.hand.length; for(const c of p.hand) S.deck.push(c.role); p.hand=[]; shuffle(S.deck);
+      const n=p.hand.length; for(const c of p.hand) discardRole(c.role); p.hand=[]; render(); await fxDiscard(p, n);
       for(let k=0;k<n;k++){ const c=drawCard(); p.hand.push(c); markFresh(c); }
+      await fxDraw(p, n);
       log(`${p.name} は手札${n}枚をすべて引き直した（お色直し）`);
       return;
     }
@@ -1162,12 +1186,13 @@ async function resolveTrigger(p, card, by){
 /* ---- ダサすぎ♥ ---- */
 async function doExchange(p){
   const drawn=[drawCard(),drawCard()];
+  await fxDraw(p, 2, false);
   const pool=[...p.hand, ...drawn], keepN=p.hand.length;
   const keep = p.cpu ? cpuExchangeKeep(p,pool,keepN) : await humanExchangeKeep(p,pool,keepN);
   p.hand=pool.filter((_,i)=>keep.includes(i));
-  for(const c of pool.filter((_,i)=>!keep.includes(i))) S.deck.push(c.role);
-  shuffle(S.deck);
-  log(`${p.name} は山札から2枚引き、2枚戻した`);
+  for(const c of pool.filter((_,i)=>!keep.includes(i))) discardRole(c.role);
+  render(); await fxDiscard(p, 2);
+  log(`${p.name} は山札から2枚引き、2枚を捨て札にした`);
 }
 async function doExamine(p, target){
   if(!target.hand.length) return;
@@ -1177,8 +1202,8 @@ async function doExamine(p, target){
   log(`${p.name} は ${target.name} の手札を1枚のぞいた`);
   let force;
   if(p.cpu){ await wait(500); force=ROLES[card.role].value>=3; }
-  else force=await askButtons(`${target.name} のカードは「${rname(card.role)}」。山札と交換させる？`, [{label:'交換させる',value:true,primary:true},{label:'そのまま',value:false}]);
-  if(force){ returnToDeck(card.role); target.hand[idx]=drawCard(); markFresh(target.hand[idx]); log(`${target.name} はそのカードを山札と交換させられた`); render(); await fxSwap(target, card.role, `${p.name} の審問`, '交換させられた', !target.cpu); }
+  else force=await askButtons(`${target.name} のカードは「${rname(card.role)}」。捨てさせて山札から引き直させる？`, [{label:'捨てさせる',value:true,primary:true},{label:'そのまま',value:false}]);
+  if(force){ returnToDeck(card.role); target.hand[idx]=drawCard(); markFresh(target.hand[idx]); log(`${target.name} はそのカードを捨てさせられ、山札から引き直した`); render(); await fxSwap(target, card.role, `${p.name} の審問`, '捨てさせられた', !target.cpu); await fxDiscard(target, 1, target.cpu?null:card.role); await fxDraw(target, 1); }
   else log(`${p.name} は交換させなかった`);
 }
 
@@ -1376,7 +1401,7 @@ function actionTileEl(id, p, cost){
   if(A.role){ const R=ROLES[A.role]; b.style.setProperty('--rcol',R.color); const held=p?hasRole(p,A.role):null; if(held===false) b.classList.add('bluff'); state=held===null?'':(held?'✓ 持ってる':'ハッタリ'); if(p){ b.onmouseenter=()=>linkRole(A.role,true); b.onmouseleave=()=>linkRole(A.role,false); } }
   else b.classList.add('basic');
   const costTxt = id==='coup'?`${cost}♥払う`: id==='assassinate'?'3♥払う':'';
-  const effect = (id==='exchange'&&p&&p.flags.examine) ? '山札から2枚引いて2枚戻す／審問：相手の手札1枚を見て山札と交換させる（選べる）' : A.desc.replace(/^\d♥を支払い、/,'');
+  const effect = (id==='exchange'&&p&&p.flags.examine) ? '山札から2枚引いて2枚捨てる／審問：相手の手札1枚を見て、捨てさせて山札から引き直させる（選べる）' : A.desc.replace(/^\d♥を支払い、/,'');
   let blockers=A.blockedBy||[]; if(id==='exchange') blockers=[];
   const blk = blockers.length ? `は？：${blockers.map(r=>ROLES[r].name).join('・')}がブロック可` : (id==='coup'||id==='income'?'ブロック不可・チャレンジ不可':(id==='exchange'&&p&&p.flags.examine)?'通常はブロック不可・審問は幼馴染ガキがブロック可':'ブロック不可');
   b.innerHTML=`<div class="ah">${A.name}</div><div class="ar">${A.role?`<b>${ROLES[A.role].name}</b> のアクション`:'誰でも'}${costTxt?`・${costTxt}`:''}</div><div class="ae">${effect}</div><div class="ab">${blk}</div>${state?`<span class="ast">${state}</span>`:''}`;
@@ -1465,8 +1490,9 @@ function render(){
   const info=$('#deckInfo');
   if(S.players.length){
     const cur=S.current?S.current.name:'—';
-    info.innerHTML=`<span>山札 <b>${S.deck.length}</b>枚</span><span>手番 <b>${cur}</b></span><span>ざぁ～こ♥ <b>${S.players[0]?coupCost(S.players[0]):7}♥</b></span><span>ダサすぎ♥ <b>${S.players[0]&&S.players[0].flags.examine?'審問も可':'通常'}</b></span>`;
+    info.innerHTML=`<span>手番 <b>${cur}</b></span><span>ざぁ～こ♥ <b>${S.players[0]?coupCost(S.players[0]):7}♥</b></span><span>ダサすぎ♥ <b>${S.players[0]&&S.players[0].flags.examine?'審問も可':'通常'}</b></span>`;
   }
+  renderPiles();
   renderEffects();
   renderAction();
 }
@@ -1552,7 +1578,7 @@ async function humanChooseAction(p, forced){
     }, 'action');
     const A=ACTIONS[act];
     if(act==='exchange' && p.flags.examine){   // ルール改変持ち：通常か審問かを選ぶ
-      const mode=await askButtons('「ダサすぎ♥」の効果を選んでください', [{label:'通常', value:'normal', primary:true, sub:'山札から2枚引いて2枚戻す（ブロック不可）'},{label:'審問', value:'examine', sub:'相手の手札1枚を見て山札と交換させる（幼馴染ガキでブロック可）'},{label:'もどる', value:null}], undefined, 'examineMode');
+      const mode=await askButtons('「ダサすぎ♥」の効果を選んでください', [{label:'通常', value:'normal', primary:true, sub:'山札から2枚引いて2枚捨てる（ブロック不可）'},{label:'審問', value:'examine', sub:'相手の手札1枚を見て、捨てさせて山札から引き直させる（幼馴染ガキでブロック可）'},{label:'もどる', value:null}], undefined, 'examineMode');
       if(mode===null) continue;
       if(mode==='normal') return {action:act};
       const ec=others.filter(q=>q.hand.length>0);
@@ -1583,7 +1609,7 @@ function passText(what, claimant, me){
     case 'tax': return `${who(claimant)} が3♥獲得（${claimant.hearts}♥ → ${claimant.hearts+3}♥）`;
     case 'steal': { const n=Math.min(2,t.hearts); return `${who(claimant)} が ${who(t)} から${n}♥奪う（${who(t)} ${t.hearts}♥ → ${t.hearts-n}♥、${who(claimant)} ${claimant.hearts}♥ → ${claimant.hearts+n}♥）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと後輩ガキ・幼馴染ガキでブロックできる':''); }
     case 'assassinate': return `${who(t)} がプライドを1つ失う（手札1枚を捨て、服を1枚脱ぐ）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと わからせおじさん でブロックできる':'');
-    case 'exchange': return t ? `${who(claimant)} が ${who(t)} の手札1枚を見て、山札と交換させられる（審問）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと幼馴染ガキでブロックできる':'') : `${who(claimant)} が山札から2枚引いて2枚戻す（手札を整えられる）`;
+    case 'exchange': return t ? `${who(claimant)} が ${who(t)} の手札1枚を見て、捨てさせられ、山札から引き直す（審問）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと幼馴染ガキでブロックできる':'') : `${who(claimant)} が山札から2枚引いて2枚捨てる（手札を整えられる）`;
   }
   return '';
 }
@@ -1640,7 +1666,7 @@ async function humanDeckSwap(p){
 }
 function humanExchangeKeep(p, pool, n){
   return prompt((box,done)=>{
-    msgEl(box, `山札から2枚引きました。残す${n}枚を選んでください`, '残りは山札に戻します');
+    msgEl(box, `山札から2枚引きました。残す${n}枚を選んでください`, '残りは捨て札になります');
     const row=document.createElement('div'); row.className='pcards'; const sel=new Set();
     const btn=document.createElement('button'); btn.className='btn primary'; btn.textContent='決定'; btn.disabled=true;
     pool.forEach((c,i)=>{
@@ -1803,7 +1829,7 @@ function cutscene(p, k, card){
   });
 }
 
-/* 手札の入れ替え演出：公開した（or 交換させられた）カードを山札に戻し、新しい1枚を引く。クリックで早送り
+/* 手札の入れ替え演出：公開した（or 捨てさせられた）カードを捨て札にし、山札から新しい1枚を引く。クリックで早送り
  *  showRole=false のときは中身を見せない（審問など、本人以外は知らないカード） */
 function fxSwap(p, role, title, label, showRole){
   if(S.headless) return Promise.resolve();
@@ -1820,9 +1846,9 @@ function fxSwap(p, role, title, label, showRole){
     const finish=()=>{ if(done) return; done=true; cut.classList.add('out'); setTimeout(()=>cut.remove(), 320); resolve(); };
     cut.addEventListener('click', finish);
     const step=(ms,fn)=>wait(ms).then(()=>{ if(!done && gid===S.gameId) fn(); });
-    step(900,()=>{ oldEl.classList.add('fly'); cap.innerHTML='山札に戻して<b>シャッフル</b>…'; SFX.play('rip'); })
-      .then(()=>step(600,()=>{ newEl.classList.add('in'); cap.innerHTML='新しい1枚を<b>引き直し</b>（中身は本人だけ知っている）'; SFX.play('chime'); }))
-      .then(()=>step(1300,finish))
+    step(800,()=>{ oldEl.classList.add('fly'); cap.innerHTML='<b>捨て札</b>に捨てて…'; SFX.play('rip'); })
+      .then(()=>step(500,()=>{ newEl.classList.add('in'); cap.innerHTML='山札から新しい1枚を<b>引き直し</b>（中身は本人だけ知っている）'; SFX.play('chime'); }))
+      .then(()=>step(900,finish))
       .catch(()=>{ cut.remove(); resolve(); });
   });
 }
@@ -1845,6 +1871,32 @@ function fxBluff(claimant, challenger, role){
       .catch(()=>{ cut.remove(); resolve(); });
   });
 }
+/* 山札・捨て札の絵（中央）と、カードが飛んでいく演出 */
+function renderPiles(){
+  const d=$('#pileDeck'), c=$('#pileDisc'); if(!d||!c) return;
+  const set=(el,n)=>{ el.querySelector('.plbl b').textContent=n; const sp=el.querySelectorAll('.pstack span'); sp[1].hidden=n<3; sp[2].hidden=n<6; el.querySelector('.pstack').classList.toggle('empty', n===0); };
+  set(d, S.deck.length); set(c, (S.discard||[]).length);
+}
+function rectOf(el){ if(!el) return null; const r=el.getBoundingClientRect(); return {x:r.left,y:r.top,w:r.width,h:r.height}; }
+function handRect(p){ const el=panelOf(p); return rectOf(el && (el.querySelector('.cards')||el)); }
+function pileRect(which){ return rectOf($(which==='disc'?'#pileDisc .pstack':'#pileDeck .pstack')); }
+// 1枚のカード（role があれば表、無ければ裏）を from から to へ飛ばす
+function flyCard(from, to, role){
+  if(S.headless || !from || !to) return Promise.resolve();
+  const el = role ? roleCardEl(role,{small:true}) : cardBackEl(true); el.classList.add('flycard');
+  document.body.appendChild(el);
+  const w=el.offsetWidth||100, h=el.offsetHeight||84;
+  const place=(r,sc)=>`translate(${r.x+r.w/2-w/2}px,${r.y+r.h/2-h/2}px) scale(${sc})`;
+  const s0=Math.min(1, Math.max(.45, from.w/w)), s1=Math.min(1, Math.max(.45, to.w/w));
+  el.style.transition='none'; el.style.transform=place(from,s0);
+  return new Promise(res=>{ requestAnimationFrame(()=>requestAnimationFrame(()=>{ el.style.transition=''; el.style.transform=place(to,s1); el.style.opacity='.95'; setTimeout(()=>{ el.remove(); res(); }, 520); })); });
+}
+async function flyMany(n, from, to, role){ const ps=[]; for(let i=0;i<n;i++){ ps.push(flyCard(from,to,i===0?role:null)); if(i<n-1) await wait(120); } await Promise.all(ps); }
+function bumpPile(which){ const el=$(which==='disc'?'#pileDisc .pstack':'#pileDeck .pstack'); if(!el) return; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+// 手札 → 捨て札（role を渡すとその札を表で飛ばす）
+async function fxDiscard(p, n=1, role=null){ if(S.headless) return; await flyMany(n, handRect(p), pileRect('disc'), role); bumpPile('disc'); SFX.play('tick'); renderPiles(); }
+// 山札 → 手札
+async function fxDraw(p, n=1, rerender=true){ if(S.headless) return; bumpPile('deck'); await flyMany(n, pileRect('deck'), handRect(p)); renderPiles(); if(rerender) render(); }
 // 引き直した直後のカードを光らせる
 function markFresh(c){ c.fresh=true; setTimeout(()=>{ delete c.fresh; if(!S.headless) render(); }, 2000); }
 
@@ -2008,7 +2060,7 @@ function buildRules(){
 
   <div class="rl-sec"><h3><span class="no">5</span>チャレンジ</h3>
   <div class="rl-two">
-    <div class="rl-box ok"><b>主張が本当だった</b>そのカードを公開して山札と交換し、1枚引き直す。チャレンジした人がプライドを失う。アクションは通る。</div>
+    <div class="rl-box ok"><b>主張が本当だった</b>そのカードを公開して捨て札にし、山札から1枚引き直す。チャレンジした人がプライドを失う。アクションは通る。</div>
     <div class="rl-box ng"><b>ハッタリだった</b>主張した人がプライドを失い、アクション（またはブロック）は失敗。まけちゃえ～♥で払った3♥は戻らない。</div>
   </div></div>
 
@@ -2059,7 +2111,7 @@ function fillRules(){
 let setup={ n:4, ch:0, auto:false };
 function openStart(){
   const dp=$('#deckpick'); dp.innerHTML='';
-  for(const [k,lbl] of [['basic','基本デッキ'],['fresh','新カードデッキ'],['custom','カスタム…']]){ const b=document.createElement('button'); b.className='btn'+(DECK.preset===k?' primary':''); b.textContent=lbl; b.onclick=()=>{ if(k==='custom') openDeckPicker(); else { setDeck(k); openStart(); } }; dp.appendChild(b); }
+  for(const [k,lbl] of [['basic','基本デッキ'],['fresh','新カードデッキ'],['mix','おすすめデッキ'],['custom','カスタム…']]){ const b=document.createElement('button'); b.className='btn'+(DECK.preset===k?' primary':''); b.textContent=lbl; b.onclick=()=>{ if(k==='custom') openDeckPicker(); else { setDeck(k); openStart(); } }; dp.appendChild(b); }
   $('#deckinfo').innerHTML=`<b>${deckLabel()}</b>（${DECK.ids.length}枚）：${DECK.ids.map(id=>(TRIGGERS.find(t=>t.id===id)||{}).name).join('・')}`;
   const np=$('#npick'); np.innerHTML='';
   for(const n of [3,4,5,6]){ const b=document.createElement('button'); b.className='btn'+(setup.n===n?' primary':''); b.textContent=`${n}人`; b.onclick=()=>{ setup.n=n; openStart(); }; np.appendChild(b); }
@@ -2097,7 +2149,7 @@ function renderDeckPicker(){
 function init(){
   preloadImages();
   loadDeck();
-  $('#btnDeckOk').onclick=()=>{ if(deckDraft.length!==DECK_SIZE) return; const preset = ['basic','fresh'].find(k=>DECK_PRESETS[k].every(id=>deckDraft.includes(id))) || 'custom'; setDeck(preset, deckDraft); $('#modalDeck').classList.remove('show'); openStart(); };
+  $('#btnDeckOk').onclick=()=>{ if(deckDraft.length!==DECK_SIZE) return; const preset = ['basic','fresh','mix'].find(k=>DECK_PRESETS[k].every(id=>deckDraft.includes(id))) || 'custom'; setDeck(preset, deckDraft); $('#modalDeck').classList.remove('show'); openStart(); };
   $('#btnDeckBasic').onclick=()=>{ deckDraft=DECK_PRESETS.basic.slice(); renderDeckPicker(); };
   window.addEventListener('resize', ()=>renderArrows());
   $('#rulesBox').innerHTML=buildRules(); fillRules();

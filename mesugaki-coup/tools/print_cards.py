@@ -597,7 +597,7 @@ cards/ に1枚ずつ、ファイル名の末尾 _front が表、_back が裏。m
 仕上がり線から内側 3mm に文字と枠を収めてある。preview.png の赤線が仕上がり線（印刷データには入っていない）。
 メスガキカード（{len(PRINT_CHARS) * 2}枚）だけ横長。表裏は上下が同じ向き（長辺でめくる想定）。
 
-枚数：ガキカード {len(ROLES) * 3}、メスガキカード {len(PRINT_CHARS) * 2}、トリガー {len(TRIG18)}、早見表 6、タイトル 1 ＝ {len(cards)}枚
+枚数：ガキカード {len(ROLES) * 3}、メスガキカード {len(PRINT_CHARS) * 2}、トリガー {len(TRIG18)}{f'、ハズレ {args.dud}' if args.dud else ''}、早見表 {args.ref}{f'、白紙トリガー {args.blank}' if args.blank else ''}、タイトル 1 ＝ {len(cards)}枚
 キャラ：{'・'.join(CHAR_NAME[c] for c in PRINT_CHARS)}
 トリガー：{'・'.join(TRIGGERS[t]['name'] for t in TRIG18)}
 """
@@ -688,8 +688,6 @@ if args.lion:
   template_T<n>.pdf：公式テンプレート（{os.path.basename(args.template)}）の表・裏ページに、各カードを面A〜Uの枠へ貼り込んだもの（テンプレートのトンボ・ガイドはそのまま残してある）。
   template_all.pdf：上を全テンプレートぶん連結（表→裏→表→裏…）。Illustrator で開けばそのまま .ai として保存できる。
 '''
-        with open(os.path.join(OUT, 'README.txt'), 'a', encoding='utf-8') as fp:
-            fp.write(readme_tpl)
     readme += f"""
 [ライオン名刺 異種テンプレート用] lion/
   T<n>_<A-U>_front.png / _back.png：テンプレートの面 A〜U に貼る画像。縦型のカードは表を左90度・裏を右90度に回転済み、横型（メスガキカード）はそのまま。
@@ -698,5 +696,7 @@ if args.lion:
   公式テンプレートの面の位置とは一致しない可能性があるので、入稿は公式テンプレートに T<n>_<面>_front/back.png を貼る形が確実。
   slots.csv：カード番号→テンプレート番号・面の対応表。{len(cards)}枚を {len(sheets)} 枚のテンプレート（21面ずつ）に割り当て。
 """
+    if args.template:
+        readme += readme_tpl
 open(os.path.join(OUT, 'README.txt'), 'w', encoding='utf-8').write(readme)
 print(f'{len(cards)} cards -> {OUT}  ({PW}x{PH}px portrait, {LW}x{LH}px landscape)', 'pdf ok' if pdf else 'no pdf (reportlab missing)')

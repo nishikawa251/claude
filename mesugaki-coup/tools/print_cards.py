@@ -30,6 +30,11 @@ ap.add_argument('--art', default=None, help='Bombergirl 立ち絵（<name>000.pn
 ap.add_argument('--index', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'index.html'))
 ap.add_argument('--size', default='91x55', help='仕上がり mm（長辺x短辺）')
 ap.add_argument('--bleed', type=float, default=1.5, help='塗り足し mm（各辺）')
+ap.add_argument('--all-triggers', action='store_true', help='定義されている全トリガー（2軍も）を入れる')
+ap.add_argument('--dud', type=int, default=0, help='ハズレ（効果なし）トリガーの枚数')
+ap.add_argument('--ref', type=int, default=6, help='早見表の枚数')
+ap.add_argument('--blank', type=int, default=0, help='白紙トリガー（自作用）の枚数')
+ap.add_argument('--template', default=None, help='ライオン名刺 異種の AI/PDF テンプレート。指定すると各面に貼り込んだ入稿 PDF（表・裏の2ページ×テンプレート数）を lion/ に出す')
 ap.add_argument('--samples', action='store_true', help='見本（数枚の表裏を1枚の画像に）だけ出す')
 ap.add_argument('--lion', action='store_true', help='ライオン名刺 異種テンプレート向けの回転済み画像と面付けシートも出す')
 ap.add_argument('--dpi', type=int, default=350)
@@ -112,12 +117,14 @@ for m in re.finditer(r"(basic|fresh|mix):\s*\[([^\]]*)\]", js_block('const DECK_
     PRESETS[m.group(1)] = re.findall(r"'(t\d+)'", m.group(2))
 CHARS = [(m.group(1), m.group(2)) for m in re.finditer(r"\{ id:'([a-z]+)',\s*name:'([^']+)' \}", js_block('const CHARS = [', '];'))]
 CHAR_NAME = dict(CHARS)
-PRINT_CHARS = [c for c in args.chars.split(',') if c]
+PRINT_CHARS = [c for c, _ in CHARS] if args.chars == 'all' else [c for c in args.chars.split(',') if c]
 assert all(c in CHAR_NAME for c in PRINT_CHARS), f'知らないキャラ id: {PRINT_CHARS}'
 TRIG18 = []
 for i in PRESETS['basic'] + PRESETS['mix']:
     if i not in TRIG18:
         TRIG18.append(i)
+if args.all_triggers:   # 基本 → 新カード → 2軍 の順に全部
+    TRIG18 = PRESETS['basic'] + [i for i in PRESETS['fresh'] if i not in PRESETS['basic']] + [i for i in TRIGGERS if i not in PRESETS['basic'] and i not in PRESETS['fresh']]
 
 # ---------------------------------------------------------------- 描画ユーティリティ
 INK = (40, 22, 48)
@@ -257,8 +264,40 @@ def trigger_front(tid):
     draw_text_block(d, (x0, inner[1] + int(29 * MM)), body, font(fs), wdt, fill=(230, 236, 255), spacing=1.45)
     # セット名
     sets = 'おすすめ' if tid in PRESETS['mix'] else ''
-    base = '基本' if tid in PRESETS['basic'] else '新カード'
+    base = '基本' if tid in PRESETS['basic'] else '新カード' if tid in PRESETS['fresh'] else '2軍'
     text_center(d, PW / 2, inner[3] - int(7 * MM), base + ('／' + sets if sets else ''), font(5.5), fill=(138, 152, 214))
+    text_center(d, PW / 2, inner[3] - int(3.6 * MM), 'メスガキ・クー', font(5), fill=(110, 120, 170))
+    return im
+
+
+def dud_front():
+    navy = (42, 42, 54); edge = (74, 74, 92)
+    im = Image.new('RGB', (PW, PH), navy); d = ImageDraw.Draw(im)
+    inner = (BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE)
+    d.rounded_rectangle(inner, radius=int(3 * MM), outline=edge, width=int(0.7 * MM))
+    text_center(d, PW / 2, inner[1] + int(3 * MM), 'TRIGGER', font(6), fill=(120, 120, 140))
+    text_center(d, PW / 2, inner[1] + int(8 * MM), 'ハズレ', font(15, 'head'), fill=(200, 200, 215))
+    d.line((inner[0] + int(4 * MM), inner[1] + int(17 * MM), inner[2] - int(4 * MM), inner[1] + int(17 * MM)), fill=edge, width=int(0.4 * MM))
+    text_center(d, PW / 2, inner[1] + int(30 * MM), '効果なし', font(9, 'black'), fill=(154, 154, 168))
+    text_center(d, PW / 2, inner[1] + int(38 * MM), '脱いだのに何も起きない……', font(6), fill=(120, 120, 140))
+    text_center(d, PW / 2, inner[3] - int(3.6 * MM), 'メスガキ・クー', font(5), fill=(110, 110, 130))
+    return im
+
+
+def blank_front():
+    navy = (43, 49, 72); edge = (90, 106, 168)
+    im = Image.new('RGB', (PW, PH), navy); d = ImageDraw.Draw(im)
+    inner = (BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE)
+    d.rounded_rectangle(inner, radius=int(3 * MM), outline=edge, width=int(0.7 * MM))
+    text_center(d, PW / 2, inner[1] + int(3 * MM), 'TRIGGER', font(6), fill=(138, 152, 214))
+    # 名前欄・効果欄（白地に書き込める）
+    d.rounded_rectangle((inner[0] + int(4 * MM), inner[1] + int(8 * MM), inner[2] - int(4 * MM), inner[1] + int(16 * MM)), radius=int(1 * MM), fill=(245, 246, 255))
+    d.rounded_rectangle((inner[0] + int(4 * MM), inner[1] + int(20 * MM), inner[2] - int(4 * MM), inner[3] - int(9 * MM)), radius=int(1 * MM), fill=(245, 246, 255))
+    for k in range(1, 8):
+        yy = inner[1] + int(20 * MM) + k * int(7 * MM)
+        if yy < inner[3] - int(10 * MM):
+            d.line((inner[0] + int(6 * MM), yy, inner[2] - int(6 * MM), yy), fill=(205, 210, 235), width=1)
+    text_center(d, PW / 2, inner[1] + int(17 * MM), '自作トリガー', font(5), fill=(138, 152, 214))
     text_center(d, PW / 2, inner[3] - int(3.6 * MM), 'メスガキ・クー', font(5), fill=(110, 120, 170))
     return im
 
@@ -494,9 +533,13 @@ for cid in PRINT_CHARS:
         n += 1; cards.append((n, 'chara', f'{CHAR_NAME[cid]}_{"上" if half == "top" else "下"}', cc[half][0], cc[half][1], 'L'))
 for tid in TRIG18:
     n += 1; cards.append((n, 'trigger', TRIGGERS[tid]['name'], trigger_front(tid), trigger_back(), 'P'))
+for k in range(args.dud):
+    n += 1; cards.append((n, 'trigger', f'ハズレ_{k + 1}', dud_front(), trigger_back(), 'P'))
 qf, qb = quick_front(), quick_back()
-for k in range(6):
+for k in range(args.ref):
     n += 1; cards.append((n, 'ref', f'早見表_{k + 1}', qf, qb, 'P'))
+for k in range(args.blank):
+    n += 1; cards.append((n, 'blank', f'白紙トリガー_{k + 1}', blank_front(), trigger_back(), 'P'))
 n += 1; cards.append((n, 'title', 'タイトル', title_front(), title_back(), 'P'))
 
 if args.samples:
@@ -604,6 +647,49 @@ if args.lion:
     if lpdf:
         lpdf.save()
     open(os.path.join(ldir, 'slots.csv'), 'w', encoding='utf-8').write('\n'.join(mapping) + '\n')
+    # ---- 公式テンプレート（AI = PDF互換）に貼り込む
+    if args.template:
+        import io
+        from pypdf import PdfReader, PdfWriter
+        tpl = PdfReader(args.template)
+        assert len(tpl.pages) >= 2, 'テンプレートは表・裏の2ページ想定'
+        import pdfplumber
+        with pdfplumber.open(args.template) as pl:
+            slots_pt = []
+            for pg in pl.pages[:2]:
+                H = pg.height
+                rs = [r for r in pg.rects if abs(r['width'] / 72 * 25.4 - (TH_MM + 2 * B_MM)) < 0.8 and abs(r['height'] / 72 * 25.4 - (TW_MM + 2 * B_MM)) < 0.8]
+                rs = sorted(rs, key=lambda r: (round(r['top']), r['x0']))      # 上の行から、左から
+                assert len(rs) == 21, f'テンプレートに {TH_MM + 2 * B_MM:g}×{TW_MM + 2 * B_MM:g}mm の枠が21個見つからない（{len(rs)}個）'
+                slots_pt.append([(r['x0'], H - r['bottom'], r['width'], r['height']) for r in rs])
+        tw_pt, th_pt = float(tpl.pages[0].mediabox.width), float(tpl.pages[0].mediabox.height)
+        all_writer = PdfWriter()
+        for si, sh in enumerate(sheets, 1):
+            writer = PdfWriter()
+            for side in (0, 1):
+                buf = io.BytesIO(); c = rl_canvas.Canvas(buf, pagesize=(tw_pt, th_pt))
+                for k, (num, kind, name, f, b, ori) in enumerate(sh):
+                    r, col = divmod(k, 3)
+                    if side == 0:
+                        im = f.rotate(90, expand=True) if ori == 'P' else f
+                        x, y, w, h = slots_pt[0][r * 3 + col]
+                    else:
+                        im = b.rotate(-90, expand=True) if ori == 'P' else b
+                        x, y, w, h = slots_pt[1][r * 3 + (2 - col)]           # 裏は中央で鏡合わせ
+                    c.drawImage(ImageReader(im), x, y, w, h)
+                c.showPage(); c.save(); buf.seek(0)
+                over = PdfReader(buf).pages[0]
+                base = PdfReader(args.template).pages[side]
+                base.merge_page(over)
+                writer.add_page(base); all_writer.add_page(base)
+            writer.write(os.path.join(ldir, f'template_T{si}.pdf'))
+        all_writer.write(os.path.join(ldir, 'template_all.pdf'))
+        readme_tpl = f'''
+  template_T<n>.pdf：公式テンプレート（{os.path.basename(args.template)}）の表・裏ページに、各カードを面A〜Uの枠へ貼り込んだもの（テンプレートのトンボ・ガイドはそのまま残してある）。
+  template_all.pdf：上を全テンプレートぶん連結（表→裏→表→裏…）。Illustrator で開けばそのまま .ai として保存できる。
+'''
+        with open(os.path.join(OUT, 'README.txt'), 'a', encoding='utf-8') as fp:
+            fp.write(readme_tpl)
     readme += f"""
 [ライオン名刺 異種テンプレート用] lion/
   T<n>_<A-U>_front.png / _back.png：テンプレートの面 A〜U に貼る画像。縦型のカードは表を左90度・裏を右90度に回転済み、横型（メスガキカード）はそのまま。

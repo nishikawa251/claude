@@ -309,7 +309,7 @@ function renderPhys(){
   const k=DATA.phys; if(!k){ return; }
   // 枚数はゲーム定義から。キャラは6種に絞った印刷想定
   const total=k.rows.filter(r=>r[0]!=='♥トークン').reduce((a,r)=>a+r[1],0);
-  $('#phys').innerHTML='<thead><tr><th>種類</th><th class="n">枚数</th><th>内訳</th><th>備考</th></tr></thead><tbody>'+k.rows.map(r=>`<tr><td class="nm">${esc(r[0])}</td><td class="n">${fmt(r[1])}${r[0]==='♥トークン'?'個':'枚'}</td><td class="tx">${esc(r[2])}</td><td class="tx">${esc(r[3])}</td></tr>`).join('')+`<tr><td class="nm">カード合計</td><td class="n">${fmt(total)}枚</td><td class="tx" colspan="2">早見表・ルールシート込み。♥トークンは別</td></tr></tbody>`;
+  $('#phys').innerHTML='<thead><tr><th>種類</th><th class="n">枚数</th><th>内訳</th><th>備考</th></tr></thead><tbody>'+k.rows.map(r=>`<tr><td class="nm">${esc(r[0])}</td><td class="n">${fmt(r[1])}${r[0]==='♥トークン'?'個':'枚'}</td><td class="tx">${esc(r[2])}</td><td class="tx">${esc(r[3])}</td></tr>`).join('')+`<tr><td class="nm">カード合計</td><td class="n">${fmt(total)}枚</td><td class="tx" colspan="2">早見表・ルールシート込みでトランプ1組（52枚）と同じ。54枚仕様（ジョーカー2枚つき）で刷るなら、余り2枚はハズレ2枚かタイトル・裏面説明カードに。♥トークンは別</td></tr></tbody>`;
   $('#physnote').textContent=`${k.per_player}。${k.min4}。キャラの候補：${k.chars.join('・')}（この中から6人）。キャラ画像の分割と印刷用シート（A4両面）は tools/split_cards.py が出力する。`;
 }
 function renderCands(){

@@ -19,6 +19,23 @@ for _m in _re.finditer(r"(basic|fresh|mix):\s*\[([^\]]*)\]", _idx[_idx.find('con
     PRESETS[_m.group(1)] = _re.findall(r"'(t\d+)'", _m.group(2))
 _inpreset = {i for v in PRESETS.values() for i in v}
 DECK = {'dud': _dud, 'presets': {k: [CNAME[i] for i in v] for k, v in PRESETS.items()}, 'bench': [CNAME[i] for i in CNAME if i not in _inpreset]}
+# 物理版の枚数（index.html の定義から数える）
+_chars = _re.findall(r"\{ id:'([a-z]+)',\s*name:'([^']+)' \}", _idx[_idx.find('const CHARS'):_idx.find('const CHARS')+2000])
+N_CHARS = len(_chars); N_ROLES = 5; N_TRIG = len(CNAME); N_PRESET = sum(len(v) for v in PRESETS.values())
+PHYS = {
+  'chars': [n for _, n in _chars],
+  'rows': [
+    ['ガキカード（役職）', N_ROLES*3, f'{N_ROLES}種×3枚。メスガキ・後輩ガキ・幼馴染ガキ・サキュガキ・わからせおじさん', '裏面は共通の裏柄。表に「できる／ブロック」を印刷しておくと早見表が要らない'],
+    ['メスガキカード（キャラ）', N_CHARS*2, f'{N_CHARS}キャラ×上半身・下半身の2枚。表＝通常絵、裏＝ボロ絵の両面印刷', '横長（416:298 ≒ 88×63mm）。上下を縦に並べると全身になる。遊ぶのは人数ぶんだけ（最大6キャラ）'],
+    ['トリガーカード', N_TRIG, f'{N_TRIG}種×1枚（基本{len(PRESETS.get("basic",[]))}・新カード{len(PRESETS.get("fresh",[]))}・2軍{N_TRIG-len(set(sum(PRESETS.values(),[])))}）。おすすめは基本・新カードからの混成', '1ゲームに使うのは12枚。裏面は共通。効果文は長めなので文字が小さくならない大きさで'],
+    ['ハズレ（任意）', 2, '効果なしのトリガー', '今の設定では使わない（dudCount 0）。入れるなら2枚'],
+    ['♥トークン', 50, '1♥×40、5♥×10 くらい', '6人戦でも50あれば足りる（クーのコイン50枚と同じ）'],
+    ['早見表', 6, 'アクション7種と「は？」ブロック・チャレンジの表。1人1枚', 'ゲーム画面の「ルール」の①〜③をそのまま'],
+    ['ルールシート', 1, '準備・手番・プライド喪失とトリガー・勝利条件', ''],
+  ],
+  'per_player': '1人ぶん：メスガキカード2枚（上・下）、ガキカード2枚（伏せ）、トリガー2枚（伏せて上下に1枚ずつ）、2♥',
+  'min4': f'4人戦の最小セット：ガキ{N_ROLES*3}＋キャラ8＋トリガー12＋早見表4 ＝ {N_ROLES*3+8+12+4}枚と♥トークン',
+}
 
 EFF = {'みちづれのキス':'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）','仕返し':'自分を脱がせた相手から3♥奪う','山分け':'自分より♥の多い全員から1♥ずつもらう','値下げ':'以後、自分の「ざぁ～こ♥」は5♥で撃てる','おしおき返し':'5♥持っていたら即時払って「ざぁ～こ♥」を打つ','山札のぞき':'山札を見て1枚選び、手札と入れ替える','ダサすぎ返し':'これを持っていれば「ダサすぎ♥」をブロックできる','まるみえ':'誰か一人の手札を表にする','総入れ替え':'全員が手札を1枚伏せて出す。自分だけ全部を見て欲しい1枚をもらい、残りはランダムに1枚ずつ配り戻す','みかじめ':'全員から1♥ずつもらう','まわして':'全員手札を1枚選び、右隣に渡す','値上げ':'自分以外は「ざぁ～こ♥」が8♥になる','♥コレクター':'自分の勝利条件に「9♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう','遺言':'プライドが0になったときだけ発動。自分の♥をすべて好きな相手に渡す','着替え':'プライドが0になったときだけ発動。山札から1枚引いて脱落を免れる。ただし♥は0になり、次の手番を1回飛ばす','トリガーチェック':'自分を脱がせた相手の伏せたトリガーを1枚こっそり見る（自分だけ見える）','かくれんぼ':'次の自分の手番まで、自分は「ざぁ～こ♥」「まけちゃえ～♥」の対象にならない','無敵宣言':'次の自分の手番のアクションは、チャレンジもブロックもされない','口止め料':'自分を脱がせた相手は、次の手番を1回飛ばす','おねだり':'ほかの全員は「自分に1♥渡す」か「手札1枚を自分にこっそり見せる」かを選ぶ','ボディガード':'以後、自分を対象にした ざぁ～こ♥・まけちゃえ～♥・なさけな～い♥ は、使った人が追加で2♥を自分に払う','人気者':'以後、自分の「よわ♥」はブロックされない','復讐の誓い':'以後、自分を脱がせた相手に対する自分のアクションは、チャレンジもブロックもされない','ごほうび':'以後、自分がチャレンジに成功するたびに2♥もらう','内緒話':'相手1人を選び、互いに手札1枚をこっそり見せ合う','お色直し':'自分の手札をすべて山札に戻し、同じ枚数を引き直す','道連れ':'自分を脱がせた相手の手札が2枚なら、その相手もプライドを1つ失う','ルール改変':'以後、自分の「ダサすぎ♥」は通常か審問（相手の手札1枚を見て山札と交換させる）かを選べる。審問は幼馴染ガキでブロック可','ハズレ':'効果なし'}
 MEMO = {"みちづれのキス": "脱がせた相手の手札を自分だけ見る。ややプラス（+0.9pt / +0.3pt）", "値下げ": "自分だけざぁ～こ♥が5♥。ややプラス（+1.2pt / +1.3pt）", "仕返し": "脱がせた相手から3♥。ややプラス（+0.9pt / +0.6pt）", "おしおき返し": "5♥。中立（+0.3pt / +0.6pt）。所持時勝率は平均より +2.7pt で、持っているだけで攻撃を抑えている", "みかじめ": "全員から1♥。ややプラス（+1.3pt / +1.0pt）", "山札のぞき": "ややプラス（+1.2pt / +0.6pt）", "ダサすぎ返し": "やや弱い（-0.6pt / -0.6pt）", "ルール改変": "自分だけに効き、通常と審問を選べる。やや弱い（-1.2pt / -1.2pt）。CPUは審問をあまり使わないので低く出る", "♥コレクター": "9♥＋公開時の山分け。中立（+0.0pt / -0.8pt）", "まわして": "2軍（0枚）。全員が1枚ずつ渡すので自分の得にならなかった", "総入れ替え": "交換会。やや弱い（-1.0pt / -0.6pt）", "遺言": "今回は0枚（外した）", "着替え": "新カードデッキに弱体版（♥0＋手番1回スキップ）で収録。1枚目は不発なので発動後勝率は低いが、所持時勝率は +7pt。復活は4人戦10万戦で25,561回", "まるみえ": "今回は0枚", "値上げ": "やや弱い（-1.0pt / -0.3pt）。自分以外のざぁ～こ♥が8♥になる", "山分け": "今回は0枚（♥コレクターの公開時効果に統合）", "ハズレ": "今回は0枚", "トリガーチェック": "やや弱い（-1.8pt / -0.9pt）。情報だけの札。見た側は次にその相手を脱がせるとき、おしおき返しや仕返しを避けられる", "道連れ": "「相手の手札が2枚のときだけ」に制限。ややプラス（+1.4pt / +0.9pt、所持時 +0.5pt）。制限前は +6.8pt / 所持時 +10.8pt だった", "ボディガード": "上位（+3.3pt / +2.3pt）。狙われると♥が入り、狙われにくくもなる", "おねだり": "上位（+2.9pt / +2.0pt）。CPUは♥が3以上なら払う", "人気者": "ややプラス（+1.1pt / +1.7pt）。よわ♥が確定2♥になる地味な経済札", "かくれんぼ": "ややプラス（+0.7pt / +0.4pt）。1周の防御。脱落時は不発", "口止め料": "中立（+0.4pt / +0.2pt）。相手の手番を1回飛ばす", "お色直し": "やや弱い（-1.1pt / -0.6pt）。手札の引き直し。CPU同士では得にならない", "ごほうび": "やや弱い（-0.8pt / -0.7pt）。CPUのチャレンジ成功回数が少ないので低く出る", "無敵宣言": "やや弱い（-1.5pt / -1.0pt）。次の1アクションがノーリスク。CPUはハッタリに合わせて使わないので低く出る。人間向け", "復讐の誓い": "弱い（-1.8pt / -1.5pt）。相手1人限定の無敵。脱落時は不発", "内緒話": "弱い（-2.7pt / -2.4pt）。相手にも情報を渡すぶん損。新カードデッキの最下位"}
@@ -63,6 +80,7 @@ DATA = {
         'mix_p3456': {'label':'おすすめ・3〜6人戦','deck':'mix','sub':f"おすすめデッキ・各{m3['games']//4:,}戦・{m3['games']:,}戦",'games':m3['games'],'rows':rows('mix_p3456'),'base':m3.get('base'),'heldBase':m3.get('heldBase')}} if m4 and m3 else {}),
   },
   'rating': RATING,
+  'phys': PHYS,
   'mixIds': MIX_IDS,
   'hasDud': hasDud,
   'deck': DECK,
@@ -244,6 +262,13 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
 </section>
 
 <section>
+  <h2>物理版にするときの枚数</h2>
+  <p>紙で作るときの内訳。数字はゲームの定義から数えている。</p>
+  <div class="tbl"><table id="phys"></table></div>
+  <p class="note" id="physnote"></p>
+</section>
+
+<section>
   <h2>読み方</h2>
   <ul class="plain">
     <li>所持時勝率：そのカードを仕込んでいたプレイヤーの勝率。発動しなかった場合も含む。4人戦の平均は25%、3〜6人戦の平均は約22%。</li>
@@ -364,6 +389,12 @@ function renderRating(){
   const star=n=>'★'.repeat(n)+'☆'.repeat(5-n);
   $('#rating').innerHTML='<thead><tr><th class="n">#</th><th>カード</th><th>おもしろさ</th><th>理由</th><th class="n">BASELBL（平均）</th><th>バランス</th><th class="n">総合</th><th>おすすめ</th></tr></thead><tbody>'+rows.map((r,i)=>`<tr${inMix.has(r.id)?' class="mixrow"':''}><td class="n">${i+1}</td><td class="nm">${esc(r.name)}</td><td title="${r.fun}/5">${star(r.fun)}</td><td class="tx">${esc(r.why)}</td><td class="n">${spct(r.avg/100)}</td><td title="${r.bal}/5">${star(r.bal)}</td><td class="n"><b>${r.total}</b></td><td>${inMix.has(r.id)?'<span class="tier tS">採用</span>':''}</td></tr>`).join('')+'</tbody>';
 }
+function renderPhys(){
+  const k=DATA.phys; if(!k){ return; }
+  const total=k.rows.filter(r=>r[0]!=='♥トークン').reduce((a,r)=>a+r[1],0);
+  $('#phys').innerHTML='<thead><tr><th>種類</th><th class="n">枚数</th><th>内訳</th><th>備考</th></tr></thead><tbody>'+k.rows.map(r=>`<tr><td class="nm">${esc(r[0])}</td><td class="n">${fmt(r[1])}${r[0]==='♥トークン'?'個':'枚'}</td><td class="tx">${esc(r[2])}</td><td class="tx">${esc(r[3])}</td></tr>`).join('')+`<tr><td class="nm">カード合計</td><td class="n">${fmt(total)}枚</td><td class="tx" colspan="2">ハズレ・早見表・ルールシート込み。♥トークンは別</td></tr></tbody>`;
+  $('#physnote').textContent=`${k.per_player}。${k.min4}。キャラ：${k.chars.join('・')}。キャラ画像の分割と印刷用シート（A4両面）は tools/split_cards.py が出力する。`;
+}
 function renderCands(){
   $('#cands').innerHTML=DATA.cands.map(c=>`<article class="cc"><h3 class="cc-name">${esc(c.name)}</h3><p class="txt">${esc(c.eff)}</p><p class="memo">${esc(c.aim)}</p></article>`).join('');
 }
@@ -375,7 +406,7 @@ function renderAll(){
 $('#sort').onchange=e=>{ state.sort=e.target.value; renderAll(); };
 $('#view').onchange=e=>{ state.view=e.target.value; renderAll(); };
 $('#q').oninput=e=>{ state.q=e.target.value.trim(); renderAll(); };
-renderDeck(); renderTotal(); renderDud(); renderWhatif(); renderRating(); renderCands(); renderAll();
+renderDeck(); renderTotal(); renderDud(); renderWhatif(); renderRating(); renderPhys(); renderCands(); renderAll();
 </script>
 '''
 import math

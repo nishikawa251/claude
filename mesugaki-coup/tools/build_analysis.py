@@ -7,12 +7,22 @@ src, out_art, out_repo = sys.argv[1], sys.argv[2], sys.argv[3]
 pos_dark = sys.argv[4] if len(sys.argv) > 4 else '#f05a97'
 neg_dark = sys.argv[5] if len(sys.argv) > 5 else '#4aa3f0'
 d = json.load(open(src, encoding='utf-8'))
+# 山の枚数は index.html の TRIGGERS 定義（count）から読む
+import os, re as _re
+_idx = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'index.html'), encoding='utf-8').read()
+COUNT = {}; CNAME = {}
+for _m in _re.finditer(r"\{ id:'(t\d+)',\s*count:(\d+),\s*name:'([^']+)'", _idx):
+    COUNT[_m.group(1)] = int(_m.group(2)); CNAME[_m.group(1)] = _m.group(3)
+_dud = int(_re.search(r"dudCount:\s*(\d+)", _idx).group(1))
+DECK = {'total': sum(COUNT.values()) + _dud, 'dud': _dud,
+        'groups': [[n, [CNAME[i] for i in COUNT if COUNT[i] == n]] for n in sorted({c for c in COUNT.values() if c > 0}, reverse=True)],
+        'bench': [CNAME[i] for i in COUNT if COUNT[i] == 0]}
 
 EFF = {'みちづれのキス':'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）','仕返し':'自分を脱がせた相手から3♥奪う','山分け':'自分より♥の多い全員から1♥ずつもらう','値下げ':'以後、自分の「ざぁ～こ♥」は5♥で撃てる','おしおき返し':'5♥持っていたら即時払って「ざぁ～こ♥」を打つ','山札のぞき':'山札を見て1枚選び、手札と入れ替える','ダサすぎ返し':'これを持っていれば「ダサすぎ♥」をブロックできる','まるみえ':'誰か一人の手札を表にする','総入れ替え':'自分以外の全員の手札を山札に戻し、同じ枚数を引き直す','みかじめ':'全員から1♥ずつもらう','まわして':'全員手札を1枚選び、右隣に渡す','値上げ':'自分以外は「ざぁ～こ♥」が8♥になる','♥コレクター':'自分の勝利条件に「9♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう','遺言':'プライドが0になったときだけ発動。自分の♥をすべて好きな相手に渡す','着替え':'プライドが0になったときだけ発動。山札から1枚引いて脱落を免れる。ただし♥は0になる','ルール改変':'「ダサすぎ♥」を審問（相手の手札1枚を見て山札と交換させる）に変える','ハズレ':'効果なし'}
 MEMO = {"みちづれのキス": "脱がせた相手の手札を自分だけ見る。2枚入り。両条件でややプラス", "値下げ": "自分だけざぁ～こ♥が5♥になる。両条件で1位だが差は +1.6pt と小さい", "仕返し": "脱がせた相手から3♥取り返す。両条件でややプラス", "おしおき返し": "5♥。発動後は中立だが、所持時勝率は平均より2ポイント高く、持っているだけで相手の攻撃を抑えている。4♥なら +1.8pt（下の試算）", "みかじめ": "全員から1♥。両条件でややプラス", "山札のぞき": "手札の質を上げる。中立〜ややプラス", "ダサすぎ返し": "中立", "ルール改変": "中立〜やや弱い。全員に効くので自分の得にならない", "♥コレクター": "9♥＋公開時の山分けでやや弱い寄りの中立。8♥にすると +5pt で強すぎ、10♥だと −4pt で最下位（下の試算）", "まわして": "1枚。中立〜やや弱い。全員が1枚ずつ渡すので自分の得にならない", "総入れ替え": "両条件で最下位（−1.8pt）。全員の手札を引き直させるので自分の得は安定しない。差し替え候補", "遺言": "今回は0枚（外した）", "着替え": "2軍（0枚）。入れていたときは所持時勝率 +7pt で突出していた", "まるみえ": "今回は0枚", "値上げ": "今回は0枚", "山分け": "今回は0枚（♥コレクターの公開時効果に統合）", "ハズレ": "今回は0枚"}
 CANDS = [["道連れ", "自分を脱がせた相手はプライドを1つ失う", "脱落時に発動しても意味がある。強すぎるなら「相手が手札2枚のときだけ」"], ["着替えの弱体版", "プライドが0になったときだけ発動。山札から1枚引いて脱落を免れるが、♥は0になり次の手番を1回飛ばす", "2軍に下げた着替え（所持時 +7pt）を戻すなら。手番スキップで1〜2pt下がる見込み"]]
 def rows(key):
-    return [{'id':r['id'],'name':r['name'],'eff':EFF[r['name']],'held':r['held'],'heldWin':r['heldWin'],'first':r['first'],'firstWin':r['firstWin'],'last':r['last'],'revive':r.get('revive',0),'reviveWin':r.get('reviveWin',0),'evalBy':'held' if r['name']=='着替え' else 'first','memo':MEMO[r['name']]} for r in d[key]['rows']]
+    return [{'id':r['id'],'name':r['name'],'eff':EFF[r['name']],'held':r['held'],'heldWin':r['heldWin'],'first':r['first'],'firstWin':r['firstWin'],'last':r['last'],'revive':r.get('revive',0),'reviveWin':r.get('reviveWin',0),'count':COUNT.get(r['id'], (0 if r['id']=='none' else 1)) if r['id']!='none' else d[key].get('dud',0),'evalBy':'held' if r['name']=='着替え' else 'first','memo':MEMO[r['name']]} for r in d[key]['rows']]
 s4, s3, s0 = d['sim_4p_dud5'], d['sim_235_dud5'], d.get('sim_4p_dud0')
 hasDud = bool(s4.get('hasDud', True))
 BASELBL = 'ハズレ比' if hasDud else '平均比'
@@ -23,6 +33,7 @@ DATA = {
     'p3456': {'label':'3〜6人戦','sub':f"各{s3['games']//4:,}戦・"+('ハズレ2枚・' if hasDud else 'ハズレなし・')+f"{s3['games']:,}戦",'games':s3['games'],'rows':rows('sim_235_dud5'),'base':s3.get('base'),'heldBase':s3.get('heldBase')},
   },
   'hasDud': hasDud,
+  'deck': DECK,
   'dud': ({'d5':{'label':'ハズレ2枚','games':s4['games'],'avgLog':round(s4['avgLog'],1),'winnerLostLife':round(s4['winnerLostLife'],3),'lifeLoss':round(s4['lifeLoss'],2)},
           'd0':{'label':'ハズレ0枚','games':s0['games'],'avgLog':round(s0['avgLog'],1),'winnerLostLife':round(s0['winnerLostLife'],3),'lifeLoss':round(s0['lifeLoss'],2)}} if s0 else None),
   'cands': [{'name':a,'eff':b,'aim':c} for a,b,c in CANDS],
@@ -64,6 +75,7 @@ h2{font-family:var(--display);font-weight:400;font-size:22px;margin:0;text-wrap:
 h2 small{font-family:var(--body);font-size:13px;color:var(--muted);font-weight:400}
 p{margin:0 0 10px;max-width:68ch;color:var(--ink2)}
 .lede{font-size:16px}
+#deckline{font-size:14px;color:var(--ink2)} #deckline b{color:var(--ink)}
 section{display:flex;flex-direction:column;gap:12px}
 .total{display:flex;gap:22px;flex-wrap:wrap;font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
 .total b{display:block;font-size:22px;color:var(--ink);font-family:var(--display);font-weight:400}
@@ -148,6 +160,7 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
   <div class="eyebrow">CPU同士の自動対戦・2026-10-19 第8版・トリガー11種14枚・ハズレなし／配られた2枚をそのまま仕込む／♥コレクター9♥＋公開時に山分け／おしおき返しは5♥／着替え・遺言は2軍／3〜6人・計20万戦</div>
   <h1><span class="nb">メスガキ・クー</span> <span class="nb">トリガー分析</span></h1>
   <p class="lede">トリガーカード11種（計14枚）を、どれが持ち主を勝たせているかで並べた。指標は「1枚目の脱ぎで発動したあとに勝った割合」。プライドを1つ失った状態からの勝率なので、BASENAMEとの差で強さを見る。DUDNOTE</p>
+  <p class="lede" id="deckline"></p>
   <div class="total" id="total"></div>
 </header>
 
@@ -222,6 +235,12 @@ function compute(cond){
 }
 const tierCls={'強い':'tS','中立':'tN','弱い':'tW','none':'tA'};
 const tierLabel=t=>t==='none'?'基準':t;
+function renderDeck(){
+  const k=DATA.deck; if(!k) return;
+  const parts=k.groups.map(([n,names])=>`${names.join('・')} 各${n}枚`);
+  if(k.dud) parts.push(`ハズレ ${k.dud}枚`);
+  $('#deckline').innerHTML=`山の構成：<b>${k.total}枚</b> ＝ ${esc(parts.join('、'))}。`+(k.bench.length?`2軍（0枚）：${esc(k.bench.join('・'))}。`:'')+'各プレイヤーに2枚配り、そのまま上半身・下半身に仕込む。';
+}
 function renderTotal(){
   const c4=DATA.conds.p4, c3=DATA.conds.p3456, d=c4;
   $('#total').innerHTML=`<span><b>${fmt(c4.games)}</b>4人戦</span><span><b>${fmt(c3.games)}</b>3〜6人戦</span><span><b>${d.lifeLoss}回</b>1ゲームの被弾</span><span><b>${pct(d.winnerLostLife,0)}</b>勝者が途中で被弾</span><span><b>${d.avgLog}行</b>平均ログ</span>`;
@@ -259,7 +278,7 @@ function renderBars(rows){
     const v=r.score; const w=Math.abs(v)/max*50; const zero=Math.abs(v)<0.001; const held=r.evalBy==='held';
     const style=v>=0?`left:50%;width:${w}%`:`right:50%;width:${w}%`;
     const title=held?`${r.name}：所持時勝率 ${pct(r.heldp)}（BASENAME ${pct(dud.heldp)}）、復活 ${fmt(r.revive)}回`:`${r.name}：発動後勝率 ${pct(r.firstp)}（BASENAME ${pct(dud.firstp)}）、発動 ${fmt(r.first)}回`;
-    return `<div class="bar" title="${esc(title)}"><span class="bn">${esc(r.name)}${held?' ◆':''}</span><span class="bt"><span class="bf ${v<0?'neg':''} ${zero?'zero':''}" style="${style}"></span></span><span class="bv">${spct(v)} <small>${pct(held?r.heldp:r.firstp)}</small></span></div>`;
+    return `<div class="bar" title="${esc(title)}"><span class="bn">${esc(r.name)}${r.count>1?' ×'+r.count:''}${held?' ◆':''}</span><span class="bt"><span class="bf ${v<0?'neg':''} ${zero?'zero':''}" style="${style}"></span></span><span class="bv">${spct(v)} <small>${pct(held?r.heldp:r.firstp)}</small></span></div>`;
   }).join('');
 }
 function filtered(rows){
@@ -271,15 +290,15 @@ function filtered(rows){
   return list;
 }
 function card(r){
-  return `<article class="cc"><div class="cc-top"><span class="tier ${tierCls[r.tier]}">${tierLabel(r.tier)}</span><span>発動 ${fmt(r.first)}回</span><span class="qty">所持 ${fmt(r.held)}</span></div>
+  return `<article class="cc"><div class="cc-top"><span class="tier ${tierCls[r.tier]}">${tierLabel(r.tier)}</span><span>山に <b>${r.count}枚</b></span><span>発動 ${fmt(r.first)}回</span><span class="qty">所持 ${fmt(r.held)}</span></div>
   <h3 class="cc-name">${esc(r.name)}</h3><p class="txt">${esc(r.eff)}</p>
   <div class="stats">${r.evalBy==='held'?`<span class="num"><b>${pct(r.heldp)}</b>所持時勝率</span><span class="num"><b>${spct(r.heldDelta)}</b>ハズレ比（所持時）</span>`:`<span class="num"><b>${pct(r.firstp)}</b>発動後勝率</span><span class="num"><b>${spct(r.delta)}</b>ハズレ比</span>`}</div>
   <div class="meta">${r.evalBy==='held'?`<span>発動後勝率 <b>${pct(r.firstp)}</b>（1枚目では不発）</span><span>復活 <b>${fmt(r.revive)}回</b></span><span>復活後勝率 <b>${pct(r.revivep)}</b></span>`:`<span>所持時勝率 <b>${pct(r.heldp)}</b></span><span>脱落時発動率 <b>${pct(r.lastRate,0)}</b></span>`}</div>
   <p class="memo">${esc(r.memo)}</p></article>`;
 }
 function table(list){
-  return `<div class="tbl"><table><thead><tr><th>カード</th><th>判定</th><th>効果</th><th class="n">所持回数</th><th class="n">所持時勝率</th><th class="n">発動回数</th><th class="n">発動後勝率</th><th class="n">ハズレ比</th><th class="n">脱落時発動率</th><th>メモ</th></tr></thead><tbody>`+
-    list.map(r=>`<tr><td class="nm">${esc(r.name)}</td><td><span class="tier ${tierCls[r.tier]}">${tierLabel(r.tier)}</span></td><td class="tx">${esc(r.eff)}</td><td class="n">${fmt(r.held)}</td><td class="n">${pct(r.heldp)}</td><td class="n">${fmt(r.first)}</td><td class="n">${pct(r.firstp)}</td><td class="n">${spct(r.delta)}</td><td class="n">${pct(r.lastRate,0)}</td><td class="tx">${esc(r.memo)}</td></tr>`).join('')+`</tbody></table></div>`;
+  return `<div class="tbl"><table><thead><tr><th>カード</th><th class="n">枚数</th><th>判定</th><th>効果</th><th class="n">所持回数</th><th class="n">所持時勝率</th><th class="n">発動回数</th><th class="n">発動後勝率</th><th class="n">ハズレ比</th><th class="n">脱落時発動率</th><th>メモ</th></tr></thead><tbody>`+
+    list.map(r=>`<tr><td class="nm">${esc(r.name)}</td><td class="n">${r.count}</td><td><span class="tier ${tierCls[r.tier]}">${tierLabel(r.tier)}</span></td><td class="tx">${esc(r.eff)}</td><td class="n">${fmt(r.held)}</td><td class="n">${pct(r.heldp)}</td><td class="n">${fmt(r.first)}</td><td class="n">${pct(r.firstp)}</td><td class="n">${spct(r.delta)}</td><td class="n">${pct(r.lastRate,0)}</td><td class="tx">${esc(r.memo)}</td></tr>`).join('')+`</tbody></table></div>`;
 }
 function renderCards(rows){
   const c=DATA.conds[state.cond];
@@ -307,7 +326,7 @@ function renderAll(){
 $('#sort').onchange=e=>{ state.sort=e.target.value; renderAll(); };
 $('#view').onchange=e=>{ state.view=e.target.value; renderAll(); };
 $('#q').oninput=e=>{ state.q=e.target.value.trim(); renderAll(); };
-renderTotal(); renderMix(); renderDud(); renderWhatif(); renderCands(); renderAll();
+renderDeck(); renderTotal(); renderMix(); renderDud(); renderWhatif(); renderCands(); renderAll();
 </script>
 '''
 import math

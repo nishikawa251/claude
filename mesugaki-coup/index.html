@@ -136,6 +136,8 @@ button{font:inherit;color:inherit}
 .rc.sm.faceup .rn{padding-right:4px}
 .rc.sm .fu{top:auto;bottom:3px;right:3px}
 .rc.peek{box-shadow:0 0 0 2px #8090d8 inset,0 2px 0 0 rgba(0,0,0,.4)}
+.pooled{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
+.pfrom{font-size:11px;color:var(--dim)}
 .rc .fu.pk{background:#8090d8;color:#101430}
 .rc.sel{cursor:pointer;transition:transform .12s}
 .rc.sel:hover{transform:translateY(-4px)}
@@ -518,18 +520,19 @@ const TRIGGERS = [
   { id:'t2',  count:1, name:'山札のぞき',    text:'山札を見て1枚選び、手札と入れ替える' },
   { id:'t3',  count:1, name:'ダサすぎ返し',  text:'これを持っていれば「ダサすぎ♥」をブロックできる', persistent:true },
   { id:'t4',  count:0, name:'まるみえ',      text:'誰か一人の手札を表にする。効果で山札からカードを入れ替えた時点で、裏向きにして良い。' },
-  { id:'t5',  count:1, name:'総入れ替え',    text:'自分以外の全員の手札をすべて山札に戻し、各プレイヤーは戻した分の枚数を引き手札にする' },
-  { id:'t6',  count:2, name:'みかじめ',      text:'全員から1♥ずつもらう' },
+  { id:'t5',  count:1, name:'総入れ替え',    text:'全員が手札を1枚伏せて出す。自分だけ全部を見て欲しい1枚をもらい、残りはランダムに1枚ずつ配り戻す' },
+  { id:'t6',  count:1, name:'みかじめ',      text:'全員から1♥ずつもらう' },
   { id:'t7',  count:1, name:'まわして',      text:'全員手札を1枚選び、右隣のプレイヤーに渡す。' },
   { id:'t8',  count:0, name:'値上げ',        text:'自分以外のプレイヤーは「ざぁ～こ♥」の使用条件が「8♥を支払う」になる', persistent:true },
   { id:'t9',  count:1, name:'♥コレクター',   text:`自分の勝利条件に「${RULES.collectorGoal}♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう`, persistent:true },
   { id:'t10', count:1, name:'ルール改変',    text:'「ダサすぎ♥」の効果を「相手の手札1枚を見て山札と交換させる。」に変える。以降は幼馴染ガキが「ダサすぎ♥」をブロック可能になる。', persistent:true },
-  { id:'t11', count:2, name:'みちづれのキス', text:'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）' },
-  { id:'t12', count:2, name:'仕返し',        text:'自分を脱がせた相手から3♥奪う' },
+  { id:'t11', count:1, name:'みちづれのキス', text:'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）' },
+  { id:'t12', count:1, name:'仕返し',        text:'自分を脱がせた相手から3♥奪う' },
   { id:'t13', count:0, name:'山分け',        text:'自分より♥の多い全員から1♥ずつもらう' },
   { id:'t14', count:1, name:'値下げ',        text:'以後、自分の「ざぁ～こ♥」は5♥で撃てる', persistent:true },
   { id:'t15', count:0, name:'遺言',          text:'プライドが0になったときだけ発動。自分の♥をすべて好きな相手に渡す' },
   { id:'t16', count:0, name:'着替え',        text:'プライドが0になったときだけ発動。山札から1枚引いて手札に加え、脱落を免れる。ただし♥は0になる' },
+  { id:'t17', count:1, name:'トリガーチェック', text:'自分を脱がせた相手の伏せたトリガーを1枚こっそり見る（自分だけ見える）' },
 ];
 const NO_TRIGGER = { id:'none', name:'ハズレ', text:'効果なし' };
 
@@ -907,12 +910,29 @@ async function resolveTrigger(p, card, by){
       return;
     }
     case 't5': {
-      const others=othersOf(p).filter(q=>q.hand.length>0);
-      const counts=others.map(q=>q.hand.length);
-      for(const q of others){ for(const c of q.hand) S.deck.push(c.role); q.hand=[]; }
-      shuffle(S.deck);
-      others.forEach((q,i)=>{ for(let k=0;k<counts[i];k++) q.hand.push(drawCard()); });
-      log(`${p.name} 以外の全員が手札を山札に戻して引き直した`, 'sys');
+      if(!p.hand.length){ log(`${p.name} はプライドが残っていないので「総入れ替え」は不発`); return; }
+      const parts=S.players.filter(q=>q.alive && q.hand.length>0);
+      if(parts.length<2){ log(`相手がいないので不発`); return; }
+      // 1) 全員（自分も）が手札を1枚伏せて出す
+      const pool=[];
+      for(const q of parts){
+        let idx=0;
+        if(q.hand.length>1) idx = q.cpu ? cpuLoseCard(q) : await humanPickCard(q, q===p ? '総入れ替え：自分も1枚伏せて出します。出すカードを選んでください' : `${p.name} の「総入れ替え」：伏せて出すカードを選んでください（${p.name} だけが全部見て1枚もらいます）`);
+        const [c]=q.hand.splice(idx,1); pool.push({c, from:q});
+      }
+      log(`${p.name}「総入れ替え」：全員が手札を1枚伏せて出した`, 'sys');
+      if(!S.headless) render();
+      // 2) 持ち主だけが全部見て、欲しい1枚をもらう
+      let take;
+      if(p.cpu) take = pool.slice().sort((a,b)=>(ROLES[b.c.role].value-ROLES[a.c.role].value)||(Math.random()-0.5))[0];
+      else take = await askCards('出されたカードを全部見られます。もらうカードを1枚選んでください', pool.map(e=>{ const el=document.createElement('div'); el.className='pooled'; el.appendChild(roleCardEl(e.c.role)); const cap=document.createElement('div'); cap.className='pfrom'; cap.textContent=e.from===p?'自分が出した':`${e.from.name} が出した`; el.appendChild(cap); return {el, value:e}; }), '残りはランダムに1枚ずつ配り戻します', undefined, 'poolPick');
+      p.hand.push(take.c); markFresh(take.c);
+      // 3) 残りはシャッフルして、自分以外に1枚ずつ戻す
+      const rest=pool.filter(e=>e!==take).map(e=>e.c); shuffle(rest);
+      parts.filter(q=>q!==p).forEach((q,i)=>{ const c=rest[i]; c.faceUp=false; delete c.seenBy; q.hand.push(c); markFresh(c); });
+      SFX.play('chime');
+      if(p.cpu) log(`${p.name} は1枚選んでもらい、残りをランダムに配り戻した`);
+      else log(`「${rname(take.c.role)}」をもらった。残りはランダムに配り戻した（出されたのは ${pool.map(e=>`${e.from===p?'自分':e.from.name}：${rname(e.c.role)}`).join('、')}）`, 'me');
       return;
     }
     case 't6': {
@@ -956,6 +976,18 @@ async function resolveTrigger(p, card, by){
       const target = p.cpu ? cpuBequeath(p,cands,by) : await humanPickPlayer(p, cands, `遺言：${p.hearts}♥をすべて渡す相手を選んでください`);
       const n=p.hearts; target.hearts+=n; p.hearts=0; SFX.play('coin');
       log(`${p.name} は遺言で ${target.name} に${n}♥すべて渡した`, p.cpu?'':'me');
+      return;
+    }
+    case 't17': {
+      if(!by || by===p){ log(`脱がせた相手がいないので不発`); return; }
+      const hidden=['top','bottom'].filter(k=>by.triggers[k] && !by.triggers[k].revealed && !(by.triggers[k].seenBy||[]).includes(p.i));
+      if(!hidden.length){ log(`${by.name} の伏せたトリガーはもう無い（または確認済み）`); return; }
+      let k=hidden[0];
+      if(hidden.length>1) k = p.cpu ? pick(hidden) : await askButtons(`トリガーチェック：${by.name} のどちらのトリガーをこっそり見ますか？`, hidden.map(h=>({label:`${half(h)}のトリガー`, value:h})), undefined, 'peekTrigger');
+      const t=by.triggers[k]; (t.seenBy||(t.seenBy=[])).push(p.i);
+      if(p.cpu) log(`${p.name} は ${by.name} のトリガーを1枚こっそり見た`);
+      else log(`${by.name} の${half(k)}のトリガーは「${t.card.name}」（あなただけ見える）`, 'me');
+      if(!S.headless) render();
       return;
     }
     case 't16': {
@@ -1130,13 +1162,17 @@ function triggerValue(p, card){
     case 't14': return 4;
     case 't15': return 1;
     case 't16': return 4;
+    case 't17': return 3;
     default: return 0;
   }
 }
 function cpuFlipOther(c,p){
   const tv=tutCpu('flip'); if(tv!==undefined) return tv;
   const avail=['top','bottom'].filter(k=>!p.boro[k]);
-  return pick(avail);
+  // トリガーチェックで中身を知っていれば、自分に跳ね返りにくい方を脱がせる（知らなければ1＝ふつう）
+  const DANGER={t1:3, t12:2.5, t11:1.5, t17:1.5, t6:1.2, t14:1.2, t9:1, t2:1};
+  const danger=k=>{ const t=p.triggers[k]; if(!t || !(t.seenBy||[]).includes(c.i)) return 1; return DANGER[t.card.id] ?? 0.5; };
+  return avail.map(k=>[danger(k)+Math.random()*0.3, k]).sort((a,b)=>a[0]-b[0])[0][1];
 }
 function cpuFlip(p){
   const tv=tutCpu('flip'); if(tv!==undefined) return tv;
@@ -1230,7 +1266,7 @@ function playerPanel(p, isMe){
   const figrow=document.createElement('div'); figrow.className='figrow '+(isMe?'lg':'md');
   figrow.appendChild(figureEl(p.ch, p.boro, 'inherit', true));
   const trigcol=document.createElement('div'); trigcol.className='trigcol';
-  for(const k of ['top','bottom']){ const t=p.triggers[k]; const te=triggerEl(t, t.revealed?'on':(isMe&&RULES.peekOwnTriggers?'peek':'back'), !isMe); if(t.revealed && t.card && t.card.persistent && p.alive) te.classList.add('active'); trigcol.appendChild(te); }
+  for(const k of ['top','bottom']){ const t=p.triggers[k]; const te=triggerEl(t, t.revealed?'on':((isMe&&RULES.peekOwnTriggers)||(S.players[0]&&(t.seenBy||[]).includes(S.players[0].i))?'peek':'back'), !isMe); if(t.revealed && t.card && t.card.persistent && p.alive) te.classList.add('active'); trigcol.appendChild(te); }
   figrow.appendChild(trigcol);
   body.appendChild(figrow);
   const cards=document.createElement('div'); cards.className='cards';
@@ -1407,7 +1443,7 @@ async function humanBlock(c, actor, act, opts, target){
 }
 function humanLoseCard(p, reason){ return askCards(`プライドを失います（${reason}）。失うカードを選んでください`, p.hand.map((c,i)=>({el:roleCardEl(c.role,{faceUp:c.faceUp}), value:i})), undefined, undefined, 'lose'); }
 function humanFlipOther(c,p){
-  const opt=k=>({label:`${p.name} の${half(k)}を脱がせる`, value:k, sub:'トリガー：？（裏向き）'});
+  const opt=k=>{ const t=p.triggers[k]; const known=t && (t.seenBy||[]).includes(c.i); return {label:`${p.name} の${half(k)}を脱がせる`, value:k, sub:known?`トリガー：${t.card.name}（確認済み）`:'トリガー：？（裏向き）'}; };
   return askButtons(`${p.name} の上半身・下半身、どちらを脱がせますか？（下のトリガーが発動します）`, ['top','bottom'].filter(k=>!p.boro[k]).map(opt), undefined, 'flipOther');
 }
 function humanFlip(p){

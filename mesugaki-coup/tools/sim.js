@@ -12,10 +12,14 @@ const OVR = {}; for (const kv of (process.argv[5] || '').split(',').filter(Boole
   await page.goto(url); await page.waitForTimeout(300);
   const t0 = Date.now();
   const res = await page.evaluate(async ({ N, PLAYERS, DUD, OVR }) => {
-    S.headless = true; RULES.dudCount = DUD; Object.assign(RULES, OVR);
+    S.headless = true; RULES.dudCount = DUD;
+    // deck=basic|fresh|t1+t2+... でトリガーデッキを選ぶ。それ以外のキーは RULES の上書き
+    if (OVR.deck !== undefined) { const v = String(OVR.deck); DECK.ids = DECK_PRESETS[v] ? DECK_PRESETS[v].slice() : v.split('+'); DECK.preset = DECK_PRESETS[v] ? v : 'custom'; delete OVR.deck; }
+    Object.assign(RULES, OVR);
     const ids = [...TRIGGERS.map(t => t.id), 'none'];
     const st = {}; for (const id of ids) st[id] = { held: 0, heldWin: 0, first: 0, firstWin: 0, last: 0, firstByWin: 0, firstBy: 0, revive: 0, reviveWin: 0 };
     const out = { games: 0, turns: 0, winnerLostLife: 0, winnerHearts: 0, lifeLossTotal: 0, errors: 0, winBySeat: {}, firstTurnWin: 0 };
+    out.deck = DECK.ids.slice();
     for (let g = 0; g < N; g++) {
       const n = PLAYERS[g % PLAYERS.length];
       let first;

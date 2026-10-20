@@ -391,6 +391,13 @@ button{font:inherit;color:inherit}
 .rl-trig .tc .cnt{position:absolute;right:5px;top:4px;font-size:11px;padding:1px 5px;background:rgba(255,255,255,.12);color:#e6ecff}
 .rl-sub{font-size:12px;color:var(--dim);margin:10px 0 4px}
 .rl-trig.bench .tc{opacity:.55;filter:saturate(.5)}
+.deckinfo{font-size:12px;color:var(--dim);line-height:1.5}
+.deckinfo b{color:var(--ink)}
+.rl-trig .tc.pick{cursor:pointer;opacity:.5;transition:opacity .15s}
+.rl-trig .tc.pick:hover{opacity:.8}
+.rl-trig .tc.pick.sel{opacity:1;box-shadow:0 0 0 2px var(--gold) inset}
+.rl-trig .tc.pick.sel .cnt{background:var(--gold);color:#3a2a00}
+#btnDeckOk:disabled{opacity:.45;cursor:not-allowed}
 .rl-note{font-size:13px;color:var(--dim);line-height:1.6;margin:6px 0 0}
 .rl-strip{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
 .rl-strip .figure{--cw:120px}
@@ -467,12 +474,20 @@ button{font:inherit;color:inherit}
     <h2>メスガキ・クー</h2>
     <p>クー(Coup)の基本ルールはそのまま。コインは♥、役職はメスガキたち。ライフを1失うたび、メスガキカードの上か下を裏返してボロ絵にし、その下に敷いていたトリガーカードが発動します。</p>
     <div class="row"><label>対戦人数</label><div id="npick" class="popts"></div></div>
+    <div class="row"><label>トリガー</label><div id="deckpick" class="popts"></div></div>
+    <div class="row"><label></label><div id="deckinfo" class="deckinfo"></div></div>
     <div class="row"><label>あなたのキャラ</label><div id="chpick" class="chpick"></div></div>
     <div class="row"><button class="btn primary" id="btnStart">はじめる</button><button class="btn" id="btnTutorial">チュートリアル</button><button class="btn" id="btnStartRules">ルールを読む</button><button class="btn" id="btnSound2" aria-pressed="true">♪ 音：ON</button></div>
   </div>
 </div>
 
 <div id="modalRules" class="modal"><div class="mbox pxbox rules" id="rulesBox"></div></div>
+<div id="modalDeck" class="modal"><div class="mbox pxbox rules deckbox">
+  <h2>トリガーデッキを組む</h2>
+  <p class="rl-lede">ゲームで使うトリガーを <b>12枚</b> 選んでください。カードをクリックで出し入れ。<span id="deckCount"></span></p>
+  <div id="deckGroups"></div>
+  <div class="close"><button class="btn primary" id="btnDeckOk">この12枚で遊ぶ</button><button class="btn" id="btnDeckBasic">基本に戻す</button><button class="btn" data-close>閉じる</button></div>
+</div></div>
 <div id="modalLog" class="modal"><div class="mbox pxbox"><h2>ログ</h2><div id="fullLog" class="fulllog"></div><div class="close"><button class="btn" data-close>閉じる</button></div></div></div>
 <div id="modalEnd" class="modal"><div class="mbox pxbox endbox" id="endBox"></div></div>
 
@@ -516,24 +531,54 @@ const RULES = {
 
 // count は山に入れる枚数（0なら使わない）
 const TRIGGERS = [
-  { id:'t1',  count:1, name:'おしおき返し',  text:`${RULES.punishCost}♥持っていたら即時払って「ざぁ～こ♥」を打つ` },
-  { id:'t2',  count:1, name:'山札のぞき',    text:'山札を見て1枚選び、手札と入れ替える' },
-  { id:'t3',  count:1, name:'ダサすぎ返し',  text:'これを持っていれば「ダサすぎ♥」をブロックできる', persistent:true },
-  { id:'t4',  count:0, name:'まるみえ',      text:'誰か一人の手札を表にする。効果で山札からカードを入れ替えた時点で、裏向きにして良い。' },
-  { id:'t5',  count:1, name:'総入れ替え',    text:'全員が手札を1枚伏せて出す。自分だけ全部を見て欲しい1枚をもらい、残りはランダムに1枚ずつ配り戻す' },
-  { id:'t6',  count:1, name:'みかじめ',      text:'全員から1♥ずつもらう' },
-  { id:'t7',  count:0, name:'まわして',      text:'全員手札を1枚選び、右隣のプレイヤーに渡す。' },
-  { id:'t8',  count:1, name:'値上げ',        text:'自分以外のプレイヤーは「ざぁ～こ♥」の使用条件が「8♥を支払う」になる', persistent:true },
-  { id:'t9',  count:1, name:'♥コレクター',   text:`自分の勝利条件に「${RULES.collectorGoal}♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう`, persistent:true },
-  { id:'t10', count:1, name:'ルール改変',    text:'以後、自分の「ダサすぎ♥」は通常か審問（相手の手札1枚を見て山札と交換させる）かを宣言時に選べる。審問は幼馴染ガキでブロック可', persistent:true },
-  { id:'t11', count:1, name:'みちづれのキス', text:'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）' },
-  { id:'t12', count:1, name:'仕返し',        text:'自分を脱がせた相手から3♥奪う' },
-  { id:'t13', count:0, name:'山分け',        text:'自分より♥の多い全員から1♥ずつもらう' },
-  { id:'t14', count:1, name:'値下げ',        text:'以後、自分の「ざぁ～こ♥」は5♥で撃てる', persistent:true },
-  { id:'t15', count:0, name:'遺言',          text:'プライドが0になったときだけ発動。自分の♥をすべて好きな相手に渡す' },
-  { id:'t16', count:0, name:'着替え',        text:'プライドが0になったときだけ発動。山札から1枚引いて手札に加え、脱落を免れる。ただし♥は0になる' },
-  { id:'t17', count:1, name:'トリガーチェック', text:'自分を脱がせた相手の伏せたトリガーを1枚こっそり見る（自分だけ見える）' },
+  { id:'t1', name:'おしおき返し',  text:`${RULES.punishCost}♥持っていたら即時払って「ざぁ～こ♥」を打つ` },
+  { id:'t2', name:'山札のぞき',    text:'山札を見て1枚選び、手札と入れ替える' },
+  { id:'t3', name:'ダサすぎ返し',  text:'これを持っていれば「ダサすぎ♥」をブロックできる', persistent:true },
+  { id:'t4', name:'まるみえ',      text:'誰か一人の手札を表にする。効果で山札からカードを入れ替えた時点で、裏向きにして良い。' },
+  { id:'t5', name:'総入れ替え',    text:'全員が手札を1枚伏せて出す。自分だけ全部を見て欲しい1枚をもらい、残りはランダムに1枚ずつ配り戻す' },
+  { id:'t6', name:'みかじめ',      text:'全員から1♥ずつもらう' },
+  { id:'t7', name:'まわして',      text:'全員手札を1枚選び、右隣のプレイヤーに渡す。' },
+  { id:'t8', name:'値上げ',        text:'自分以外のプレイヤーは「ざぁ～こ♥」の使用条件が「8♥を支払う」になる', persistent:true },
+  { id:'t9', name:'♥コレクター',   text:`自分の勝利条件に「${RULES.collectorGoal}♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう`, persistent:true },
+  { id:'t10', name:'ルール改変',    text:'以後、自分の「ダサすぎ♥」は通常か審問（相手の手札1枚を見て山札と交換させる）かを宣言時に選べる。審問は幼馴染ガキでブロック可', persistent:true },
+  { id:'t11', name:'みちづれのキス', text:'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）' },
+  { id:'t12', name:'仕返し',        text:'自分を脱がせた相手から3♥奪う' },
+  { id:'t13', name:'山分け',        text:'自分より♥の多い全員から1♥ずつもらう' },
+  { id:'t14', name:'値下げ',        text:'以後、自分の「ざぁ～こ♥」は5♥で撃てる', persistent:true },
+  { id:'t15', name:'遺言',          text:'プライドが0になったときだけ発動。自分の♥をすべて好きな相手に渡す' },
+  { id:'t16', name:'着替え',        text:'プライドが0になったときだけ発動。山札から1枚引いて手札に加え、脱落を免れる。ただし♥は0になり、次の手番を1回飛ばす' },
+  { id:'t17', name:'トリガーチェック', text:'自分を脱がせた相手の伏せたトリガーを1枚こっそり見る（自分だけ見える）' },
+  // ---- 新カードデッキ ----
+  { id:'t18', name:'かくれんぼ',     text:'次の自分の手番まで、自分は「ざぁ～こ♥」「まけちゃえ～♥」の対象にならない' },
+  { id:'t19', name:'無敵宣言',       text:'次の自分の手番のアクションは、チャレンジもブロックもされない' },
+  { id:'t20', name:'口止め料',       text:'自分を脱がせた相手は、次の手番を1回飛ばす' },
+  { id:'t21', name:'おねだり',       text:'ほかの全員は「自分に1♥渡す」か「手札1枚を自分にこっそり見せる」かを選ぶ' },
+  { id:'t22', name:'ボディガード',   text:'以後、自分を対象にした「ざぁ～こ♥」「まけちゃえ～♥」「なさけな～い♥」は、使った人が追加で2♥を自分に払う', persistent:true },
+  { id:'t23', name:'人気者',         text:'以後、自分の「よわ♥」はブロックされない', persistent:true },
+  { id:'t24', name:'復讐の誓い',     text:'以後、自分を脱がせた相手に対する自分のアクションは、チャレンジもブロックもされない', persistent:true },
+  { id:'t25', name:'ごほうび',       text:'以後、自分がチャレンジに成功するたびに2♥もらう', persistent:true },
+  { id:'t26', name:'内緒話',         text:'相手1人を選び、互いに手札1枚をこっそり見せ合う（見せる札は本人が選ぶ）' },
+  { id:'t27', name:'お色直し',       text:'自分の手札をすべて山札に戻し、同じ枚数を引き直す' },
+  { id:'t28', name:'道連れ',         text:'自分を脱がせた相手もプライドを1つ失う' },
 ];
+// トリガーデッキ：基本／新カードの2プリセット＋カスタム。ゲームに使うのは DECK.ids の12枚
+const DECK_PRESETS = {
+  basic: ['t1','t2','t3','t5','t6','t8','t9','t10','t11','t12','t14','t17'],
+  fresh: ['t18','t19','t20','t21','t22','t23','t24','t25','t26','t27','t28','t16'],
+};
+const DECK_SIZE = 12;
+for(const t of TRIGGERS) t.set = DECK_PRESETS.basic.includes(t.id) ? 'basic' : DECK_PRESETS.fresh.includes(t.id) ? 'fresh' : 'bench';
+const SET_LABEL = { basic:'基本', fresh:'新カード', bench:'2軍' };
+let DECK = { preset:'basic', ids: DECK_PRESETS.basic.slice() };
+const deckLabel = ()=> DECK.preset==='basic' ? '基本デッキ' : DECK.preset==='fresh' ? '新カードデッキ' : 'カスタム';
+function setDeck(preset, ids){
+  DECK.preset=preset; DECK.ids=(ids||DECK_PRESETS[preset]).slice();
+  try{ localStorage.setItem('mesugaki-coup-deck', JSON.stringify(DECK)); }catch(e){}
+  if(typeof fillRules==='function' && document.querySelector('#rlTrig')) fillRules();
+}
+function loadDeck(){
+  try{ const v=JSON.parse(localStorage.getItem('mesugaki-coup-deck')||'null'); if(v && Array.isArray(v.ids) && v.ids.length===DECK_SIZE && v.ids.every(id=>TRIGGERS.some(t=>t.id===id))){ DECK={preset:DECK_PRESETS[v.preset]?v.preset:'custom', ids:v.ids.slice()}; } }catch(e){}
+}
 const NO_TRIGGER = { id:'none', name:'ハズレ', text:'効果なし' };
 
 /* 勝者の決め台詞（ランダム） */
@@ -614,7 +659,7 @@ function newGame(n, myChar, opts){
   S.gameId++;
   if(S.rejectPrompt){ S.rejectPrompt(new GameReset()); S.rejectPrompt=null; }
   const deck=[]; for(const r of ROLE_IDS) for(let k=0;k<3;k++) deck.push(r); shuffle(deck);
-  const tdeck=[]; for(const t of TRIGGERS) for(let k=0;k<(t.count??1);k++) tdeck.push({...t, copy:k});
+  const tdeck=[]; (opts.deckIds||DECK.ids).forEach((id,k)=>{ const t=TRIGGERS.find(x=>x.id===id); if(t) tdeck.push({...t, copy:k}); });
   for(let k=0;k<RULES.dudCount;k++) tdeck.push({...NO_TRIGGER, copy:k}); shuffle(tdeck);
   const others=shuffle(CHARS.map((_,i)=>i).filter(i=>i!==myChar));
   S.players=[];
@@ -645,7 +690,10 @@ async function runGame(){
     let guard=0;
     while(!S.winner){
       const p=S.players[S.turn];
-      if(p.alive) await takeTurn(p);
+      if(p.alive){
+        if(p.flags.skipTurns>0){ p.flags.skipTurns--; S.current=p; log(`${p.name} は手番を飛ばされた`, 'sys'); render(); await wait(500); }
+        else await takeTurn(p);
+      }
       if(gid!==S.gameId) return;
       const w=checkWin(); if(w){ S.winner=w; break; }
       S.turn=(S.turn+1)%S.players.length;
@@ -668,9 +716,20 @@ function checkWin(){
   return a.find(p=>p.flags.win15 && p.hearts>=RULES.collectorGoal) || null;
 }
 
+// act の対象にできる相手（かくれんぼ中の相手は ざぁ～こ♥・まけちゃえ～♥ の対象外）
+function targetsFor(p, act){ return othersOf(p).filter(q=>q.alive && q.hand.length>0 && !(q.flags.hidden && (act==='coup'||act==='assassinate'))); }
+// ボディガード：狙われた側に、使った側が追加で2♥払う
+function bodyguardFee(p, target){
+  if(!target || target===p || !target.flags.bodyguard) return;
+  const n=Math.min(2, p.hearts); if(!n) return;
+  p.hearts-=n; target.hearts+=n; SFX.play('coin');
+  log(`${target.name} のボディガード：${p.name} は追加で${n}♥払った`); render();
+}
 async function takeTurn(p){
-  S.current=p; S.target=null; render();
-  const forced = p.hearts>=RULES.forcedCoupAt && !(RULES.win15LiftsForcedCoup && p.flags.win15);
+  S.current=p; S.target=null;
+  if(p.flags.hidden){ delete p.flags.hidden; log(`${p.name} の「かくれんぼ」が終わった`, 'sys'); }
+  render();
+  const forced = p.hearts>=RULES.forcedCoupAt && !(RULES.win15LiftsForcedCoup && p.flags.win15) && targetsFor(p,'coup').length>0;
   let choice;
   if(p.cpu){ await tutHook('cpuTurn'); setIdle(`${p.name} の番…`); await wait(800); choice=cpuChooseAction(p, forced); }
   else choice=await humanChooseAction(p, forced);
@@ -690,22 +749,28 @@ async function performActionInner(p, act, target){
   say(p, A.name);
   log(`${p.name}「${A.name}」${target?` → ${target.name}`:''}${A.role?`（${rname(A.role)}を主張）`:''}`, p.cpu?'':'me');
   render(); await wait(700);
+  // 無敵宣言（次の1アクション）／復讐の誓い（脱がせた相手へのアクション）：チャレンジもブロックもなし
+  let free=false;
+  if(p.flags.noContest){ delete p.flags.noContest; free=true; log(`${p.name} の「無敵宣言」：このアクションはチャレンジもブロックもされない`, 'sys'); }
+  else if(target && p.flags.vengeance===target.i){ free=true; log(`${p.name} の「復讐の誓い」：${target.name} へのアクションはチャレンジもブロックもされない`, 'sys'); }
 
   if(act==='coup'){
     const cost=coupCost(p); p.hearts-=cost; render();
+    bodyguardFee(p, target);
     await cutin(p, target);
     await loseInfluence(target, p, 'ざぁ～こ♥');
     return;
   }
   if(act==='assassinate'){ p.hearts-=A.cost; render(); }
+  if(act==='assassinate' || act==='steal') bodyguardFee(p, target);
 
-  if(A.role){
+  if(A.role && !free){
     const ok=await challengeWindow(p, A.role, {kind:'action', action:act, target}, orderFrom(p));
     if(!ok) return;
     if(!p.alive) return;
     if(target && !target.alive) return;
   }
-  const blocked=await blockWindow(p, act, target);
+  const blocked = free ? false : await blockWindow(p, act, target);
   if(blocked) return;
   if(!p.alive) return;
   if(target && !target.alive) return;
@@ -789,6 +854,7 @@ async function resolveChallenge(claimant, challenger, role){
     return true;
   } else {
     claimant.bluffsCaught++;
+    if(challenger.flags.bounty){ challenger.hearts+=2; SFX.play('coin'); log(`${challenger.name} はチャレンジ成功の「ごほうび」で2♥もらった`); }
     log(`${claimant.name} は ${rname(role)} を持っていなかった！ハッタリ失敗`, 'hurt');
     render();
     await fxBluff(claimant, challenger, role);
@@ -801,6 +867,7 @@ async function resolveChallenge(claimant, challenger, role){
 function blockOptions(c, actor, act, target){
   const A=ACTIONS[act], opts=[];
   if(c===actor || !c.alive) return opts;
+  if(act==='aid' && actor.flags.aidUnblockable) return opts;   // 人気者
   let roles=A.blockedBy||[];
   if(act==='exchange') roles=target?['osananajimi']:[];
   const canRole = A.target||act==='exchange' ? c===target : true;
@@ -994,9 +1061,73 @@ async function resolveTrigger(p, card, by){
       if(p.hand.length>0){ log(`${p.name} はまだプライドが残っているので「着替え」は不発`); return; }
       if(!S.deck.length){ log(`山札がないので「着替え」は不発`); return; }
       const c=drawCard(); p.hand.push(c); markFresh(c); SFX.play('chime');
-      const lost=p.hearts; p.hearts=0;
+      const lost=p.hearts; p.hearts=0; p.flags.skipTurns=(p.flags.skipTurns||0)+1;
       say(p, 'まだ終わってないし♥');
-      log(`${p.name} は着替えて立ち直った！ 山札から1枚引いてプライド1で続行${lost?`（♥${lost}はすべて失った）`:''}`, p.cpu?'sys':'me');
+      log(`${p.name} は着替えて立ち直った！ 山札から1枚引いてプライド1で続行${lost?`（♥${lost}はすべて失った）`:''}。次の手番は1回飛ばす`, p.cpu?'sys':'me');
+      return;
+    }
+    case 't18': p.flags.hidden=true; log(`${p.name} は次の手番まで「ざぁ～こ♥」「まけちゃえ～♥」の対象にならない（かくれんぼ）`); return;
+    case 't19': p.flags.noContest=true; log(`${p.name} の次の手番のアクションは、チャレンジもブロックもされない（無敵宣言）`); return;
+    case 't20': {
+      if(!by || by===p || !by.alive){ log(`脱がせた相手がいないので不発`); return; }
+      by.flags.skipTurns=(by.flags.skipTurns||0)+1; log(`${by.name} は次の手番を1回飛ばす（口止め料）`); return;
+    }
+    case 't21': {
+      const others=othersOf(p).filter(q=>q.alive);
+      if(!others.length){ log('相手がいないので不発'); return; }
+      let got=0; const seen=[];
+      for(const q of others){
+        const canPay=q.hearts>=1, showable=q.hand.map((c,i)=>i).filter(i=>!q.hand[i].faceUp && !seenBy(q.hand[i],p));
+        if(!canPay && !showable.length) continue;
+        let pay;
+        if(!canPay) pay=false; else if(!showable.length) pay=true;
+        else if(q.cpu) pay = q.hearts>=3 || chance(0.4);
+        else pay = await askButtons(`${p.name} の「おねだり」：1♥渡すか、手札1枚をこっそり見せるかを選んでください`, [{label:'1♥渡す', value:true, primary:true},{label:'手札を1枚見せる', value:false}], undefined, 'onedari');
+        if(pay){ q.hearts--; got++; }
+        else {
+          const idx = showable.length===1 ? showable[0] : (q.cpu ? (showable.includes(cpuLoseCard(q)) ? cpuLoseCard(q) : showable[0]) : await humanPickCard(q, `${p.name} に見せるカードを選んでください（おねだり）`));
+          const c=q.hand[idx]; (c.seenBy||(c.seenBy=[])).push(p.i); seen.push(`${q.name}：${rname(c.role)}`);
+        }
+      }
+      p.hearts+=got; if(got) SFX.play('coin');
+      log(`${p.name} の「おねだり」：${got}♥もらい、${seen.length}人が手札を1枚見せた`);
+      if(seen.length && !p.cpu) log(`見せてもらった手札：${seen.join('、')}（あなただけ見える）`, 'me');
+      if(!S.headless) render();
+      return;
+    }
+    case 't22': p.flags.bodyguard=true; log(`${p.name} を狙う ざぁ～こ♥・まけちゃえ～♥・なさけな～い♥ は、使った人が追加で2♥を ${p.name} に払うようになった（ボディガード）`); return;
+    case 't23': p.flags.aidUnblockable=true; log(`${p.name} の「よわ♥」はブロックされなくなった（人気者）`); return;
+    case 't24': {
+      if(!by || by===p){ log(`脱がせた相手がいないので不発`); return; }
+      p.flags.vengeance=by.i; log(`${p.name} の ${by.name} へのアクションは、チャレンジもブロックもされなくなった（復讐の誓い）`); return;
+    }
+    case 't25': p.flags.bounty=true; log(`${p.name} はチャレンジに成功するたびに2♥もらえるようになった（ごほうび）`); return;
+    case 't26': {
+      const cands=othersOf(p).filter(q=>q.alive && q.hand.length>0);
+      if(!cands.length){ log('相手がいないので不発'); return; }
+      const q = p.cpu ? cpuThreat(p,cands) : await humanPickPlayer(p, cands, '内緒話：手札を見せ合う相手を選んでください');
+      const qi = q.hand.length===1 ? 0 : (q.cpu ? cpuLoseCard(q) : await humanPickCard(q, `${p.name} に見せるカードを選んでください（内緒話）`));
+      const qc=q.hand[qi]; (qc.seenBy||(qc.seenBy=[])).push(p.i);
+      let pc=null;
+      if(p.hand.length){ const pi = p.hand.length===1 ? 0 : (p.cpu ? cpuLoseCard(p) : await humanPickCard(p, `${q.name} に見せるカードを選んでください（内緒話）`)); pc=p.hand[pi]; (pc.seenBy||(pc.seenBy=[])).push(q.i); }
+      log(`${p.name} と ${q.name} が内緒話で手札を1枚ずつ見せ合った${pc?'':`（${p.name} は見せる手札がない）`}`);
+      if(!p.cpu) log(`${q.name} の手札「${rname(qc.role)}」を見た（あなただけ見える）`, 'me');
+      if(!q.cpu && pc) log(`${p.name} の手札「${rname(pc.role)}」を見た（あなただけ見える）`, 'me');
+      if(!S.headless) render();
+      return;
+    }
+    case 't27': {
+      if(!p.hand.length){ log(`${p.name} は手札がないので不発`); return; }
+      const n=p.hand.length; for(const c of p.hand) S.deck.push(c.role); p.hand=[]; shuffle(S.deck);
+      for(let k=0;k<n;k++){ const c=drawCard(); p.hand.push(c); markFresh(c); }
+      log(`${p.name} は手札${n}枚をすべて引き直した（お色直し）`);
+      return;
+    }
+    case 't28': {
+      if(!by || by===p || !by.alive || !by.hand.length){ log(`脱がせた相手がいないので不発`); return; }
+      log(`${p.name} の「道連れ」！ ${by.name} もプライドを失う`, 'hurt');
+      render(); await wait(400);
+      await loseInfluence(by, p, '道連れ');
       return;
     }
     case 't13': {
@@ -1085,12 +1216,13 @@ function cpuChooseAction(p, forced){
     if(need<=2 && chance(0.85)) return {action:'aid'};                     // よわ♥はメスガキ主張でしか止まらない
     if(need<=3 && (hasRole(p,'mesugaki') || (lives===2 && knownCount(p,'mesugaki')<2 && chance(0.5)))) return {action:'tax'};
   }
-  if(forced || p.hearts>=cost) return {action:'coup', target:cpuThreat(p,others)};
+  { const ct=targetsFor(p,'coup'); if((forced || p.hearts>=cost) && ct.length) return {action:'coup', target:cpuThreat(p,ct)}; }
   const canBluff = lives===2 && chance(0.3);
   if(hasRole(p,'mesugaki') || (canBluff && knownCount(p,'mesugaki')<2 && chance(0.5))) return {action:'tax'};
-  if(p.hearts>=3 && (hasRole(p,'succu') || (canBluff && knownCount(p,'succu')<2 && chance(0.3)))){
-    const weak=others.filter(q=>q.hand.length===1);
-    return {action:'assassinate', target: weak.length&&chance(0.7) ? cpuThreat(p,weak) : cpuThreat(p,others)};
+  const at=targetsFor(p,'assassinate');
+  if(at.length && p.hearts>=3 && (hasRole(p,'succu') || (canBluff && knownCount(p,'succu')<2 && chance(0.3)))){
+    const weak=at.filter(q=>q.hand.length===1);
+    return {action:'assassinate', target: weak.length&&chance(0.7) ? cpuThreat(p,weak) : cpuThreat(p,at)};
   }
   const rich=others.filter(q=>q.hearts>=2);
   if(rich.length && (hasRole(p,'kouhai') || (canBluff && chance(0.3)))){
@@ -1164,6 +1296,8 @@ function triggerValue(p, card){
     case 't15': return 1;
     case 't16': return 4;
     case 't17': return 3;
+    case 't18': return 4; case 't19': return 4; case 't20': return 3; case 't21': return 4; case 't22': return 4;
+    case 't23': return 3; case 't24': return 3; case 't25': return 3; case 't26': return 2; case 't27': return 2; case 't28': return 6;
     default: return 0;
   }
 }
@@ -1259,6 +1393,7 @@ function playerPanel(p, isMe){
   if(p.alive && p.flags.coupDiscount) chips.push('値下げ');
   if(p.alive && p.flags.blockExchange) chips.push('ダサすぎ返し');
   if(p.alive && p.flags.win15) chips.push(`${RULES.collectorGoal}♥で勝利`);
+  if(p.alive){ if(p.flags.bodyguard) chips.push('ボディガード'); if(p.flags.aidUnblockable) chips.push('人気者'); if(p.flags.vengeance!=null) chips.push('復讐の誓い'); if(p.flags.bounty) chips.push('ごほうび'); if(p.flags.hidden) chips.push('かくれんぼ'); if(p.flags.noContest) chips.push('無敵宣言'); if(p.flags.skipTurns>0) chips.push('手番スキップ'); }
   const head=document.createElement('div'); head.className='plhead';
   const bump = p._shownHearts!==undefined && p._shownHearts!==p.hearts; p._shownHearts=p.hearts;
   head.innerHTML=`<span class="nm">${p.name}<span class="tag">${p.ch.title}${tags.length?' ／ '+tags.join('・'):''}</span>${chips.map(c=>`<span class="fxchip">${c}</span>`).join('')}</span><span class="hearts${bump?' bump':''}" title="持っている♥">♥<b>${p.hearts}</b></span>`;
@@ -1324,6 +1459,13 @@ function renderEffects(){
     if(p.flags.coupDiscount) items.push(['値下げ', `${p.name} の「ざぁ～こ♥」は5♥`]);
     if(p.flags.blockExchange) items.push(['ダサすぎ返し', `${p.name} は「ダサすぎ♥」をブロックできる`]);
     if(p.flags.examine) items.push(['ルール改変', `${p.name} の「ダサすぎ♥」は通常か審問かを選べる（審問は幼馴染ガキでブロック可）`]);
+    if(p.flags.bodyguard) items.push(['ボディガード', `${p.name} を狙う ざぁ～こ♥・まけちゃえ～♥・なさけな～い♥ は、使った人が追加で2♥を ${p.name} に払う`]);
+    if(p.flags.aidUnblockable) items.push(['人気者', `${p.name} の「よわ♥」はブロックできない`]);
+    if(p.flags.vengeance!=null && S.players[p.flags.vengeance]) items.push(['復讐の誓い', `${p.name} → ${S.players[p.flags.vengeance].name} へのアクションはチャレンジ・ブロック不可`]);
+    if(p.flags.bounty) items.push(['ごほうび', `${p.name} はチャレンジに成功するたびに2♥`]);
+    if(p.flags.hidden) items.push(['かくれんぼ', `${p.name} は次の手番まで ざぁ～こ♥・まけちゃえ～♥ の対象外`]);
+    if(p.flags.noContest) items.push(['無敵宣言', `${p.name} の次のアクションはチャレンジ・ブロック不可`]);
+    if(p.flags.skipTurns>0) items.push(['手番スキップ', `${p.name} は次の手番を${p.flags.skipTurns}回飛ばす`]);
     if(p.flags.win15) items.push(['♥コレクター', `${p.name} は${RULES.collectorGoal}♥集めた時点で勝ち${liftNote()}`]);
   }
   if(!items.length){ el.hidden=true; el.innerHTML=''; return; }
@@ -1377,7 +1519,7 @@ async function humanChooseAction(p, forced){
     const cost=coupCost(p), others=othersOf(p);
     const act=await prompt((box,done)=>{
       msgEl(box, forced?'10♥以上持っているので「ざぁ～こ♥」を撃たなければなりません':'あなたの番です。アクションを選んでください', `♥${p.hearts}　役職つきのアクションは手札のカードをクリックしても使えます`);
-      const canUse=id=>{ if(forced && id!=='coup') return false; if(id==='coup' && p.hearts<cost) return false; if(id==='assassinate' && p.hearts<3) return false; if(TUT.restrict && !TUT.restrict(id)) return false; return true; };
+      const canUse=id=>{ if(forced && id!=='coup') return false; if(id==='coup' && p.hearts<cost) return false; if(id==='assassinate' && p.hearts<3) return false; if((id==='coup'||id==='assassinate') && !targetsFor(p,id).length) return false; if(TUT.restrict && !TUT.restrict(id)) return false; return true; };
       const groups=[{label:'誰でもできる', acts:['income','aid','coup']},{label:'ガキカードのアクション（持っていなくても宣言できる＝ハッタリ）', acts:['tax','steal','exchange','assassinate']}];
       for(const g of groups){
         const gd=document.createElement('div'); gd.className='agroup';
@@ -1399,7 +1541,7 @@ async function humanChooseAction(p, forced){
       continue;
     }
     if(!A.target) return {action:act};
-    const cands=others.filter(q=>q.hand.length>0);
+    const cands=targetsFor(p,act);
     const t=await askPlayer(`「${A.name}」の相手を選んでください`, cands, [{label:'もどる', value:null}], 'target');
     if(t) return {action:act, target:t};
   }
@@ -1833,9 +1975,9 @@ function buildRules(){
   <div class="rl-strip" id="rlStrip"></div>
   <p class="rl-note">上下とも裏返ったら脱落。全員同時に脱落したら、最後に脱落した人の勝ち。</p></div>
 
-  <div class="rl-sec"><h3><span class="no">7</span>トリガーカード <small>${TRIGGERS.filter(t=>(t.count??1)>0).length}種${TRIGGERS.reduce((a,t)=>a+(t.count??1),0)}枚${RULES.dudCount>0?`＋ハズレ${RULES.dudCount}枚`:''}</small></h3>
+  <div class="rl-sec"><h3><span class="no">7</span>トリガーカード <small id="rlTrigHead"></small></h3>
   <div class="rl-trig" id="rlTrig"></div>
-  <p class="rl-sub">2軍（今は山に入れていないカード）</p>
+  <p class="rl-sub">ほかのカード（今のデッキに入っていないもの。開始画面でデッキを組み替えられる）</p>
   <div class="rl-trig bench" id="rlBench"></div></div>
 
   <div class="rl-sec"><h3><span class="no">8</span>細かい決まり</h3>
@@ -1855,10 +1997,11 @@ function fillRules(){
   for(const r of ROLE_IDS) roles.appendChild(roleCardEl(r));
   const trig=$('#rlTrig'); trig.innerHTML='';
   const withCount=(t,n)=>{ const el=triggerEl({card:t,revealed:true},'on',false); const c=document.createElement('span'); c.className='cnt'; c.textContent=typeof n==='number'?`×${n}`:n; el.appendChild(c); return el; };
-  for(const t of TRIGGERS) if((t.count??1)>0) trig.appendChild(withCount(t, t.count??1));
+  $('#rlTrigHead').textContent=`${deckLabel()}：${DECK.ids.length}枚${RULES.dudCount>0?`＋ハズレ${RULES.dudCount}枚`:''}`;
+  for(const id of DECK.ids){ const t=TRIGGERS.find(x=>x.id===id); if(t) trig.appendChild(withCount(t, SET_LABEL[t.set])); }
   if(RULES.dudCount>0) trig.appendChild(withCount(NO_TRIGGER, RULES.dudCount));
   const bench=$('#rlBench'); bench.innerHTML='';
-  for(const t of TRIGGERS) if((t.count??1)===0) bench.appendChild(withCount(t,'2軍'));
+  for(const t of TRIGGERS) if(!DECK.ids.includes(t.id)) bench.appendChild(withCount(t, SET_LABEL[t.set]));
   bench.previousElementSibling.hidden = bench.hidden = !bench.children.length;
   const strip=$('#rlStrip'); strip.innerHTML='';
   const ch=CHARS[0];
@@ -1869,6 +2012,9 @@ function fillRules(){
 }
 let setup={ n:4, ch:0, auto:false };
 function openStart(){
+  const dp=$('#deckpick'); dp.innerHTML='';
+  for(const [k,lbl] of [['basic','基本デッキ'],['fresh','新カードデッキ'],['custom','カスタム…']]){ const b=document.createElement('button'); b.className='btn'+(DECK.preset===k?' primary':''); b.textContent=lbl; b.onclick=()=>{ if(k==='custom') openDeckPicker(); else { setDeck(k); openStart(); } }; dp.appendChild(b); }
+  $('#deckinfo').innerHTML=`<b>${deckLabel()}</b>（${DECK.ids.length}枚）：${DECK.ids.map(id=>(TRIGGERS.find(t=>t.id===id)||{}).name).join('・')}`;
   const np=$('#npick'); np.innerHTML='';
   for(const n of [3,4,5,6]){ const b=document.createElement('button'); b.className='btn'+(setup.n===n?' primary':''); b.textContent=`${n}人`; b.onclick=()=>{ setup.n=n; openStart(); }; np.appendChild(b); }
   const cp=$('#chpick'); cp.innerHTML='';
@@ -1878,8 +2024,35 @@ function openStart(){
   $('#modalStart').classList.add('show');
 }
 
+// デッキ編集モーダル
+let deckDraft=[];
+function openDeckPicker(){
+  deckDraft=DECK.ids.slice();
+  renderDeckPicker();
+  $('#modalDeck').classList.add('show');
+}
+function renderDeckPicker(){
+  const g=$('#deckGroups'); g.innerHTML='';
+  for(const set of ['basic','fresh','bench']){
+    const h=document.createElement('p'); h.className='rl-sub'; h.textContent=SET_LABEL[set]+(set==='bench'?'（以前に外したカード）':''); g.appendChild(h);
+    const grid=document.createElement('div'); grid.className='rl-trig';
+    for(const t of TRIGGERS.filter(x=>x.set===set)){
+      const el=triggerEl({card:t,revealed:true},'on',false); el.classList.add('pick'); if(deckDraft.includes(t.id)) el.classList.add('sel');
+      const c=document.createElement('span'); c.className='cnt'; c.textContent=deckDraft.includes(t.id)?'✓ 採用':'－'; el.appendChild(c);
+      el.onclick=()=>{ const i=deckDraft.indexOf(t.id); if(i>=0) deckDraft.splice(i,1); else if(deckDraft.length<DECK_SIZE) deckDraft.push(t.id); else { SFX.play('buzz'); return; } renderDeckPicker(); };
+      grid.appendChild(el);
+    }
+    g.appendChild(grid);
+  }
+  const n=deckDraft.length;
+  $('#deckCount').textContent=`選択中 ${n} / ${DECK_SIZE}枚`+(n<DECK_SIZE?`（あと${DECK_SIZE-n}枚）`:'');
+  $('#btnDeckOk').disabled = n!==DECK_SIZE;
+}
 function init(){
   preloadImages();
+  loadDeck();
+  $('#btnDeckOk').onclick=()=>{ if(deckDraft.length!==DECK_SIZE) return; const preset = ['basic','fresh'].find(k=>DECK_PRESETS[k].every(id=>deckDraft.includes(id))) || 'custom'; setDeck(preset, deckDraft); $('#modalDeck').classList.remove('show'); openStart(); };
+  $('#btnDeckBasic').onclick=()=>{ deckDraft=DECK_PRESETS.basic.slice(); renderDeckPicker(); };
   window.addEventListener('resize', ()=>renderArrows());
   $('#rulesBox').innerHTML=buildRules(); fillRules();
   document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('.modal').classList.remove('show'));

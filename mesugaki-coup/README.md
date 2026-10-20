@@ -80,6 +80,7 @@
 - 進行：`runGame` → `takeTurn` → `performAction`。チャレンジは `challengeWindow`、ブロックは `blockWindow`、プライドの喪失とトリガーは `loseInfluence` / `resolveTrigger`。
 - CPU：`cpuChooseAction` ほか `cpu*` 関数。
 - チュートリアル：`tutSetup` の `TUT.beats`（ナビの台詞と許可する選択）と `TUT.cpu`（CPUの台本）。
+- 印刷データ：`tools/print_cards.py`。`python3 -I tools/print_cards.py --out <dir> --art <元立ち絵dir> --size 91x55 --bleed 1.5 --lion` で物理版52枚（ガキ15・メスガキ12・トリガー18・早見表6・タイトル1）の表裏 PNG と1面1ページの PDF を出す。`--lion` でライオン名刺「異種」21面テンプレート用に回転済みの面画像と参考面付けも出す。文言と枚数は `index.html` の定義から読む。
 - 分析ページ：`docs/trigger-analysis.html`。`tools/summarize.py basic_p4=a.json basic_p3456=b.json fresh_p4=c.json fresh_p3456=d.json docs/sim_summary.json` でまとめ、`tools/build_analysis.py docs/sim_summary.json <artifact.html> docs/trigger-analysis.html` でページを生成する。
 - バランス検証：`tools/sim.js`（Playwright）。`node tools/sim.js 10000 4 0 deck=fresh` で「1万戦・4人戦・ハズレなし・新カードデッキ」をヘッドレスで回し、トリガーごとの勝率をJSONで出す。ゲーム側は `S.headless=true` で描画・待ち・演出・音を飛ばす。
 

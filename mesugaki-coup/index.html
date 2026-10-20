@@ -269,6 +269,15 @@ button{font:inherit;color:inherit}
 .cutcard .tt{font-size:15px;line-height:1.7}
 .cut.dud .cutcard{background:#2a2a36;box-shadow:0 0 0 3px #4a4a5c inset,0 20px 50px rgba(0,0,0,.6);color:#9a9aa8}
 .cuthint{font-size:11px;color:var(--dim);animation:rise .4s ease-out both;animation-delay:.6s}
+/* 脱落 */
+.cut.lose{background:rgba(6,2,10,.86)}
+.cut.lose .cutbox{gap:8px}
+.losefig{animation:losein .6s cubic-bezier(.2,.9,.3,1) both}
+.losefig .figure{--cw:min(60vw, 36vh)}
+.losefig .ccard{box-shadow:0 0 0 3px var(--boro) inset,0 18px 40px rgba(0,0,0,.7)}
+@keyframes losein{from{opacity:0;transform:scale(.6) translateY(30px)}to{opacity:1;transform:none}}
+.cut.lose .cutlabel{color:#aeb6d8;text-shadow:0 0 14px rgba(140,150,210,.7),0 4px 0 #1a1c33;letter-spacing:.35em;animation-delay:.55s}
+.cutline{font-size:14px;color:var(--pink);animation:rise .4s ease-out both;animation-delay:.9s}
 /* チャレンジ成功後などの「山札に戻して引き直す」演出 */
 .cut.swap{background:rgba(10,4,14,.62)}
 .cut.swap .cutlabel{font-size:clamp(22px,4vw,34px);letter-spacing:.2em}
@@ -947,7 +956,7 @@ async function loseInfluence(p, by, reason){
   } else {
     log(`${p.name} はもう脱ぐ服が残っていない`, 'sys'); await wait(300);
   }
-  if(p.hand.length===0){ p.alive=false; p.deadAt=++S.deaths; SFX.play('down'); log(`${p.name} は脱落…`, 'hurt'); }
+  if(p.hand.length===0){ p.alive=false; p.deadAt=++S.deaths; SFX.play('down'); log(`${p.name} は脱落…`, 'hurt'); render(); await fxEliminated(p); }
   render();
 }
 
@@ -1759,6 +1768,23 @@ async function fxFlipCard(p,k){
   ov.classList.add('out'); setTimeout(()=>ov.remove(), 300);
   if(card) card.classList.add('boro');
 }
+/* 脱落の演出：ボロボロになった全身を中央に写してから「負け…」。クリックで早送り */
+const LOSE_LINES=['……覚えてなさいよ♥','は？ ノーカンだし……','ちょっと本気じゃなかっただけ……','こんなの……負けじゃないし！','……次は泣かせるから♥','服、返してよね……'];
+function fxEliminated(p){
+  if(S.headless) return Promise.resolve();
+  const ov=document.createElement('div'); ov.id='cut'; ov.className='cut lose';
+  ov.innerHTML=`<div class="cutbox"><div class="cutwho">${p.name} は……</div><div class="losefig"></div><div class="cutlabel">負け…</div><div class="cutline">「${pick(LOSE_LINES)}」</div><div class="cuthint">クリックで飛ばす</div></div>`;
+  ov.querySelector('.losefig').appendChild(figureEl(p.ch,{top:true,bottom:true},'xl',false));
+  document.body.appendChild(ov);
+  const gid=S.gameId;
+  return new Promise((resolve)=>{
+    let done=false;
+    const finish=()=>{ if(done) return; done=true; ov.classList.add('out'); setTimeout(()=>ov.remove(), 320); resolve(); };
+    ov.addEventListener('click', finish);
+    wait(2600).then(finish).catch(()=>{ ov.remove(); resolve(); });
+  });
+}
+
 /* トリガー発動の演出：画面中央にトリガーカードをドンと出す。クリックで早送り */
 function cutscene(p, k, card){
   if(S.headless) return Promise.resolve();

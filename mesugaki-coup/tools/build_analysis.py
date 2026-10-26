@@ -103,9 +103,11 @@ def all_rows():
     return rows, base, hbase
 _arows, _abase, _ahbase = all_rows()
 _agames = sum(c['games'] for k, c in d.items() if isinstance(c, dict) and 'games' in c)
+_never = [CNAME[i] for i in CNAME if i not in RETIRED and i not in {r['id'] for r in _arows}]   # 山に入れたが一度も仕込まれなかった札
+_nevernote = f"。{'・'.join(_never)}は3枚から2枚を選ぶときCPUが一度も残さなかったので数字がない" if _never else ''
 DATA = {
   'conds': {
-    'all': {'label':'全カード・全条件','deck':'all','sub':f"回した全条件（3デッキ×4人戦・3〜6人戦＋2軍）を合算・{_agames:,}戦。基準は全カード平均",'games':_agames,'rows':_arows,'base':_abase,'heldBase':_ahbase},
+    'all': {'label':'全カード・全条件','deck':'all','sub':f"回した全条件（3デッキ×4人戦・3〜6人戦＋2軍）を合算・{_agames:,}戦。基準は全カード平均{_nevernote}",'games':_agames,'rows':_arows,'base':_abase,'heldBase':_ahbase},
     'basic_p4': {'label':'基本・4人戦','deck':'basic','sub':f"基本デッキ・{s4['games']:,}戦",'games':s4['games'],'rows':rows('basic_p4'),'base':s4.get('base'),'heldBase':s4.get('heldBase'),'avgLog':round(s4['avgLog'],1),'winnerLostLife':round(s4['winnerLostLife'],3),'lifeLoss':round(s4['lifeLoss'],2)},
     'basic_p3456': {'label':'基本・3〜6人戦','deck':'basic','sub':f"基本デッキ・各{s3['games']//4:,}戦・{s3['games']:,}戦",'games':s3['games'],'rows':rows('basic_p3456'),'base':s3.get('base'),'heldBase':s3.get('heldBase')},
     **({'fresh_p4': {'label':'新カード・4人戦','deck':'fresh','sub':f"新カードデッキ・{f4['games']:,}戦",'games':f4['games'],'rows':rows('fresh_p4'),'base':f4.get('base'),'heldBase':f4.get('heldBase'),'avgLog':round(f4['avgLog'],1),'winnerLostLife':round(f4['winnerLostLife'],3),'lifeLoss':round(f4['lifeLoss'],2)},

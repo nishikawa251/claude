@@ -86,8 +86,26 @@ PHYS = {
 hasDud = bool(s4.get('hasDud', True))
 BASELBL = 'ハズレ比' if hasDud else '平均比'
 BASENAME = 'ハズレ' if hasDud else '全カード平均'
+def all_rows():
+    acc = {}
+    for key, c in d.items():
+        if key == 'whatif' or not isinstance(c, dict) or 'rows' not in c: continue
+        for r in c['rows']:
+            if r['id'] == 'none': continue
+            a = acc.setdefault(r['id'], {'id': r['id'], 'held': 0, 'heldWin': 0, 'first': 0, 'firstWin': 0, 'last': 0, 'revive': 0, 'reviveWin': 0})
+            for k in ('held', 'heldWin', 'first', 'firstWin', 'last'): a[k] += r[k]
+            a['revive'] += r.get('revive', 0); a['reviveWin'] += r.get('reviveWin', 0)
+    rows = []
+    for a in acc.values():
+        rows.append({'id': a['id'], 'name': CNAME.get(a['id'], a['id']), 'eff': EFF.get(a['id'], ''), 'held': a['held'], 'heldWin': a['heldWin'], 'first': a['first'], 'firstWin': a['firstWin'], 'last': a['last'], 'revive': a['revive'], 'reviveWin': a['reviveWin'], 'count': 1, 'evalBy': 'held' if a['id'] == 't16' else 'first', 'memo': ''})
+    base = sum(r['firstWin'] for r in rows) / max(1, sum(r['first'] for r in rows))
+    hbase = sum(r['heldWin'] for r in rows) / max(1, sum(r['held'] for r in rows))
+    return rows, base, hbase
+_arows, _abase, _ahbase = all_rows()
+_agames = sum(c['games'] for k, c in d.items() if isinstance(c, dict) and 'games' in c)
 DATA = {
   'conds': {
+    'all': {'label':'全カード・全条件','deck':'all','sub':f"回した全条件（3デッキ×4人戦・3〜6人戦＋2軍）を合算・{_agames:,}戦。基準は全カード平均",'games':_agames,'rows':_arows,'base':_abase,'heldBase':_ahbase},
     'basic_p4': {'label':'基本・4人戦','deck':'basic','sub':f"基本デッキ・{s4['games']:,}戦",'games':s4['games'],'rows':rows('basic_p4'),'base':s4.get('base'),'heldBase':s4.get('heldBase'),'avgLog':round(s4['avgLog'],1),'winnerLostLife':round(s4['winnerLostLife'],3),'lifeLoss':round(s4['lifeLoss'],2)},
     'basic_p3456': {'label':'基本・3〜6人戦','deck':'basic','sub':f"基本デッキ・各{s3['games']//4:,}戦・{s3['games']:,}戦",'games':s3['games'],'rows':rows('basic_p3456'),'base':s3.get('base'),'heldBase':s3.get('heldBase')},
     **({'fresh_p4': {'label':'新カード・4人戦','deck':'fresh','sub':f"新カードデッキ・{f4['games']:,}戦",'games':f4['games'],'rows':rows('fresh_p4'),'base':f4.get('base'),'heldBase':f4.get('heldBase'),'avgLog':round(f4['avgLog'],1),'winnerLostLife':round(f4['winnerLostLife'],3),'lifeLoss':round(f4['lifeLoss'],2)},
@@ -314,7 +332,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const pct=(v,d=1)=>(v*100).toFixed(d)+'%';
 const spct=(v,d=1)=>(v>=0?'+':'')+(v*100).toFixed(d)+'pt';
 const fmt=n=>n.toLocaleString('ja-JP');
-const state={cond:'basic_p4',tier:'all',q:'',sort:'delta',view:'cards'};
+const state={cond:'all',tier:'all',q:'',sort:'delta',view:'cards'};
 function compute(cond){
   const rows=DATA.conds[cond].rows.map(r=>({...r}));
   const dud=rows.find(r=>r.id==='none'); const C=DATA.conds[cond];
@@ -342,7 +360,7 @@ function renderTotal(){
   $('#total').innerHTML=`<span><b>${fmt(tot)}</b>総対戦数</span><span><b>${d.lifeLoss}回</b>1ゲームの被弾</span><span><b>${pct(d.winnerLostLife,0)}</b>勝者が途中で被弾</span><span><b>${d.avgLog}行</b>平均ログ</span>`;
 }
 function renderMix(){
-  const dk=DATA.conds[state.cond].deck||'basic'; const r4=compute(dk+'_p4'), r3=compute(dk+'_p3456');
+  const dk=DATA.conds[state.cond].deck||'basic'; const r4=compute(dk==='all'?'all':dk+'_p4'), r3=compute(dk==='all'?'all':dk+'_p3456');
   const d3=Object.fromEntries(r3.map(r=>[r.name,r.score]));
   const both=r4.filter(r=>r.id!=='none' && r.score>=DATA.thr && d3[r.name]>=0).map(r=>r.name);
   const top4=both.length?both:r4.filter(r=>r.tier==='強い').map(r=>r.name);
@@ -350,8 +368,8 @@ function renderMix(){
   const col=r4.find(r=>r.id==='t9'), col3=r3.find(r=>r.id==='t9');
   const lastAvg=r4.reduce((a,r)=>a+r.last,0)/r4.reduce((a,r)=>a+r.first+r.last,0);
   const items=[
-    [({fresh:'新カード・',mix:'おすすめ・',bench:'2軍・'}[DATA.conds[state.cond].deck]||'基本・')+'強い', top4.join('・')||'なし', top4.length?`4人戦でBASELBL +${(DATA.thr*100).toFixed(0)}pt 以上で、3〜6人戦でもプラスのカード。`:`+2pt を超えるカードはない。いちばん高い${r4[0].name}でも ${spct(r4[0].score)} で、かなり平ら。`],
-    ['弱い', weak.join('・')||'なし', weak.length?'両条件でマイナスのカード。':`両条件で −2pt を下回るカードはない。いちばん低い${r4[r4.length-1].name}でも ${spct(r4[r4.length-1].score)} で、不発（何も起きない）とほぼ同じ。`],
+    [({fresh:'新カード・',mix:'おすすめ・',bench:'2軍・',all:'全カード・'}[DATA.conds[state.cond].deck]||'基本・')+'強い', top4.join('・')||'なし', top4.length?(dk==='all'?`全条件の合算でBASELBL +${(DATA.thr*100).toFixed(0)}pt 以上のカード。`:`4人戦でBASELBL +${(DATA.thr*100).toFixed(0)}pt 以上で、3〜6人戦でもプラスのカード。`):`+2pt を超えるカードはない。いちばん高い${r4[0].name}でも ${spct(r4[0].score)} で、かなり平ら。`],
+    ['弱い', weak.join('・')||'なし', weak.length?(dk==='all'?'全条件の合算で −2pt を下回るカード。':'両条件でマイナスのカード。'):`両条件で −2pt を下回るカードはない。いちばん低い${r4[r4.length-1].name}でも ${spct(r4[r4.length-1].score)} で、不発（何も起きない）とほぼ同じ。`],
     ['空撃ち', pct(lastAvg,0), '発動のうち脱落時（2枚目の脱ぎ）に起きた割合。本人には意味のない発動が半分近くある。'],
     ['効果の幅', `${spct(Math.max(...r4.map(r=>r.score)))} 〜 ${spct(Math.min(...r4.map(r=>r.score)))}`, 'トリガーは負けかけた側に起きるので、どれも勝敗を覆すほどの力はない。'],
   ];

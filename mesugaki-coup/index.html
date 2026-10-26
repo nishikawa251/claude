@@ -552,7 +552,7 @@ const ACTIONS = {
 
 const RULES = {
   peekOwnTriggers: true,   // 自分のトリガーは自分だけ見える
-  triggerDeal: 2,          // 開始時に配るトリガー枚数。2ならそのまま上下に仕込む（3以上なら選んで残りを山へ）
+  triggerDeal: 3,          // 開始時に配るトリガー枚数。3枚から2枚を選んで仕込み、残りは山へ（2ならそのまま上下に仕込む）。山が足りない人数では2枚
   attackerChoosesFlip: true, // プライドを失わせた側が、どちらを脱がせるか選ぶ
   collectorGoal: 9,        // メンヘラの勝利条件
   punishCost: 5,           // わからせ返しの即時ざぁ～こ♥のコスト

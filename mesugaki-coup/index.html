@@ -518,9 +518,9 @@ button{font:inherit;color:inherit}
 <div id="modalRules" class="modal"><div class="mbox pxbox rules" id="rulesBox"></div></div>
 <div id="modalDeck" class="modal"><div class="mbox pxbox rules deckbox">
   <h2>トリガーデッキを組む</h2>
-  <p class="rl-lede">ゲームで使うトリガーを <b>12枚</b> 選んでください。カードをクリックで出し入れ。<span id="deckCount"></span></p>
+  <p class="rl-lede">ゲームで使うトリガーを <b>18枚</b> 選んでください（3〜6人に3枚ずつ配る）。カードをクリックで出し入れ。<span id="deckCount"></span></p>
   <div id="deckGroups"></div>
-  <div class="close"><button class="btn primary" id="btnDeckOk">この12枚で遊ぶ</button><button class="btn" id="btnDeckBasic">基本に戻す</button><button class="btn" data-close>閉じる</button></div>
+  <div class="close"><button class="btn primary" id="btnDeckOk">この18枚で遊ぶ</button><button class="btn" id="btnDeckBasic">基本に戻す</button><button class="btn" data-close>閉じる</button></div>
 </div></div>
 <div id="modalLog" class="modal"><div class="mbox pxbox"><h2>ログ</h2><div id="fullLog" class="fulllog"></div><div class="close"><button class="btn" data-close>閉じる</button></div></div></div>
 <div id="modalEnd" class="modal"><div class="mbox pxbox endbox" id="endBox"></div></div>
@@ -552,7 +552,7 @@ const ACTIONS = {
 
 const RULES = {
   peekOwnTriggers: true,   // 自分のトリガーは自分だけ見える
-  triggerDeal: 3,          // 開始時に配るトリガー枚数。3枚から2枚を選んで仕込み、残りは山へ（2ならそのまま上下に仕込む）。山が足りない人数では2枚
+  triggerDeal: 3,          // 開始時に配るトリガー枚数。3枚から2枚を選んで仕込み、残りは山へ（2ならそのまま上下に仕込む）
   attackerChoosesFlip: true, // プライドを失わせた側が、どちらを脱がせるか選ぶ
   collectorGoal: 9,        // メンヘラの勝利条件
   punishCost: 5,           // わからせ返しの即時ざぁ～こ♥のコスト
@@ -612,15 +612,21 @@ const TRIGGERS = [
   { id:'t41', name:'魔除け',         text:'これを持っていれば「まけちゃえ～♥」をブロックできる（公開済みなのでダウトできない）。撃った人が払った3♥は戻らない', persistent:true },
 ];
 const tn = id => (TRIGGERS.find(t=>t.id===id)||{}).name||id;   // トリガー名（id から）
-// トリガーデッキ：基本／新カードの2プリセット＋カスタム。ゲームに使うのは DECK.ids の12枚
-const DECK_PRESETS = {
+// トリガーデッキ：基本／新カード／おすすめの3プリセット＋カスタム。ゲームに使うのは DECK.ids の18枚（3〜6人に3枚ずつ配れる）
+const SETS = {   // カードの系統（札の表記とピッカーの分類に使う。デッキとは別）
   basic: ['t1','t2','t3','t5','t6','t8','t9','t10','t11','t12','t14','t17'],
   fresh: ['t18','t19','t20','t21','t22','t23','t24','t25','t26','t27','t28','t16'],
-  // おすすめ：「おもしろさ」＋「バランス」の総合評価が高い12枚（基本・新カード混成。分析ページ参照）
-  mix:   ['t1','t5','t28','t19','t9','t21','t17','t24','t20','t18','t11','t8'],
 };
-const DECK_SIZE = 12;
-for(const t of TRIGGERS) t.set = t.retired ? 'out' : DECK_PRESETS.basic.includes(t.id) ? 'basic' : DECK_PRESETS.fresh.includes(t.id) ? 'fresh' : 'bench';
+const DECK_PRESETS = {
+  // 基本：基本12枚＋おすすめに入っている新カード6枚
+  basic: ['t1','t2','t3','t5','t6','t8','t9','t10','t11','t12','t14','t17','t28','t19','t21','t24','t20','t18'],
+  // 新カード：新カード12枚＋おすすめに入っている基本6枚
+  fresh: ['t18','t19','t20','t21','t22','t23','t24','t25','t26','t27','t28','t16','t1','t5','t9','t17','t11','t8'],
+  // おすすめ：「おもしろさ」＋「バランス」の総合評価が高い18枚（分析ページ参照）
+  mix:   ['t1','t5','t28','t19','t9','t21','t17','t24','t20','t18','t11','t8','t37','t22','t6','t12','t14','t25'],
+};
+const DECK_SIZE = 18;
+for(const t of TRIGGERS) t.set = t.retired ? 'out' : SETS.basic.includes(t.id) ? 'basic' : SETS.fresh.includes(t.id) ? 'fresh' : 'bench';
 const SET_LABEL = { basic:'基本', fresh:'新カード', bench:'2軍', out:'見送り' };
 const BENCH_CANDS = TRIGGERS.filter(t=>t.set==='bench').map(t=>t.id); // 2軍（カスタムで使える。見送り分は含まない）
 let DECK = { preset:'basic', ids: DECK_PRESETS.basic.slice() };

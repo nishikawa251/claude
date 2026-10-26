@@ -115,16 +115,16 @@ for m in re.finditer(r"\{ id:'(t\d+)',\s*name:'([^']+)',\s*text:(?:'([^']*)'|`([
 PRESETS = {}
 for m in re.finditer(r"(basic|fresh|mix):\s*\[([^\]]*)\]", js_block('const DECK_PRESETS', 'const DECK_SIZE')):
     PRESETS[m.group(1)] = re.findall(r"'(t\d+)'", m.group(2))
+SETS = {}   # カードの系統（基本／新カード。それ以外は2軍）
+for m in re.finditer(r"(basic|fresh):\s*\[([^\]]*)\]", js_block('const SETS = {', '};')):
+    SETS[m.group(1)] = re.findall(r"'(t\d+)'", m.group(2))
 CHARS = [(m.group(1), m.group(2)) for m in re.finditer(r"\{ id:'([a-z]+)',\s*name:'([^']+)' \}", js_block('const CHARS = [', '];'))]
 CHAR_NAME = dict(CHARS)
 PRINT_CHARS = [c for c, _ in CHARS] if args.chars == 'all' else [c for c in args.chars.split(',') if c]
 assert all(c in CHAR_NAME for c in PRINT_CHARS), f'知らないキャラ id: {PRINT_CHARS}'
-TRIG18 = []
-for i in PRESETS['basic'] + PRESETS['mix']:
-    if i not in TRIG18:
-        TRIG18.append(i)
+TRIG18 = list(PRESETS['basic'])   # 52枚版に入れるトリガー＝基本デッキ18枚
 if args.all_triggers:   # 基本 → 新カード → 2軍 の順に全部（見送り札は除く）
-    TRIG18 = PRESETS['basic'] + [i for i in PRESETS['fresh'] if i not in PRESETS['basic']] + [i for i in TRIGGERS if i not in PRESETS['basic'] and i not in PRESETS['fresh'] and not TRIGGERS[i]['retired']]
+    TRIG18 = SETS['basic'] + SETS['fresh'] + [i for i in TRIGGERS if i not in SETS['basic'] and i not in SETS['fresh'] and not TRIGGERS[i]['retired']]
 
 # ---------------------------------------------------------------- 描画ユーティリティ
 INK = (40, 22, 48)
@@ -310,7 +310,7 @@ def trigger_front(tid):
     draw_text_block(d, (x0, top), body, font(fs), wdt, fill=(230, 236, 255), spacing=1.5)
     # セット名
     sets = 'おすすめ' if tid in PRESETS['mix'] else ''
-    base = '基本' if tid in PRESETS['basic'] else '新カード' if tid in PRESETS['fresh'] else '2軍'
+    base = '基本' if tid in SETS['basic'] else '新カード' if tid in SETS['fresh'] else '2軍'
     text_center(d, PW / 2, inner[3] - int(7 * MM), base + ('／' + sets if sets else ''), font(5.5), fill=(138, 152, 214))
     text_center(d, PW / 2, inner[3] - int(3.6 * MM), 'メスガキ・クー', font(5), fill=(110, 120, 170))
     return im
@@ -568,7 +568,7 @@ def title_back():
     vx = x0 + int(22 * MM); vw = inner[2] - int(3 * MM) - vx
     for n, v in items:
         d.text((x0, y), n, font=font(6.8, 'black'), fill=INK); y2 = draw_text_block(d, (vx, y + int(0.3 * MM)), v, font(5.6), vw, fill=DIM, spacing=1.25); y = max(y + int(6.2 * MM), y2 + int(1.2 * MM))
-    draw_text_block(d, (x0, y + int(3 * MM)), 'トリガーは「基本デッキ」12枚か「おすすめデッキ」12枚のどちらかを使う（組み合わせは早見表の裏とルールブック参照）。', font(5.5), inner[2] - inner[0] - int(6 * MM), fill=DIM, spacing=1.4)
+    draw_text_block(d, (x0, y + int(3 * MM)), 'トリガーは1ゲーム18枚（3〜6人に3枚ずつ配り、2枚を選んで仕込む）。基本・新カード・おすすめの各デッキの組み合わせはルールブック参照。', font(5.5), inner[2] - inner[0] - int(6 * MM), fill=DIM, spacing=1.4)
     return im
 
 

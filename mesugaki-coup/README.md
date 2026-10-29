@@ -81,7 +81,7 @@
 - 進行：`runGame` → `takeTurn` → `performAction`。ダウトは `challengeWindow`、ブロックは `blockWindow`、プライドの喪失とトリガーは `loseInfluence` / `resolveTrigger`。
 - CPU：`cpuChooseAction` ほか `cpu*` 関数。
 - チュートリアル：`tutSetup` の `TUT.beats`（ナビの台詞と許可する選択）と `TUT.cpu`（CPUの台本）。
-- 印刷データ：`tools/print_cards.py`。`python3 -I tools/print_cards.py --out <dir> --art <元立ち絵dir> --size 91x55 --bleed 1.5 --lion` で物理版52枚（ガキ15・キャラ12＝モモコ・グリムアロエ・アクア・パイン・シロ・クロ・トリガー18・早見表6・タイトル1）の表裏 PNG と1面1ページの PDF を出す。`--lion` でライオン名刺「異種」21面テンプレート用に回転済みの面画像と参考面付けも出す。 `--template <異種テンプレート.ai>` を足すと、テンプレートの表・裏ページに各面を貼り込んだ入稿 PDF を出す。`--all-triggers --chars all --dud 2 --ref 8 --blank 20` で100枚セット（ガキ15・メスガキ20・トリガー40・ハズレ2・早見表8・白紙トリガー14・タイトル1）。文言と枚数は `index.html` の定義から読む。
+- 印刷データ：`tools/print_cards.py`。`python3 -I tools/print_cards.py --out <dir> --art <元立ち絵dir> --size 91x55 --bleed 1.5 --lion` で物理版52枚（ガキ15・キャラ12＝モモコ・グリムアロエ・アクア・パイン・シロ・クロ・トリガー18・早見表6・タイトル1）の表裏 PNG と1面1ページの PDF を出す。`--lion` でライオン名刺「異種」21面テンプレート用に回転済みの面画像と参考面付けも出す。 `--template <異種テンプレート.ai>` を足すと、テンプレートの表・裏ページに各面を貼り込んだ入稿データを `.pdf` と `.ai`（同じ内容のPDF互換ファイル。テンプレート由来の Illustrator 編集データは外してある）で出す。`--all-triggers --chars all --dud 2 --ref 8 --blank 20` で100枚セット（ガキ15・メスガキ20・トリガー40・ハズレ2・早見表8・白紙トリガー14・タイトル1）。文言と枚数は `index.html` の定義から読む。
 - 分析ページ：`docs/trigger-analysis.html`。`tools/summarize.py basic_p4=a.json basic_p3456=b.json fresh_p4=c.json fresh_p3456=d.json docs/sim_summary.json` でまとめ、`tools/build_analysis.py docs/sim_summary.json <artifact.html> docs/trigger-analysis.html` でページを生成する。
 - バランス検証：`tools/sim.js`（Playwright）。`node tools/sim.js 10000 4 0 deck=fresh` で「1万戦・4人戦・ハズレなし・新カードデッキ」をヘッドレスで回し、トリガーごとの勝率をJSONで出す。ゲーム側は `S.headless=true` で描画・待ち・演出・音を飛ばす。
 

@@ -714,9 +714,12 @@ if args.lion:
                 assert len(rs) == 21, f'テンプレートに {TH_MM + 2 * B_MM:g}×{TW_MM + 2 * B_MM:g}mm の枠が21個見つからない（{len(rs)}個）'
                 slots_pt.append([(r['x0'], H - r['bottom'], r['width'], r['height']) for r in rs])
         tw_pt, th_pt = float(tpl.pages[0].mediabox.width), float(tpl.pages[0].mediabox.height)
+        import shutil
+        from pypdf.generic import NameObject
         all_writer = PdfWriter()
         for si, sh in enumerate(sheets, 1):
-            writer = PdfWriter()
+            # テンプレートの文書を丸ごと複製（レイヤー＝OCProperties やページ枠はそのまま）
+            writer = PdfWriter(clone_from=args.template)
             for side in (0, 1):
                 buf = io.BytesIO(); c = rl_canvas.Canvas(buf, pagesize=(tw_pt, th_pt))
                 for k, (num, kind, name, f, b, ori) in enumerate(sh):
@@ -730,14 +733,26 @@ if args.lion:
                     c.drawImage(ImageReader(im), x, y, w, h)
                 c.showPage(); c.save(); buf.seek(0)
                 over = PdfReader(buf).pages[0]
-                base = PdfReader(args.template).pages[side]
-                base.merge_page(over)
-                writer.add_page(base); all_writer.add_page(base)
-            writer.write(os.path.join(ldir, f'template_T{si}.pdf'))
+                page = writer.pages[side]
+                page.merge_page(over)
+                # Illustrator の編集用データ（AIPrivateData）はテンプレートのものなので外す。
+                # 残っていると Illustrator はそちらを開いてしまい、貼ったカードが出ない
+                for key in ('/PieceInfo', '/LastModified'):
+                    if key in page: del page[NameObject(key)]
+            root = writer._root_object
+            for key in ('/Metadata', '/PieceInfo'):
+                if key in root: del root[NameObject(key)]
+            writer.add_metadata({'/Producer': 'mesugaki-coup print_cards.py', '/Creator': 'mesugaki-coup print_cards.py (PDF-compatible AI, no Illustrator private data)', '/Title': f'mesugaki-coup lion T{si}'})
+            pdf_path = os.path.join(ldir, f'template_T{si}.pdf')
+            writer.write(pdf_path)
+            shutil.copyfile(pdf_path, os.path.join(ldir, f'template_T{si}.ai'))   # PDF互換の .ai（編集データなし）
+            all_writer.append(pdf_path)
         all_writer.write(os.path.join(ldir, 'template_all.pdf'))
         readme_tpl = f'''
-  template_T<n>.pdf：公式テンプレート（{os.path.basename(args.template)}）の表・裏ページに、各カードを面A〜Uの枠へ貼り込んだもの（テンプレートのトンボ・ガイドはそのまま残してある）。
-  template_all.pdf：上を全テンプレートぶん連結（表→裏→表→裏…）。Illustrator で開けばそのまま .ai として保存できる。
+  template_T<n>.pdf / template_T<n>.ai：公式テンプレート（{os.path.basename(args.template)}）の表・裏ページに、各カードを面A〜Uの枠へ貼り込んだもの（テンプレートのトンボ・ガイド・レイヤーはそのまま）。
+    .ai は同じ内容の PDF互換ファイル（Illustrator の編集データは含まない。テンプレート由来の編集データは、残すと Illustrator がそちらを開いてカードが出ないので外してある）。
+    Illustrator で開くと PDF として読み込まれる。そのまま「別名で保存」すればネイティブの .ai になる。
+  template_all.pdf：上を全テンプレートぶん連結（表→裏→表→裏…）。
 '''
     readme += f"""
 [ライオン名刺 異種テンプレート用] lion/

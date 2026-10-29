@@ -746,12 +746,20 @@ if args.lion:
             pdf_path = os.path.join(ldir, f'template_T{si}.pdf')
             writer.write(pdf_path)
             shutil.copyfile(pdf_path, os.path.join(ldir, f'template_T{si}.ai'))   # PDF互換の .ai（編集データなし）
+            # Illustrator は複数ページの PDF を開くとき既定で1ページ目しか読まないので、表・裏を1ページずつの .ai にも分ける
+            for side, tag in ((0, 'front'), (1, 'back')):
+                src = PdfReader(pdf_path); w1 = PdfWriter()
+                w1.add_page(src.pages[side])                                   # そのページが使う画像だけが入る
+                w1._root_object[NameObject('/OCProperties')] = src.trailer['/Root']['/OCProperties'].clone(w1)   # レイヤー定義を引き継ぐ
+                w1.add_metadata({'/Producer': 'mesugaki-coup print_cards.py', '/Creator': 'mesugaki-coup print_cards.py (PDF-compatible AI, no Illustrator private data)', '/Title': f'mesugaki-coup lion T{si} {tag}'})
+                w1.write(os.path.join(ldir, f'template_T{si}_{tag}.ai'))
             all_writer.append(pdf_path)
         all_writer.write(os.path.join(ldir, 'template_all.pdf'))
         readme_tpl = f'''
   template_T<n>.pdf / template_T<n>.ai：公式テンプレート（{os.path.basename(args.template)}）の表・裏ページに、各カードを面A〜Uの枠へ貼り込んだもの（テンプレートのトンボ・ガイド・レイヤーはそのまま）。
     .ai は同じ内容の PDF互換ファイル（Illustrator の編集データは含まない。テンプレート由来の編集データは、残すと Illustrator がそちらを開いてカードが出ないので外してある）。
     Illustrator で開くと PDF として読み込まれる。そのまま「別名で保存」すればネイティブの .ai になる。
+  template_T<n>_front.ai / template_T<n>_back.ai：上の表ページ・裏ページを1ページずつに分けたもの。Illustrator は複数ページの PDF を開くとき既定で1ページ目しか読まないので、入稿はこちらが確実。
   template_all.pdf：上を全テンプレートぶん連結（表→裏→表→裏…）。
 '''
     readme += f"""

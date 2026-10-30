@@ -601,7 +601,7 @@ const TRIGGERS = [
   { id:'t32', name:'負けませ～ん',   text:'以後、自分を対象にする「ばいば～い♥」は2♥高くなる', persistent:true },
   { id:'t33', name:'メルカリん',     text:'以後、自分の「ばいば～い♥」は4♥。ただし上下どちらを脱がせるかは相手が選ぶ', persistent:true },
   { id:'t34', name:'弐撃決殺',       text:'次に自分が「ばいば～い♥」を撃った手番、続けてもう1アクションできる（1回）' },
-  { id:'t35', name:'みんなざぁ～こ！', text:'♥が7以上の相手全員は、次の自分の手番に必ず「ばいば～い♥」を撃つ' },
+  { id:'t35', name:'みんなざぁ～こ！', text:'♥が5以上の相手全員は、次の自分の手番に必ず「ばいば～い♥」を撃つ（その手番だけ5♥で撃てる）' },
   { id:'t36', name:'ざこ免除',       text:'以後、自分は10♥以上でも「ばいば～い♥」を強制されない', persistent:true, retired:true },
   // ---- 2軍：ざぁ～こ♥に関わる札 ----
   { id:'t37', name:'メスガキ税',     text:'以後、ほかの人が「ざぁ～こ♥」で♥を得るたび、そのうち1♥を自分がもらう', persistent:true },
@@ -702,9 +702,9 @@ const chance = p => Math.random()<p;
 const alive = () => S.players.filter(p=>p.alive);
 const othersOf = p => S.players.filter(q=>q.alive && q!==p);
 function orderFrom(p){ const n=S.players.length, out=[]; for(let k=1;k<n;k++){ const q=S.players[(p.i+k)%n]; if(q.alive) out.push(q); } return out; }
-function coupCost(p){ const taxed=S.players.some(q=>q!==p && q.alive && q.flags.coupTax); const base=p.flags.cheapCoup?4:RULES.coupCost; return Math.max(1, base + (taxed?RULES.coupCostTaxed-RULES.coupCost:0) - (p.flags.coupDiscount?2:0)); }
+function coupCost(p){ const taxed=S.players.some(q=>q!==p && q.alive && q.flags.coupTax); const base=p.flags.cheapCoup?4:RULES.coupCost; const c=Math.max(1, base + (taxed?RULES.coupCostTaxed-RULES.coupCost:0) - (p.flags.coupDiscount?2:0)); return p.flags.coupFive ? Math.min(c, 5) : c; }
 // 相手ごとのばいば～い♥コスト（負けませ～ん）
-function coupCostFor(p, q){ return coupCost(p) + (q && q.flags.shieldPrice ? 2 : 0); }
+function coupCostFor(p, q){ const c=coupCost(p) + (q && q.flags.shieldPrice ? 2 : 0); return p.flags.coupFive ? Math.min(c, 5) : c; }
 // ざぁ～こ♥の獲得♥（独り占め）
 function taxAmount(p){ return 3 + (p.flags.taxMonopoly?1:0) - (S.players.some(q=>q!==p && q.alive && q.flags.taxMonopoly)?1:0); }
 const hasRole = (p,r) => p.hand.some(c=>c.role===r);
@@ -799,12 +799,15 @@ async function takeTurn(p){
   if(p.flags.hidden){ delete p.flags.hidden; log(`${p.name} の「かくれんぼ」が終わった`, 'sys'); }
   render();
   const must = !!p.flags.mustCoup; delete p.flags.mustCoup;
+  if(must) p.flags.coupFive=true;   // みんなざぁ～こ！：この手番だけ ばいば～い♥ が5♥
   const forced = ((p.hearts>=RULES.forcedCoupAt && !(RULES.win15LiftsForcedCoup && p.flags.win15) && !p.flags.noForce) || must) && targetsFor(p,'coup').length>0;
-  if(must && forced) log(`${p.name} は「みんなざぁ～こ！」でばいば～い♥を撃たなければならない`, 'sys');
+  if(must && forced) log(`${p.name} は「みんなざぁ～こ！」でばいば～い♥を撃たなければならない（この手番は5♥）`, 'sys');
+  else if(must) delete p.flags.coupFive;
   let choice;
   if(p.cpu){ await tutHook('cpuTurn'); setIdle(`${p.name} の番…`); await wait(800); choice=cpuChooseAction(p, forced); }
   else choice=await humanChooseAction(p, forced);
   await performAction(p, choice.action, choice.target);
+  delete p.flags.coupFive;
   // 弐撃決殺：ばいば～い♥を撃った手番は続けてもう1アクション
   if(choice.action==='coup' && p.flags.rapid && p.alive && !S.winner && !checkWin()){
     delete p.flags.rapid; log(`${p.name} の「弐撃決殺」！ 続けてもう1アクション`, 'sys'); render();
@@ -1245,7 +1248,7 @@ async function resolveTrigger(p, card, by){
     case 't32': p.flags.shieldPrice=true; log(`${p.name} を狙う ばいば～い♥ は2♥高くなった（負けませ～ん）`); return;
     case 't33': p.flags.cheapCoup=true; log(`${p.name} の ばいば～い♥ は4♥になった。ただし脱がせる上下は相手が選ぶ（メルカリん）`); return;
     case 't34': p.flags.rapid=true; log(`${p.name} は次に ばいば～い♥ を撃った手番、続けてもう1アクションできる（弐撃決殺）`); return;
-    case 't35': { const hit=othersOf(p).filter(q=>q.alive && q.hearts>=7); for(const q of hit) q.flags.mustCoup=true; log(hit.length?`「みんなざぁ～こ！」：${hit.map(q=>q.name).join('・')} は次の手番に必ず ばいば～い♥ を撃つ`:'「みんなざぁ～こ！」：7♥以上の相手がいないので不発', 'sys'); return; }
+    case 't35': { const hit=othersOf(p).filter(q=>q.alive && q.hearts>=5); for(const q of hit) q.flags.mustCoup=true; log(hit.length?`「みんなざぁ～こ！」：${hit.map(q=>q.name).join('・')} は次の手番に必ず ばいば～い♥ を撃つ`:'「みんなざぁ～こ！」：7♥以上の相手がいないので不発', 'sys'); return; }
     case 't36': p.flags.noForce=true; log(`${p.name} は10♥以上でも ばいば～い♥ を強制されなくなった（ざこ免除）`); return;
     case 't37': p.flags.taxLevy=true; log(`${p.name} は、ほかの人の「ざぁ～こ♥」から1♥ずつもらうようになった（メスガキ税）`); return;
     case 't38': p.flags.taxSuspicion=true; log(`${p.name} は「ざぁ～こ♥」へのダウトに外れてもプライドの代わりに2♥で済むようになった（ほんとに～？）`); return;
@@ -1601,7 +1604,7 @@ function renderEffects(){
     if(p.flags.shieldPrice) items.push(['負けませ～ん', `${p.name} への ばいば～い♥ は+2♥`]);
     if(p.flags.cheapCoup) items.push(['メルカリん', `${p.name} の ばいば～い♥ は4♥（脱がせる上下は相手が選ぶ）`]);
     if(p.flags.rapid) items.push(['弐撃決殺', `${p.name} は次に ばいば～い♥ を撃った手番にもう1アクション`]);
-    if(p.flags.mustCoup) items.push(['みんなざぁ～こ！', `${p.name} は次の手番に必ず ばいば～い♥`]);
+    if(p.flags.mustCoup) items.push(['みんなざぁ～こ！', `${p.name} は次の手番に必ず ばいば～い♥（その手番は5♥）`]);
     if(p.flags.noForce) items.push(['ざこ免除', `${p.name} は10♥以上でも ばいば～い♥ を強制されない`]);
     if(p.flags.taxLevy) items.push(['メスガキ税', `ほかの人の「ざぁ～こ♥」から ${p.name} が1♥もらう`]);
     if(p.flags.taxSuspicion) items.push(['ほんとに～？', `${p.name} は「ざぁ～こ♥」へのダウトに外れても2♥で済む`]);

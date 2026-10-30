@@ -34,6 +34,7 @@ ap.add_argument('--all-triggers', action='store_true', help='定義されてい�
 ap.add_argument('--dud', type=int, default=0, help='ハズレ（効果なし）トリガーの枚数')
 ap.add_argument('--ref', type=int, default=6, help='早見表の枚数')
 ap.add_argument('--blank', type=int, default=0, help='白紙トリガー（自作用）の枚数')
+ap.add_argument('--chara-copies', type=int, default=1, help='キャラカードを何組入れるか（スペア用。2なら各キャラの上下が2枚ずつ）')
 ap.add_argument('--template', default=None, help='ライオン名刺 異種の AI/PDF テンプレート。指定すると各面に貼り込んだ入稿 PDF（表・裏の2ページ×テンプレート数）を lion/ に出す')
 ap.add_argument('--samples', action='store_true', help='見本（数枚の表裏を1枚の画像に）だけ出す')
 ap.add_argument('--lion', action='store_true', help='ライオン名刺 異種テンプレート向けの回転済み画像と面付けシートも出す')
@@ -570,7 +571,7 @@ def title_back():
     d.rounded_rectangle(inner, radius=int(3 * MM), outline=(255, 95, 168), width=int(0.6 * MM))
     text_center(d, PW / 2, inner[1] + int(2.5 * MM), '内容物', font(9.5, 'head'), fill=(184, 48, 106))
     x0 = inner[0] + int(3 * MM); y = inner[1] + int(11 * MM)
-    items = [('ガキカード', f'{len(ROLES) * 3}枚（5種×3）'), ('キャラカード', f'{len(PRINT_CHARS) * 2}枚（{len(PRINT_CHARS)}キャラ×上下・両面）'),
+    items = [('ガキカード', f'{len(ROLES) * 3}枚（5種×3）'), ('キャラカード', f'{len(PRINT_CHARS) * 2 * args.chara_copies}枚（{len(PRINT_CHARS)}キャラ×上下' + (f'×{args.chara_copies}組' if args.chara_copies > 1 else '') + '・両面）'),
              ('トリガーカード', f'{len(TRIG18)}枚' + (f'（ほかにハズレ{args.dud}枚' + (f'・白紙{args.blank}枚' if args.blank else '') + '）' if args.dud or args.blank else (f'（ほかに白紙{args.blank}枚）' if args.blank else ''))), ('早見表', f'{args.ref}枚'), ('タイトルカード', '1枚（この札）'), ('♥トークン', '50個（別途用意）'), ('ルールブック', '別紙')]
     vx = x0 + int(22 * MM); vw = inner[2] - int(3 * MM) - vx
     for n, v in items:
@@ -587,8 +588,9 @@ for rid in ROLES:
         n += 1; cards.append((n, 'gaki', f'{ROLES[rid]["name"]}_{k + 1}', role_front(rid), role_back(), 'P'))
 for cid in PRINT_CHARS:
     cc = char_cards(cid)
-    for half in ('top', 'bottom'):
-        n += 1; cards.append((n, 'chara', f'{CHAR_NAME[cid]}_{"上" if half == "top" else "下"}', cc[half][0], cc[half][1], 'L'))
+    for k in range(args.chara_copies):
+        for half in ('top', 'bottom'):
+            n += 1; cards.append((n, 'chara', f'{CHAR_NAME[cid]}_{"上" if half == "top" else "下"}' + (f'_{k + 1}' if args.chara_copies > 1 else ''), cc[half][0], cc[half][1], 'L'))
 for tid in TRIG18:
     n += 1; cards.append((n, 'trigger', TRIGGERS[tid]['name'], trigger_front(tid), trigger_back(), 'P'))
 for k in range(args.dud):
@@ -653,9 +655,9 @@ readme = f"""メスガキ・クー 物理版 印刷データ
 仕上がり {TW_MM:g}×{TH_MM:g}mm、塗り足し各{B_MM:g}mm（データは {TW_MM + 2 * B_MM:g}×{TH_MM + 2 * B_MM:g}mm）、{args.dpi}dpi、RGB PNG。
 cards/ に1枚ずつ、ファイル名の末尾 _front が表、_back が裏。mesugaki-coup_cards.pdf は同じ内容を1ページ1面で表→裏の順に並べたもの。
 仕上がり線から内側 3mm に文字と枠を収めてある。preview.png の赤線が仕上がり線（印刷データには入っていない）。
-キャラカード（{len(PRINT_CHARS) * 2}枚）だけ横長。表裏は上下が同じ向き（長辺でめくる想定）。
+キャラカード（{len(PRINT_CHARS) * 2 * args.chara_copies}枚）だけ横長。表裏は上下が同じ向き（長辺でめくる想定）。
 
-枚数：ガキカード {len(ROLES) * 3}、キャラカード {len(PRINT_CHARS) * 2}、トリガー {len(TRIG18)}{f'、ハズレ {args.dud}' if args.dud else ''}、早見表 {args.ref}{f'、白紙トリガー {args.blank}' if args.blank else ''}、タイトル 1 ＝ {len(cards)}枚
+枚数：ガキカード {len(ROLES) * 3}、キャラカード {len(PRINT_CHARS) * 2 * args.chara_copies}{f'（{len(PRINT_CHARS)}キャラ×上下×{args.chara_copies}組）' if args.chara_copies > 1 else ''}、トリガー {len(TRIG18)}{f'、ハズレ {args.dud}' if args.dud else ''}、早見表 {args.ref}{f'、白紙トリガー {args.blank}' if args.blank else ''}、タイトル 1 ＝ {len(cards)}枚
 キャラ：{'・'.join(CHAR_NAME[c] for c in PRINT_CHARS)}
 トリガー：{'・'.join(TRIGGERS[t]['name'] for t in TRIG18)}
 """

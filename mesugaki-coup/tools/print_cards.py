@@ -26,7 +26,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--out', required=True)
-ap.add_argument('--art', default=None, help='Bombergirl 立ち絵（<name>000.png 通常 / <name>001.jpg ボロ）のフォルダ')
+ap.add_argument('--art', default=None, help='Bombergirl 立ち絵（<name>000.png 通常 / <name>001.jpg ボロ）のフォルダ。"shapes" で図形だけのオリジナル紙人形にする（印刷入稿向け）')
 ap.add_argument('--index', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'index.html'))
 ap.add_argument('--size', default='91x55', help='仕上がり mm（長辺x短辺）')
 ap.add_argument('--bleed', type=float, default=1.5, help='塗り足し mm（各辺）')
@@ -428,7 +428,7 @@ def char_cards(cid):
     """-> {'top': (front, back), 'bottom': (front, back)}"""
     out = {}
     src000 = src001 = None
-    if args.art:
+    if args.art and args.art != 'shapes':
         for n in ALIAS.get(cid, [cid]):
             for ext in ('png', 'PNG'):
                 p = os.path.join(args.art, f'{n}000.{ext}')
@@ -436,7 +436,14 @@ def char_cards(cid):
             for ext in ('jpg', 'JPG', 'png'):
                 p = os.path.join(args.art, f'{n}001.{ext}')
                 if os.path.exists(p): src001 = p
-    if src000 and src001:
+    if args.art == 'shapes':
+        # 図形版：立ち絵を使わず、丸と四角で組んだ紙人形（tools/shape_chars.py）
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('shape_chars', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shape_chars.py'))
+        sc = importlib.util.module_from_spec(spec); spec.loader.exec_module(sc)
+        fc = sc.full(cid, FW, FH, False); bc = sc.full(cid, FW, FH, True)
+        fronts = (fc.crop((0, 0, LW, LH)), fc.crop((0, LH, LW, FH))); backs = (bc.crop((0, 0, LW, LH)), bc.crop((0, LH, LW, FH)))
+    elif src000 and src001:
         fc = char_front_canvas(src000, WAIST.get(cid, 0.5)); bc = char_back_canvas(src001, BORO_WAIST.get(cid, 0.5))
         fronts = (fc.crop((0, 0, LW, LH)), fc.crop((0, LH, LW, FH))); backs = (bc.crop((0, 0, LW, LH)), bc.crop((0, LH, LW, FH)))
     else:

@@ -573,17 +573,34 @@ def title_front():
 
 
 def title_back():
-    im = Image.new('RGB', (PW, PH), PAPER); d = ImageDraw.Draw(im)
+    """タイトルカードの裏：お兄さん。卓の中央に置き、♥はここからもらう／ここに払う"""
+    im = Image.new('RGB', (PW, PH), (255, 247, 238)); d = ImageDraw.Draw(im)
+    pink = (255, 95, 168)
     inner = (BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE)
-    d.rounded_rectangle(inner, radius=int(3 * MM), outline=(255, 95, 168), width=int(0.6 * MM))
-    text_center(d, PW / 2, inner[1] + int(2.5 * MM), '内容物', font(9.5, 'head'), fill=(184, 48, 106))
-    x0 = inner[0] + int(3 * MM); y = inner[1] + int(11 * MM)
-    items = [('ガキカード', f'{len(ROLES) * 3}枚（5種×3）'), ('キャラカード', f'{len(PRINT_CHARS) * 2 * args.chara_copies}枚（{len(PRINT_CHARS)}キャラ×上下' + (f'×{args.chara_copies}組' if args.chara_copies > 1 else '') + '・両面）'),
-             ('トリガーカード', f'{len(TRIG18)}枚' + (f'（ほかにハズレ{args.dud}枚' + (f'・白紙{args.blank}枚' if args.blank else '') + '）' if args.dud or args.blank else (f'（ほかに白紙{args.blank}枚）' if args.blank else ''))), ('早見表', f'{args.ref}枚'), ('タイトルカード', '1枚（この札）'), ('♥トークン', '50個（別途用意）'), ('ルールブック', '別紙')]
-    vx = x0 + int(22 * MM); vw = inner[2] - int(3 * MM) - vx
-    for n, v in items:
-        d.text((x0, y), n, font=font(6.8, 'black'), fill=INK); y2 = draw_text_block(d, (vx, y + int(0.3 * MM)), v, font(5.6), vw, fill=DIM, spacing=1.25); y = max(y + int(6.2 * MM), y2 + int(1.2 * MM))
-    draw_text_block(d, (x0, y + int(3 * MM)), 'トリガーは1ゲーム18枚（3〜6人に3枚ずつ配り、2枚を選んで仕込む）。基本・新カード・おすすめの各デッキの組み合わせはルールブック参照。', font(5.5), inner[2] - inner[0] - int(6 * MM), fill=DIM, spacing=1.4)
+    d.rounded_rectangle(inner, radius=int(3 * MM), outline=pink, width=int(0.6 * MM))
+    hb = int(12 * MM)
+    d.rounded_rectangle((inner[0], inner[1], inner[2], inner[1] + hb), radius=int(3 * MM), fill=pink)
+    d.rectangle((inner[0], inner[1] + hb // 2, inner[2], inner[1] + hb), fill=pink)
+    text_center(d, PW / 2, inner[1] + int(1.6 * MM), 'お兄さん', font(15, 'head'), fill=(255, 255, 255))
+    text_center(d, PW / 2, inner[1] + int(8.2 * MM), '♥ BANK', font(6), fill=(255, 220, 236))
+    # 絵（後ろにうすい円とハート）
+    art = os.path.join(os.path.dirname(os.path.abspath(args.index)), 'img', 'oniisan.png')
+    area_top, area_bot = inner[1] + hb + int(3 * MM), inner[3] - int(17 * MM)
+    cxp, cyp = PW / 2, (area_top + area_bot) / 2
+    rad = min(inner[2] - inner[0] - int(8 * MM), area_bot - area_top) * 0.5
+    d.ellipse((cxp - rad, cyp - rad, cxp + rad, cyp + rad), fill=(255, 232, 242))
+    for k, (ax, ay, fs) in enumerate(((-0.95, -0.55, 12), (0.98, -0.3, 10), (-0.9, 0.5, 9), (0.92, 0.62, 12), (0.05, -1.08, 8))):
+        text_center(d, cxp + ax * rad, cyp + ay * rad - int(1.5 * MM), '♥', font(fs), fill=mix(pink, (255, 255, 255), 0.35 + 0.1 * (k % 3)))
+    if os.path.exists(art):
+        pic = Image.open(art).convert('RGBA'); pw_, ph_ = pic.size
+        sc = min((inner[2] - inner[0] - int(10 * MM)) / pw_, (area_bot - area_top) / ph_)
+        pic = pic.resize((max(1, int(pw_ * sc)), max(1, int(ph_ * sc))), Image.LANCZOS)
+        im.paste(pic, (int(PW / 2 - pic.size[0] / 2), int(area_bot - pic.size[1])), pic)
+        d = ImageDraw.Draw(im)
+    # 説明
+    x0 = inner[0] + int(3 * MM); wdt = inner[2] - inner[0] - int(6 * MM)
+    draw_text_block(d, (x0, inner[3] - int(14.5 * MM)), '卓の中央に置く。♥はお兄さんからもらい、払うときもお兄さんに返す。', font(6.5, 'black'), wdt, fill=INK, spacing=1.35, align='center')
+    text_center(d, PW / 2, inner[3] - int(3.6 * MM), 'メスガキ・クー', font(5), fill=(184, 48, 106))
     return im
 
 

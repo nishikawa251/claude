@@ -241,6 +241,8 @@ button{font:inherit;color:inherit}
 /* 山札・捨て札 */
 .piles{display:flex;gap:26px;justify-content:center;align-items:flex-end;padding:4px 0 2px}
 .pile{display:flex;flex-direction:column;align-items:center;gap:5px}
+.pile.oni img{height:54px;width:auto;filter:drop-shadow(0 2px 0 rgba(0,0,0,.45))}
+.pile.oni .plbl{text-align:center;line-height:1.15} .pile.oni .plbl small{font-size:9px;color:var(--dim)}
 .pstack{position:relative;width:62px;height:46px}
 .pstack span{position:absolute;inset:0;background:repeating-linear-gradient(45deg,#4c2a5e 0 6px,#3b1f4b 6px 12px);box-shadow:0 0 0 2px #7a4a8e inset,0 2px 0 0 rgba(0,0,0,.45)}
 .pstack span:nth-child(2){transform:translate(2px,-3px)} .pstack span:nth-child(3){transform:translate(4px,-6px)}
@@ -494,7 +496,7 @@ button{font:inherit;color:inherit}
     <div id="opps" class="seats"></div>
     <div class="center">
       <div id="actionBanner" class="abanner" hidden></div>
-      <div id="piles" class="piles" aria-label="山札と捨て札"><div class="pile" id="pileDeck"><div class="pstack"><span></span><span></span><span></span></div><div class="plbl">山札 <b>0</b></div></div><div class="pile disc" id="pileDisc"><div class="pstack"><span></span><span></span><span></span></div><div class="plbl">捨て札 <b>0</b></div></div></div>
+      <div id="piles" class="piles" aria-label="山札と捨て札"><div class="pile oni" id="pileOni" title="♥はお兄さんからもらい、払うときもお兄さんに返す"><img src="img/oniisan.png" alt="" draggable="false"><div class="plbl">お兄さん<br><small>♥はここから</small></div></div><div class="pile" id="pileDeck"><div class="pstack"><span></span><span></span><span></span></div><div class="plbl">山札 <b>0</b></div></div><div class="pile disc" id="pileDisc"><div class="pstack"><span></span><span></span><span></span></div><div class="plbl">捨て札 <b>0</b></div></div></div>
       <div id="deckInfo" class="deck"></div>
       <div id="effects" class="effects" hidden></div>
     </div>
@@ -2143,6 +2145,7 @@ function buildRules(){
 
   <div class="rl-sec"><h3><span class="no">1</span>準備</h3>
   <ul class="rl-list">
+    <li>卓の中央に<b>お兄さんカード</b>（タイトルカードの裏）を置く。♥はお兄さんからもらい、払うときもお兄さんに返す。</li>
     <li>各自、<b>ガキカード2枚</b>（＝ライフ2つ）と <b>2♥</b> を持つ。手札は自分だけ見る。</li>
     <li><b>キャラカード</b> 上半身・下半身を並べる。表は普通の服、裏はボロ絵。</li>
     <li><b>トリガーカード</b>を${RULES.triggerDeal}枚引き、${RULES.triggerDeal>2?'2枚を選んで上半身・下半身の横に敷く（残りは山へ）':'上半身・下半身の横に1枚ずつ敷く'+(RULES.dudCount>0?'（ハズレも仕込むことになる）':'')}。自分のトリガーは自分だけ見てよい。</li>

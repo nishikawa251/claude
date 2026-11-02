@@ -561,14 +561,29 @@ def quick_back():
 
 def title_front():
     im = stripes(PW, PH, (56, 22, 60), (44, 16, 48), step=int(2.4 * MM)); d = ImageDraw.Draw(im)
-    d.rounded_rectangle((BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE), radius=int(3 * MM), outline=(255, 95, 168), width=int(0.8 * MM))
-    text_center(d, PW / 2, PH / 2 - int(26 * MM), '♥', font(26), fill=(255, 95, 168))
-    text_center(d, PW / 2, PH / 2 - int(14 * MM), 'メスガキに「は？」', font(10.5, 'head'), fill=(255, 255, 255))
-    text_center(d, PW / 2, PH / 2 - int(8 * MM), 'って言うゲーム', font(10.5, 'head'), fill=(255, 255, 255))
-    text_center(d, PW / 2, PH / 2 - int(0.5 * MM), '～メスガキ・クー～', font(8.5, 'head'), fill=(255, 209, 102))
-    text_center(d, PW / 2, PH / 2 + int(5.5 * MM), 'MESUGAKI COUP', font(6), fill=(217, 184, 230))
-    text_center(d, PW / 2, PH / 2 + int(12 * MM), '3〜6人 ／ 15〜30分', font(7, 'black'), fill=(255, 209, 102))
-    text_center(d, PW / 2, PH / 2 + int(18 * MM), 'ハッタリと「は？」でわからせ合う', font(6), fill=(217, 184, 230))
+    inner = (BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE)
+    d.rounded_rectangle(inner, radius=int(3 * MM), outline=(255, 95, 168), width=int(0.8 * MM))
+    text_center(d, PW / 2, inner[1] + int(5 * MM), '♥', font(22), fill=(255, 95, 168))
+    text_center(d, PW / 2, inner[1] + int(16 * MM), 'メスガキに「は？」', font(10.5, 'head'), fill=(255, 255, 255))
+    text_center(d, PW / 2, inner[1] + int(22 * MM), 'って言うゲーム', font(10.5, 'head'), fill=(255, 255, 255))
+    text_center(d, PW / 2, inner[1] + int(29.5 * MM), '～メスガキ・クー～', font(8.5, 'head'), fill=(255, 209, 102))
+    text_center(d, PW / 2, inner[1] + int(35.5 * MM), 'MESUGAKI COUP', font(6), fill=(217, 184, 230))
+    text_center(d, PW / 2, inner[1] + int(41.5 * MM), '3〜6人 ／ 15〜30分', font(7, 'black'), fill=(255, 209, 102))
+    text_center(d, PW / 2, inner[1] + int(47 * MM), 'ハッタリと「は？」でわからせ合う', font(6), fill=(217, 184, 230))
+    # 内容物（カード種別ごとの枚数）
+    n_chara = len(PRINT_CHARS) * 2 * args.chara_copies
+    items = [('ガキカード', f'{len(ROLES) * 3}枚'), ('キャラカード', f'{n_chara}枚' + (f'（{len(PRINT_CHARS)}キャラ×上下×{args.chara_copies}組）' if args.chara_copies > 1 else f'（{len(PRINT_CHARS)}キャラ×上下）')),
+             ('トリガーカード', f'{len(TRIG18)}枚' + ((f'＋ハズレ{args.dud}' if args.dud else '') + (f'＋白紙{args.blank}' if args.blank else ''))),
+             ('早見表', f'{args.ref}枚'), ('お兄さん', '1枚（この札の裏）')]
+    bx0, bx1 = inner[0] + int(2.5 * MM), inner[2] - int(2.5 * MM)
+    by0 = inner[1] + int(53 * MM); by1 = inner[3] - int(6 * MM)
+    d.rounded_rectangle((bx0, by0, bx1, by1), radius=int(1.5 * MM), fill=(30, 10, 34))
+    text_center(d, PW / 2, by0 + int(1.2 * MM), '内容物', font(6, 'black'), fill=(255, 209, 102))
+    y = by0 + int(5.2 * MM); lx = bx0 + int(2 * MM); vx = bx0 + int(17 * MM)
+    for k, v in items:
+        d.text((lx, y), k, font=font(5.5, 'black'), fill=(255, 255, 255))
+        y = draw_text_block(d, (vx, y), v, font(5.5), bx1 - vx - int(1.5 * MM), fill=(217, 184, 230), spacing=1.2) + int(0.6 * MM)
+    text_center(d, PW / 2, inner[3] - int(4.2 * MM), f'合計 {len(ROLES) * 3 + n_chara + len(TRIG18) + args.dud + args.blank + args.ref + 1}枚', font(5), fill=(217, 184, 230))
     return im
 
 

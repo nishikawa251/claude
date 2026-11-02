@@ -298,7 +298,7 @@ def trigger_front(tid):
     text_center(d, PW / 2, inner[1] + int(8 * MM) + (font(15, 'head').size - nf.size) // 2, name, nf, fill=(255, 255, 255))
     d.line((inner[0] + int(4 * MM), inner[1] + int(17 * MM), inner[2] - int(4 * MM), inner[1] + int(17 * MM)), fill=edge, width=int(0.4 * MM))
     # 常時／1回 の帯
-    tag = '常時' if T['persistent'] else ('1回' if '（1回）' in T['text'] else '発動時')
+    tag = '常時' if T['persistent'] else ('1回' if '（1回）' in T['text'] else '即効')
     tw = font(6).getlength(tag) + int(4 * MM)
     d.rounded_rectangle((PW / 2 - tw / 2, inner[1] + int(19 * MM), PW / 2 + tw / 2, inner[1] + int(24.5 * MM)), radius=int(1 * MM), fill=(255, 209, 102) if T['persistent'] else edge)
     text_center(d, PW / 2, inner[1] + int(20 * MM), tag, font(6), fill=(58, 42, 0) if T['persistent'] else (255, 255, 255))

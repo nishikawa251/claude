@@ -121,7 +121,7 @@ DATA = {
   },
   'rating': RATING,
   'allcards': [{'id':i,'name':CNAME[i],'text':TEXT.get(i,''),'family':cat_of(i),
-                'kind':'常時' if i in PERSIST else '発動時','decks':[k for k,v in PRESETS.items() if i in v],'retired':i in RETIRED,'fun':FUN.get(i),'why':FUN_WHY.get(i,'')} for i in CNAME],
+                'kind':'常時' if i in PERSIST else '即効','decks':[k for k,v in PRESETS.items() if i in v],'retired':i in RETIRED,'fun':FUN.get(i),'why':FUN_WHY.get(i,'')} for i in CNAME],
   'phys': PHYS,
   'mixIds': MIX_IDS,
   'hasDud': hasDud,

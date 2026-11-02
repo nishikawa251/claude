@@ -290,69 +290,90 @@ def role_back():
 
 
 # ---------------------------------------------------------------- トリガーカード
+CAT_COLOR = {'attack': (226, 72, 96), 'defense': (64, 128, 214), 'rule': (142, 88, 206), 'special': (38, 160, 140)}
+
+
 def trigger_front(tid):
-    T = TRIGGERS[tid]
-    navy = (43, 49, 72); edge = (90, 106, 168)
-    im = Image.new('RGB', (PW, PH), navy); d = ImageDraw.Draw(im)
+    """白ベース。分類ごとの色で帯と枠を付ける（攻撃系＝赤、防御系＝青、ルール変更＝紫、特殊系＝緑）"""
+    T = TRIGGERS[tid]; cat = cat_of(tid); col = CAT_COLOR[cat]
+    im = Image.new('RGB', (PW, PH), PAPER); d = ImageDraw.Draw(im)
+    d.rectangle((0, 0, PW, PH), fill=mix(col, (255, 255, 255), 0.88))          # 塗り足しまで淡い色
     inner = (BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE)
-    d.rounded_rectangle(inner, radius=int(3 * MM), outline=edge, width=int(0.7 * MM))
-    text_center(d, PW / 2, inner[1] + int(3 * MM), 'TRIGGER', font(6), fill=(138, 152, 214))
-    # 名前（長いと縮小）
-    name = T['name']; nf = fit_font(name, inner[2] - inner[0] - int(8 * MM), 15, 9, 'head')
-    text_center(d, PW / 2, inner[1] + int(8 * MM) + (font(15, 'head').size - nf.size) // 2, name, nf, fill=(255, 255, 255))
-    d.line((inner[0] + int(4 * MM), inner[1] + int(17 * MM), inner[2] - int(4 * MM), inner[1] + int(17 * MM)), fill=edge, width=int(0.4 * MM))
-    # 常時／1回 の帯
+    d.rounded_rectangle(inner, radius=int(3 * MM), fill=(255, 255, 255), outline=col, width=int(0.6 * MM))
+    # 見出し帯：TRIGGER ＋ カード名
+    hb = int(14 * MM)
+    d.rounded_rectangle((inner[0], inner[1], inner[2], inner[1] + hb), radius=int(3 * MM), fill=col)
+    d.rectangle((inner[0], inner[1] + hb // 2, inner[2], inner[1] + hb), fill=col)
+    text_center(d, PW / 2, inner[1] + int(1.3 * MM), 'TRIGGER', font(5), fill=mix(col, (255, 255, 255), 0.75))
+    name = T['name']; nf = fit_font(name, inner[2] - inner[0] - int(6 * MM), 14, 9, 'head')
+    text_center(d, PW / 2, inner[1] + int(4.6 * MM) + (font(14, 'head').size - nf.size) // 2, name, nf, fill=(255, 255, 255))
+    # 常時／即効／1回 の札
     tag = '常時' if T['persistent'] else ('1回' if '（1回）' in T['text'] else '即効')
-    tw = font(6).getlength(tag) + int(4 * MM)
-    d.rounded_rectangle((PW / 2 - tw / 2, inner[1] + int(19 * MM), PW / 2 + tw / 2, inner[1] + int(24.5 * MM)), radius=int(1 * MM), fill=(255, 209, 102) if T['persistent'] else edge)
-    text_center(d, PW / 2, inner[1] + int(20 * MM), tag, font(6), fill=(58, 42, 0) if T['persistent'] else (255, 255, 255))
-    # 効果文
+    tf = font(6, 'black'); tw = tf.getlength(tag) + int(5 * MM); ty = inner[1] + hb + int(2.2 * MM)
+    gold = T['persistent']
+    d.rounded_rectangle((PW / 2 - tw / 2, ty, PW / 2 + tw / 2, ty + int(5.6 * MM)), radius=int(1.2 * MM), fill=(255, 209, 102) if gold else mix(col, (255, 255, 255), 0.85), outline=None if gold else col, width=int(0.4 * MM))
+    text_center(d, PW / 2, ty + int(1.0 * MM), tag, tf, fill=(58, 42, 0) if gold else col)
+    # 効果文（収まる最大サイズ。最終行が2文字以下の孤立も避ける）
     x0 = inner[0] + int(4 * MM); wdt = inner[2] - inner[0] - int(8 * MM)
     body = T['text'].replace('（1回）', '')
-    top, bottom = inner[1] + int(29 * MM), inner[3] - int(11 * MM)
+    top, bottom = inner[1] + hb + int(11 * MM), inner[3] - int(11 * MM)
     fs = 12 if len(body) <= 24 else 11 if len(body) <= 40 else 10 if len(body) <= 60 else 9
-    while fs > 7:                              # 収まるまで縮める。最終行が2文字以下の孤立も避ける
+    while fs > 7:
         f = font(fs); ls = wrap(body, f, wdt); n = len(ls)
         if top + n * int(f.size * 1.5) <= bottom and not (n > 1 and len(ls[-1]) <= 2): break
         fs -= 0.5
-    draw_text_block(d, (x0, top), body, font(fs), wdt, fill=(230, 236, 255), spacing=1.5)
-    # セット名
+    draw_text_block(d, (x0, top), body, font(fs), wdt, fill=INK, spacing=1.5)
+    # 下：分類／おすすめ、ロゴ
     sets = 'おすすめ' if tid in PRESETS['mix'] else ''
-    base = CAT_LABEL[cat_of(tid)]
-    text_center(d, PW / 2, inner[3] - int(7 * MM), base + ('／' + sets if sets else ''), font(5.5), fill=(138, 152, 214))
-    text_center(d, PW / 2, inner[3] - int(3.6 * MM), 'メスガキ・クー', font(5), fill=(110, 120, 170))
+    d.line((inner[0] + int(4 * MM), inner[3] - int(9.5 * MM), inner[2] - int(4 * MM), inner[3] - int(9.5 * MM)), fill=mix(col, (255, 255, 255), 0.6), width=int(0.4 * MM))
+    text_center(d, PW / 2, inner[3] - int(8 * MM), CAT_LABEL[cat] + ('／' + sets if sets else ''), font(5.5, 'black'), fill=col)
+    text_center(d, PW / 2, inner[3] - int(3.8 * MM), 'メスガキ・クー', font(5), fill=DIM)
     return im
 
 
 def dud_front():
-    navy = (42, 42, 54); edge = (74, 74, 92)
-    im = Image.new('RGB', (PW, PH), navy); d = ImageDraw.Draw(im)
+    """ハズレ：白ベースのグレー"""
+    col = (150, 150, 162)
+    im = Image.new('RGB', (PW, PH), PAPER); d = ImageDraw.Draw(im)
+    d.rectangle((0, 0, PW, PH), fill=mix(col, (255, 255, 255), 0.88))
     inner = (BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE)
-    d.rounded_rectangle(inner, radius=int(3 * MM), outline=edge, width=int(0.7 * MM))
-    text_center(d, PW / 2, inner[1] + int(3 * MM), 'TRIGGER', font(6), fill=(120, 120, 140))
-    text_center(d, PW / 2, inner[1] + int(8 * MM), 'ハズレ', font(15, 'head'), fill=(200, 200, 215))
-    d.line((inner[0] + int(4 * MM), inner[1] + int(17 * MM), inner[2] - int(4 * MM), inner[1] + int(17 * MM)), fill=edge, width=int(0.4 * MM))
-    text_center(d, PW / 2, inner[1] + int(30 * MM), '効果なし', font(9, 'black'), fill=(154, 154, 168))
-    text_center(d, PW / 2, inner[1] + int(38 * MM), '脱いだのに何も起きない……', font(6), fill=(120, 120, 140))
-    text_center(d, PW / 2, inner[3] - int(3.6 * MM), 'メスガキ・クー', font(5), fill=(110, 110, 130))
+    d.rounded_rectangle(inner, radius=int(3 * MM), fill=(255, 255, 255), outline=col, width=int(0.6 * MM))
+    hb = int(14 * MM)
+    d.rounded_rectangle((inner[0], inner[1], inner[2], inner[1] + hb), radius=int(3 * MM), fill=col)
+    d.rectangle((inner[0], inner[1] + hb // 2, inner[2], inner[1] + hb), fill=col)
+    text_center(d, PW / 2, inner[1] + int(1.3 * MM), 'TRIGGER', font(5), fill=mix(col, (255, 255, 255), 0.75))
+    text_center(d, PW / 2, inner[1] + int(4.6 * MM), 'ハズレ', font(14, 'head'), fill=(255, 255, 255))
+    text_center(d, PW / 2, inner[1] + hb + int(16 * MM), '効果なし', font(11, 'black'), fill=(120, 120, 134))
+    text_center(d, PW / 2, inner[1] + hb + int(25 * MM), '脱いだのに何も起きない……', font(6.5), fill=DIM)
+    text_center(d, PW / 2, inner[3] - int(3.8 * MM), 'メスガキ・クー', font(5), fill=DIM)
     return im
 
 
 def blank_front():
-    navy = (43, 49, 72); edge = (90, 106, 168)
-    im = Image.new('RGB', (PW, PH), navy); d = ImageDraw.Draw(im)
+    """白紙トリガー（自作用）：白ベース。名前欄と効果欄"""
+    col = (184, 48, 106)
+    im = Image.new('RGB', (PW, PH), PAPER); d = ImageDraw.Draw(im)
+    d.rectangle((0, 0, PW, PH), fill=mix(col, (255, 255, 255), 0.9))
     inner = (BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE)
-    d.rounded_rectangle(inner, radius=int(3 * MM), outline=edge, width=int(0.7 * MM))
-    text_center(d, PW / 2, inner[1] + int(3 * MM), 'TRIGGER', font(6), fill=(138, 152, 214))
-    # 名前欄・効果欄（白地に書き込める）
-    d.rounded_rectangle((inner[0] + int(4 * MM), inner[1] + int(8 * MM), inner[2] - int(4 * MM), inner[1] + int(16 * MM)), radius=int(1 * MM), fill=(245, 246, 255))
-    d.rounded_rectangle((inner[0] + int(4 * MM), inner[1] + int(20 * MM), inner[2] - int(4 * MM), inner[3] - int(9 * MM)), radius=int(1 * MM), fill=(245, 246, 255))
-    for k in range(1, 8):
-        yy = inner[1] + int(20 * MM) + k * int(7 * MM)
-        if yy < inner[3] - int(10 * MM):
-            d.line((inner[0] + int(6 * MM), yy, inner[2] - int(6 * MM), yy), fill=(205, 210, 235), width=1)
-    text_center(d, PW / 2, inner[1] + int(17 * MM), '自作トリガー', font(5), fill=(138, 152, 214))
-    text_center(d, PW / 2, inner[3] - int(3.6 * MM), 'メスガキ・クー', font(5), fill=(110, 120, 170))
+    d.rounded_rectangle(inner, radius=int(3 * MM), fill=(255, 255, 255), outline=col, width=int(0.6 * MM))
+    text_center(d, PW / 2, inner[1] + int(2 * MM), 'TRIGGER', font(5), fill=col)
+    # 名前欄
+    d.rounded_rectangle((inner[0] + int(4 * MM), inner[1] + int(6.5 * MM), inner[2] - int(4 * MM), inner[1] + int(15.5 * MM)), radius=int(1.2 * MM), outline=mix(col, (255, 255, 255), 0.5), width=int(0.4 * MM))
+    d.text((inner[0] + int(5 * MM), inner[1] + int(7.2 * MM)), 'なまえ', font=font(4.5), fill=mix(col, (255, 255, 255), 0.4))
+    # 常時／即効 のチェック
+    cy = inner[1] + int(18.5 * MM)
+    for k, lab in enumerate(('常時', '即効')):
+        bx = inner[0] + int(10 * MM) + k * int(16 * MM)
+        d.rounded_rectangle((bx, cy, bx + int(4 * MM), cy + int(4 * MM)), radius=int(0.8 * MM), outline=col, width=int(0.4 * MM))
+        d.text((bx + int(5.2 * MM), cy - int(0.3 * MM)), lab, font=font(6, 'black'), fill=col)
+    # 効果欄（罫線）
+    y0 = inner[1] + int(25 * MM); y1 = inner[3] - int(10 * MM)
+    d.rounded_rectangle((inner[0] + int(4 * MM), y0, inner[2] - int(4 * MM), y1), radius=int(1.2 * MM), outline=mix(col, (255, 255, 255), 0.5), width=int(0.4 * MM))
+    yy = y0 + int(7 * MM)
+    while yy < y1 - int(2 * MM):
+        d.line((inner[0] + int(6 * MM), yy, inner[2] - int(6 * MM), yy), fill=mix(col, (255, 255, 255), 0.75), width=1); yy += int(7 * MM)
+    text_center(d, PW / 2, inner[3] - int(8 * MM), '自作トリガー', font(5.5, 'black'), fill=col)
+    text_center(d, PW / 2, inner[3] - int(3.8 * MM), 'メスガキ・クー', font(5), fill=DIM)
     return im
 
 

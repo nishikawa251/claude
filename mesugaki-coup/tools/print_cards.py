@@ -378,10 +378,27 @@ def blank_front():
 
 
 def trigger_back():
+    """トリガーの裏：紺の縞に大きな⚡"""
     im = stripes(PW, PH, (43, 49, 72), (35, 40, 66), step=int(2.2 * MM)); d = ImageDraw.Draw(im)
     d.rounded_rectangle((BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE), radius=int(3 * MM), outline=(90, 106, 168), width=int(0.8 * MM))
-    text_center(d, PW / 2, PH / 2 - int(6 * MM), 'TRIGGER', font(14, 'head'), fill=(138, 152, 214))
-    text_center(d, PW / 2, PH / 2 + int(3 * MM), 'メスガキ・クー', font(7), fill=(110, 120, 170))
+    # 稲妻（多角形）。中心にやや傾けて、後ろに淡い光
+    bw, bh = int(30 * MM), int(50 * MM)
+    pts = [(0.62, 0.0), (0.14, 0.56), (0.46, 0.56), (0.30, 1.0), (0.88, 0.40), (0.56, 0.40), (0.72, 0.0)]
+    import math
+    def shape(scale, dx=0, dy=0, ang=-8):
+        cx, cy = PW / 2 + dx, PH / 2 - int(4 * MM) + dy
+        out = []
+        for x, y in pts:
+            px, py = (x - 0.5) * bw * scale, (y - 0.5) * bh * scale
+            r = math.radians(ang)
+            out.append((cx + px * math.cos(r) - py * math.sin(r), cy + px * math.sin(r) + py * math.cos(r)))
+        return out
+    d.polygon(shape(1.22), fill=(74, 70, 110))                       # 光（にじみ）
+    d.polygon(shape(1.08), fill=(120, 96, 60))                       # 縁
+    d.polygon(shape(1.0), fill=(255, 209, 102))                      # 本体
+    d.polygon(shape(0.62, int(-2 * MM), int(-3 * MM)), fill=(255, 236, 170))   # ハイライト
+    text_center(d, PW / 2, PH / 2 + int(26 * MM), 'TRIGGER', font(12, 'head'), fill=(255, 209, 102))
+    text_center(d, PW / 2, PH / 2 + int(34 * MM), 'メスガキ・クー', font(6), fill=(138, 152, 214))
     return im
 
 

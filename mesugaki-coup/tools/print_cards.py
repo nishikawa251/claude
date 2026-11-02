@@ -276,15 +276,6 @@ def role_front(rid):
     blocks = '・'.join(ACTIONS[b]['name'] for b in R['blocks']) or 'なし'
     d.text((x0, y + int(3.4 * MM)), blocks, font=fit_font(blocks, wdt, 10.5, 7, 'black'), fill=INK)
     draw_text_block(d, (x0, y + int(8.6 * MM)), f'「{R["line"]}」', font(6.5), wdt, fill=DIM)
-    # 公開のひとこと
-    ph = f'公開：「{R["phrase"]}」'; pw = inner[2] - inner[0] - int(6 * MM)
-    if font(6).getlength(ph) <= pw:
-        text_center(d, PW / 2, inner[3] - int(7 * MM), ph, font(6), fill=DIM)
-    else:                                    # 長いセリフは2行に（下から積む）
-        pl = wrap(ph, font(5.5), pw); lh = int(font(5.5).size * 1.3)
-        yy = inner[3] - int(7 * MM) - lh * (len(pl) - 1) + int(0.8 * MM)
-        for ln in pl:
-            text_center(d, PW / 2, yy, ln, font(5.5), fill=DIM); yy += lh
     text_center(d, PW / 2, inner[3] - int(3.6 * MM), 'メスガキ・クー', font(5), fill=mix(col, PAPER, 0.3))
     return im
 

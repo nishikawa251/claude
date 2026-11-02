@@ -142,6 +142,9 @@ button{font:inherit;color:inherit}
 .rc.sel{cursor:pointer;transition:transform .12s}
 .rc.sel:hover{transform:translateY(-4px)}
 .rc.sm{width:100px;min-height:84px;font-size:10px;padding:4px}
+.rc .ri{position:absolute;right:4px;bottom:3px;height:46px;width:auto;pointer-events:none;opacity:.95}
+.rc .rl{padding-right:44px}
+.rc.sm .ri{height:30px;right:2px;bottom:2px} .rc.sm .rl{padding-right:28px}
 .rc.sm .rn{font-size:11px;margin:-4px -4px 1px;padding:3px 4px 2px}
 .rc.sm .ph{display:none}
 .rc.sm .rl{flex-direction:column;gap:0;white-space:normal;line-height:1.3}
@@ -1474,7 +1477,7 @@ function roleCardEl(role, o={}){
   d.className='rc'+(o.small?' sm':'')+(o.lost?' lost':'')+(o.faceUp?' faceup':'')+(o.peek?' peek':'');
   d.style.setProperty('--rcol',R.color);
   d.dataset.role=role;
-  d.innerHTML=`<div class="rn">${R.name}</div><div class="rl act">できる: <b>${R.action?ACTIONS[R.action].name:'—'}</b></div><div class="rl">ブロック: <b>${R.blocks.length?R.blocks.map(a=>ACTIONS[a].name).join('・'):'—'}</b></div>`;
+  d.innerHTML=`<div class="rn">${R.name}</div><div class="rl act">できる: <b>${R.action?ACTIONS[R.action].name:'—'}</b></div><div class="rl">ブロック: <b>${R.blocks.length?R.blocks.map(a=>ACTIONS[a].name).join('・'):'—'}</b></div><img class="ri" src="img/roles/${role}.png" alt="" draggable="false">`;
   if(o.faceUp){ const f=document.createElement('span'); f.className='fu'; f.textContent='表'; d.appendChild(f); }
   else if(o.peek){ const f=document.createElement('span'); f.className='fu pk'; f.textContent='👁 自分だけ'; d.appendChild(f); }
   return d;

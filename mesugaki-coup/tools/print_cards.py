@@ -242,9 +242,22 @@ def role_front(rid):
     d.rectangle((inner[0], inner[1] + hb // 2, inner[2], inner[1] + hb), fill=col)
     text_center(d, PW / 2, inner[1] + int(1.8 * MM), R['name'], fit_font(R['name'], inner[2] - inner[0] - int(6 * MM), 16, 10, 'head'), fill=(255, 255, 255))
     text_center(d, PW / 2, inner[1] + int(8.6 * MM), 'GAKI CARD', font(6), fill=mix(col, (255, 255, 255), 0.75))
-    # 大きなマーク（頭文字）
-    text_center(d, PW / 2, inner[1] + hb + int(4 * MM), R['name'][0], font(56, 'head'), fill=mix(col, PAPER, 0.8))
     y = inner[1] + hb + int(31 * MM)
+    # イラスト（img/roles/<id>.png があればバストアップを置く。無ければ頭文字）
+    art = os.path.join(os.path.dirname(os.path.abspath(args.index)), 'img', 'roles', f'{rid}.png')
+    if os.path.exists(art):
+        area_top, area_bot = inner[1] + hb + int(1.5 * MM), y - int(2 * MM)
+        aw, ah = inner[2] - inner[0] - int(6 * MM), area_bot - area_top
+        cxp, cyp = PW / 2, (area_top + area_bot) / 2 + int(1 * MM)
+        rr_ = min(aw, ah) * 0.56
+        d.ellipse((cxp - rr_, cyp - rr_, cxp + rr_, cyp + rr_), fill=mix(col, PAPER, 0.84))   # 後ろにうすい円
+        pic = Image.open(art).convert('RGBA'); pw_, ph_ = pic.size
+        sc = min(aw / pw_, ah / ph_)
+        pic = pic.resize((max(1, int(pw_ * sc)), max(1, int(ph_ * sc))), Image.LANCZOS)
+        im.paste(pic, (int(PW / 2 - pic.size[0] / 2), int(area_bot - pic.size[1])), pic)
+        d = ImageDraw.Draw(im)
+    else:
+        text_center(d, PW / 2, inner[1] + hb + int(4 * MM), R['name'][0], font(56, 'head'), fill=mix(col, PAPER, 0.8))
     x0, wdt = inner[0] + int(3 * MM), inner[2] - inner[0] - int(6 * MM)
     # できる
     d.rounded_rectangle((inner[0] + int(2 * MM), y - int(1.5 * MM), inner[2] - int(2 * MM), y + int(15 * MM)), radius=int(1.5 * MM), fill=mix(col, (255, 255, 255), 0.9))

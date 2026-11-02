@@ -594,7 +594,7 @@ const TRIGGERS = [
   { id:'t26', name:'ないしょ話',     text:'相手1人を選び、互いに手札1枚をこっそり見せ合う（見せる札は本人が選ぶ）' },
   { id:'t27', name:'お色直し',       text:'自分の手札をすべて捨て札にして、同じ枚数を山札から引く' },
   { id:'t28', name:'あんたもみちづれ！', text:'自分を脱がせた相手の手札が2枚なら、その相手もプライドを1つ失う' },
-  // ---- 2軍：ばいば～い♥に関わる札 ----
+  // ---- ばいば～い♥に関わる札 ----
   { id:'t29', name:'はね返し',       text:'次に自分が「ばいば～い♥」の対象になったとき、無効にして撃った人がプライドを1つ失う（1回）', retired:true },
   { id:'t30', name:'身代わり',       text:'次に自分が「ばいば～い♥」の対象になったとき、自分が選んだ別の相手が代わりに脱ぐ（1回）', retired:true },
   { id:'t31', name:'返金',           text:'以後、自分が「ばいば～い♥」で脱がされるたび、撃った人から4♥もらう', persistent:true, retired:true },
@@ -603,7 +603,7 @@ const TRIGGERS = [
   { id:'t34', name:'弐撃決殺',       text:'次に自分が「ばいば～い♥」を撃った手番、続けてもう1アクションできる（1回）' },
   { id:'t35', name:'みんなざぁ～こ！', text:'♥が5以上の相手全員は、次の自分の手番に必ず「ばいば～い♥」を撃つ（その手番だけ5♥で撃てる）' },
   { id:'t36', name:'ざこ免除',       text:'以後、自分は10♥以上でも「ばいば～い♥」を強制されない', persistent:true, retired:true },
-  // ---- 2軍：ざぁ～こ♥に関わる札 ----
+  // ---- ざぁ～こ♥に関わる札 ----
   { id:'t37', name:'メスガキ税',     text:'以後、ほかの人が「ざぁ～こ♥」で♥を得るたび、そのうち1♥を自分がもらう', persistent:true },
   { id:'t38', name:'ほんとに～？',   text:'以後、自分が「ざぁ～こ♥」にダウトして外れても、プライドの代わりに2♥を払う（♥が足りなければプライドを失う）', persistent:true },
   { id:'t39', name:'は？よわ',       text:'以後、自分はメスガキを主張して「ざぁ～こ♥」をブロックできる（ダウト可）', persistent:true, retired:true },
@@ -613,10 +613,13 @@ const TRIGGERS = [
 ];
 const tn = id => (TRIGGERS.find(t=>t.id===id)||{}).name||id;   // トリガー名（id から）
 // トリガーデッキ：基本／新カード／おすすめの3プリセット＋カスタム。ゲームに使うのは DECK.ids の18枚（3〜6人に3枚ずつ配れる）
-const SETS = {   // カードの系統（札の表記とピッカーの分類に使う。デッキとは別）
-  basic: ['t1','t2','t3','t5','t6','t8','t9','t10','t11','t12','t14','t17'],
-  fresh: ['t18','t19','t20','t21','t22','t23','t24','t25','t26','t27','t28','t16'],
+const CATS = {   // トリガーの分類（札の表記とピッカーの分類に使う。デッキとは別）
+  attack:  ['t1','t6','t12','t20','t21','t24','t28','t34','t35','t37','t13'],   // 攻撃系：相手の♥・手番・プライドを削る
+  defense: ['t3','t16','t18','t19','t22','t32','t38','t41','t29','t30','t31','t39'],   // 防御系：自分を守る
+  rule:    ['t8','t9','t10','t14','t23','t25','t33','t40','t36'],   // ルール変更：コストや量、勝利条件を変える常時札
+  special: ['t2','t4','t5','t11','t15','t17','t26','t27','t7'],   // 特殊系：情報・手札操作など
 };
+const CAT_LABEL = { attack:'攻撃系', defense:'防御系', rule:'ルール変更', special:'特殊系', out:'見送り' };
 const DECK_PRESETS = {
   // 基本：基本12枚＋おすすめに入っている新カード6枚
   basic: ['t1','t2','t3','t5','t6','t8','t9','t10','t11','t12','t14','t17','t28','t19','t21','t24','t20','t18'],
@@ -626,9 +629,8 @@ const DECK_PRESETS = {
   mix:   ['t1','t5','t28','t19','t9','t21','t17','t24','t20','t18','t11','t8','t37','t22','t6','t12','t14','t25'],
 };
 const DECK_SIZE = 18;
-for(const t of TRIGGERS) t.set = t.retired ? 'out' : SETS.basic.includes(t.id) ? 'basic' : SETS.fresh.includes(t.id) ? 'fresh' : 'bench';
-const SET_LABEL = { basic:'基本', fresh:'新カード', bench:'2軍', out:'見送り' };
-const BENCH_CANDS = TRIGGERS.filter(t=>t.set==='bench').map(t=>t.id); // 2軍（カスタムで使える。見送り分は含まない）
+for(const t of TRIGGERS){ t.cat = Object.keys(CATS).find(k=>CATS[k].includes(t.id)) || 'special'; t.set = t.retired ? 'out' : t.cat; }
+const SET_LABEL = CAT_LABEL;
 let DECK = { preset:'basic', ids: DECK_PRESETS.basic.slice() };
 const deckLabel = ()=> ({basic:'基本デッキ', fresh:'新カードデッキ', mix:'おすすめデッキ'})[DECK.preset] || 'カスタム';
 function setDeck(preset, ids){
@@ -2233,8 +2235,8 @@ function openDeckPicker(){
 }
 function renderDeckPicker(){
   const g=$('#deckGroups'); g.innerHTML='';
-  for(const set of ['basic','fresh','bench']){
-    const h=document.createElement('p'); h.className='rl-sub'; h.textContent=SET_LABEL[set]+(set==='bench'?'（候補・未採用。ばいば～い♥系とざぁ～こ♥系の案を含む）':''); g.appendChild(h);
+  for(const set of ['attack','defense','rule','special']){
+    const h=document.createElement('p'); h.className='rl-sub'; h.textContent=SET_LABEL[set]; g.appendChild(h);
     const grid=document.createElement('div'); grid.className='rl-trig';
     for(const t of TRIGGERS.filter(x=>x.set===set)){
       const el=triggerEl({card:t,revealed:true},'on',false); el.classList.add('pick'); if(deckDraft.includes(t.id)) el.classList.add('sel');

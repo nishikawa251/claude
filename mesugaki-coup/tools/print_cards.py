@@ -30,7 +30,7 @@ ap.add_argument('--art', default=None, help='Bombergirl 立ち絵（<name>000.pn
 ap.add_argument('--index', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'index.html'))
 ap.add_argument('--size', default='91x55', help='仕上がり mm（長辺x短辺）')
 ap.add_argument('--bleed', type=float, default=1.5, help='塗り足し mm（各辺）')
-ap.add_argument('--all-triggers', action='store_true', help='定義されている全トリガー（2軍も）を入れる')
+ap.add_argument('--all-triggers', action='store_true', help='定義されている全トリガー（見送り以外）を入れる')
 ap.add_argument('--dud', type=int, default=0, help='ハズレ（効果なし）トリガーの枚数')
 ap.add_argument('--ref', type=int, default=6, help='早見表の枚数')
 ap.add_argument('--blank', type=int, default=0, help='白紙トリガー（自作用）の枚数')
@@ -116,16 +116,19 @@ for m in re.finditer(r"\{ id:'(t\d+)',\s*name:'([^']+)',\s*text:(?:'([^']*)'|`([
 PRESETS = {}
 for m in re.finditer(r"(basic|fresh|mix):\s*\[([^\]]*)\]", js_block('const DECK_PRESETS', 'const DECK_SIZE')):
     PRESETS[m.group(1)] = re.findall(r"'(t\d+)'", m.group(2))
-SETS = {}   # カードの系統（基本／新カード。それ以外は2軍）
-for m in re.finditer(r"(basic|fresh):\s*\[([^\]]*)\]", js_block('const SETS = {', '};')):
-    SETS[m.group(1)] = re.findall(r"'(t\d+)'", m.group(2))
+CATS = {}   # トリガーの分類（攻撃系／防御系／ルール変更／特殊系）
+for m in re.finditer(r"(attack|defense|rule|special):\s*\[([^\]]*)\]", js_block('const CATS = {', '};')):
+    CATS[m.group(1)] = re.findall(r"'(t\d+)'", m.group(2))
+CAT_LABEL = {'attack': '攻撃系', 'defense': '防御系', 'rule': 'ルール変更', 'special': '特殊系'}
+def cat_of(tid):
+    return next((k for k, v in CATS.items() if tid in v), 'special')
 CHARS = [(m.group(1), m.group(2)) for m in re.finditer(r"\{ id:'([a-z]+)',\s*name:'([^']+)' \}", js_block('const CHARS = [', '];'))]
 CHAR_NAME = dict(CHARS)
 PRINT_CHARS = [c for c, _ in CHARS] if args.chars == 'all' else [c for c in args.chars.split(',') if c]
 assert all(c in CHAR_NAME for c in PRINT_CHARS), f'知らないキャラ id: {PRINT_CHARS}'
 TRIG18 = list(PRESETS['basic'])   # 52枚版に入れるトリガー＝基本デッキ18枚
-if args.all_triggers:   # 基本 → 新カード → 2軍 の順に全部（見送り札は除く）
-    TRIG18 = SETS['basic'] + SETS['fresh'] + [i for i in TRIGGERS if i not in SETS['basic'] and i not in SETS['fresh'] and not TRIGGERS[i]['retired']]
+if args.all_triggers:   # 攻撃系 → 防御系 → ルール変更 → 特殊系 の順に全部（見送り札は除く）
+    TRIG18 = [i for k in ('attack', 'defense', 'rule', 'special') for i in TRIGGERS if cat_of(i) == k and not TRIGGERS[i]['retired']]
 
 # ---------------------------------------------------------------- 描画ユーティリティ
 INK = (40, 22, 48)
@@ -311,7 +314,7 @@ def trigger_front(tid):
     draw_text_block(d, (x0, top), body, font(fs), wdt, fill=(230, 236, 255), spacing=1.5)
     # セット名
     sets = 'おすすめ' if tid in PRESETS['mix'] else ''
-    base = '基本' if tid in SETS['basic'] else '新カード' if tid in SETS['fresh'] else '2軍'
+    base = CAT_LABEL[cat_of(tid)]
     text_center(d, PW / 2, inner[3] - int(7 * MM), base + ('／' + sets if sets else ''), font(5.5), fill=(138, 152, 214))
     text_center(d, PW / 2, inner[3] - int(3.6 * MM), 'メスガキ・クー', font(5), fill=(110, 120, 170))
     return im

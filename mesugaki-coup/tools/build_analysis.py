@@ -23,10 +23,12 @@ _dud = int(_re.search(r"dudCount:\s*(\d+)", _idx).group(1))
 PRESETS = {}
 for _m in _re.finditer(r"(basic|fresh|mix):\s*\[([^\]]*)\]", _idx[_idx.find('const DECK_PRESETS'):_idx.find('const DECK_SIZE')]):
     PRESETS[_m.group(1)] = _re.findall(r"'(t\d+)'", _m.group(2))
-SETS = {}
-for _m in _re.finditer(r"(basic|fresh):\s*\[([^\]]*)\]", _idx[_idx.find('const SETS = {'):_idx.find('};', _idx.find('const SETS = {'))]):
-    SETS[_m.group(1)] = _re.findall(r"'(t\d+)'", _m.group(2))
-_inpreset = {i for v in SETS.values() for i in v}
+CATS = {}
+for _m in _re.finditer(r"(attack|defense|rule|special):\s*\[([^\]]*)\]", _idx[_idx.find('const CATS = {'):_idx.find('};', _idx.find('const CATS = {'))]):
+    CATS[_m.group(1)] = _re.findall(r"'(t\d+)'", _m.group(2))
+CAT_LABEL = {'attack': '攻撃系', 'defense': '防御系', 'rule': 'ルール変更', 'special': '特殊系'}
+def cat_of(i): return CAT_LABEL[next((k for k, v in CATS.items() if i in v), 'special')]
+_inpreset = {i for v in PRESETS.values() for i in v}
 PERSIST = {_m.group(1) for _m in _re.finditer(r"\{ id:'(t\d+)',[^\n]*persistent:true", _idx)}
 DECK = {'dud': _dud, 'presets': {k: [CNAME[i] for i in v] for k, v in PRESETS.items()}, 'bench': [CNAME[i] for i in CNAME if i not in _inpreset and i not in RETIRED], 'retired': [CNAME[i] for i in RETIRED]}
 # 物理版の枚数（index.html の定義から数える）
@@ -107,18 +109,18 @@ _never = [CNAME[i] for i in CNAME if i not in RETIRED and i not in {r['id'] for 
 _nevernote = f"。{'・'.join(_never)}は3枚から2枚を選ぶときCPUが一度も残さなかったので数字がない" if _never else ''
 DATA = {
   'conds': {
-    'all': {'label':'全カード・全条件','deck':'all','sub':f"回した全条件（3デッキ×4人戦・3〜6人戦＋2軍）を合算・{_agames:,}戦。基準は全カード平均{_nevernote}",'games':_agames,'rows':_arows,'base':_abase,'heldBase':_ahbase},
+    'all': {'label':'全カード・全条件','deck':'all','sub':f"回した全条件（3デッキ×4人戦・3〜6人戦＋デッキ外）を合算・{_agames:,}戦。基準は全カード平均{_nevernote}",'games':_agames,'rows':_arows,'base':_abase,'heldBase':_ahbase},
     'basic_p4': {'label':'基本・4人戦','deck':'basic','sub':f"基本デッキ・{s4['games']:,}戦",'games':s4['games'],'rows':rows('basic_p4'),'base':s4.get('base'),'heldBase':s4.get('heldBase'),'avgLog':round(s4['avgLog'],1),'winnerLostLife':round(s4['winnerLostLife'],3),'lifeLoss':round(s4['lifeLoss'],2)},
     'basic_p3456': {'label':'基本・3〜6人戦','deck':'basic','sub':f"基本デッキ・各{s3['games']//4:,}戦・{s3['games']:,}戦",'games':s3['games'],'rows':rows('basic_p3456'),'base':s3.get('base'),'heldBase':s3.get('heldBase')},
     **({'fresh_p4': {'label':'新カード・4人戦','deck':'fresh','sub':f"新カードデッキ・{f4['games']:,}戦",'games':f4['games'],'rows':rows('fresh_p4'),'base':f4.get('base'),'heldBase':f4.get('heldBase'),'avgLog':round(f4['avgLog'],1),'winnerLostLife':round(f4['winnerLostLife'],3),'lifeLoss':round(f4['lifeLoss'],2)},
         'fresh_p3456': {'label':'新カード・3〜6人戦','deck':'fresh','sub':f"新カードデッキ・各{f3['games']//4:,}戦・{f3['games']:,}戦",'games':f3['games'],'rows':rows('fresh_p3456'),'base':f3.get('base'),'heldBase':f3.get('heldBase')}} if f4 and f3 else {}),
     **({'mix_p4': {'label':'おすすめ・4人戦','deck':'mix','sub':f"おすすめデッキ・{m4['games']:,}戦",'games':m4['games'],'rows':rows('mix_p4'),'base':m4.get('base'),'heldBase':m4.get('heldBase')},
         'mix_p3456': {'label':'おすすめ・3〜6人戦','deck':'mix','sub':f"おすすめデッキ・各{m3['games']//4:,}戦・{m3['games']:,}戦",'games':m3['games'],'rows':rows('mix_p3456'),'base':m3.get('base'),'heldBase':m3.get('heldBase')}} if m4 and m3 else {}),
-    **({'bench_p4': {'label':'2軍・4人戦','deck':'bench','sub':f"2軍10枚＋おすすめ8枚の18枚・{n4['games']:,}戦",'games':n4['games'],'rows':rows('bench_p4'),'base':n4.get('base'),'heldBase':n4.get('heldBase')},
-        'bench_p3456': {'label':'2軍・3〜6人戦','deck':'bench','sub':f"2軍10枚＋おすすめ8枚の18枚・各{n3['games']//4:,}戦・{n3['games']:,}戦",'games':n3['games'],'rows':rows('bench_p3456'),'base':n3.get('base'),'heldBase':n3.get('heldBase')}} if n4 and n3 else {}),
+    **({'bench_p4': {'label':'デッキ外・4人戦','deck':'bench','sub':f"デッキ外10枚＋おすすめ8枚の18枚・{n4['games']:,}戦",'games':n4['games'],'rows':rows('bench_p4'),'base':n4.get('base'),'heldBase':n4.get('heldBase')},
+        'bench_p3456': {'label':'デッキ外・3〜6人戦','deck':'bench','sub':f"デッキ外10枚＋おすすめ8枚の18枚・各{n3['games']//4:,}戦・{n3['games']:,}戦",'games':n3['games'],'rows':rows('bench_p3456'),'base':n3.get('base'),'heldBase':n3.get('heldBase')}} if n4 and n3 else {}),
   },
   'rating': RATING,
-  'allcards': [{'id':i,'name':CNAME[i],'text':TEXT.get(i,''),'family':'見送り' if i in RETIRED else '基本' if i in SETS.get('basic',[]) else '新カード' if i in SETS.get('fresh',[]) else '2軍',
+  'allcards': [{'id':i,'name':CNAME[i],'text':TEXT.get(i,''),'family':cat_of(i),
                 'kind':'常時' if i in PERSIST else '発動時','decks':[k for k,v in PRESETS.items() if i in v],'retired':i in RETIRED,'fun':FUN.get(i),'why':FUN_WHY.get(i,'')} for i in CNAME],
   'phys': PHYS,
   'mixIds': MIX_IDS,
@@ -248,7 +250,7 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
 </style>
 <main>
 <header>
-  <div class="eyebrow">CPU同士の自動対戦・2026-10-26 第17版（18枚デッキ・3枚配り）・基本／新カード／おすすめ の3デッキ（各18枚・ハズレなし）＋2軍10枚におすすめ8枚を足した18枚／総合評価＝おもしろさ＋バランス／3枚配って2枚を選んで仕込む（5〜6人戦は山が足りないので2枚配り）／メンヘラ9♥＋公開時に山分け／わからせ返しは5♥／3〜6人・各デッキ20万戦</div>
+  <div class="eyebrow">CPU同士の自動対戦・2026-10-26 第17版（18枚デッキ・3枚配り）・基本／新カード／おすすめ の3デッキ（各18枚・ハズレなし）＋デッキ外10枚におすすめ8枚を足した18枚／総合評価＝おもしろさ＋バランス／3枚配って2枚を選んで仕込む（5〜6人戦は山が足りないので2枚配り）／メンヘラ9♥＋公開時に山分け／わからせ返しは5♥／3〜6人・各デッキ20万戦</div>
   <h1><span class="nb">メスガキに「は？」って言うゲーム</span> <span class="nb">トリガー分析</span></h1>
   <p class="lede">基本・新カード・おすすめの3デッキを、どれが持ち主を勝たせているかで並べた。条件チップでデッキと人数を切り替えられる。下の「総合評価」では、使っておもしろいかの点を足して18枚を選んでいる。指標は「1枚目の脱ぎで発動したあとに勝った割合」。プライドを1つ失った状態からの勝率なので、BASENAMEとの差で強さを見る。DUDNOTE</p>
   <p class="lede" id="deckline"></p>
@@ -290,8 +292,8 @@ ul.plain a,p a{color:var(--accent);font-weight:700}
 
 <section aria-label="全カード一覧">
   <h2>全カード一覧 <small id="allsub"></small></h2>
-  <p>ゲームに定義してある全トリガー。系統（基本・新カード・2軍・見送り）とどのデッキに入っているか、BASELBLの平均（回した条件の平均。見送り札は回していない）を並べた。</p>
-  <div class="frow"><input class="search" id="qall" type="search" placeholder="名前・効果で探す" aria-label="全カードから探す"> <select id="fam" aria-label="系統"><option value="all">すべての系統</option><option>基本</option><option>新カード</option><option>2軍</option><option>見送り</option></select> <select id="sortall" aria-label="並べ方"><option value="family">系統順</option><option value="name">名前順</option><option value="avg">BASELBLが大きい順</option><option value="total">総合評価順</option></select></div>
+  <p>ゲームに定義してある全トリガー。分類（攻撃系・防御系・ルール変更・特殊系）とどのデッキに入っているか（見送りは薄く表示）、BASELBLの平均（回した条件の平均。見送り札は回していない）を並べた。</p>
+  <div class="frow"><input class="search" id="qall" type="search" placeholder="名前・効果で探す" aria-label="全カードから探す"> <select id="fam" aria-label="分類"><option value="all">すべての分類</option><option>攻撃系</option><option>防御系</option><option>ルール変更</option><option>特殊系</option></select> <select id="sortall" aria-label="並べ方"><option value="family">分類順</option><option value="name">名前順</option><option value="avg">BASELBLが大きい順</option><option value="total">総合評価順</option></select></div>
   <div class="tbl"><table id="alltbl"></table></div>
 </section>
 
@@ -352,7 +354,7 @@ function renderDeck(){
   if(k.presets.basic) lines.push(`<b>基本デッキ</b>（${k.presets.basic.length}枚・各1枚）：${esc(k.presets.basic.join('・'))}`);
   if(k.presets.fresh) lines.push(`<b>新カードデッキ</b>（${k.presets.fresh.length}枚・各1枚）：${esc(k.presets.fresh.join('・'))}`);
   if(k.presets.mix) lines.push(`<b>おすすめデッキ</b>（総合評価の上位${k.presets.mix.length}枚）：${esc(k.presets.mix.join('・'))}`);
-  if(k.bench.length) lines.push(`2軍（デッキ外。カスタムで使える）：${esc(k.bench.join('・'))}`);
+  if(k.bench.length) lines.push(`デッキ外（カスタムで使える）：${esc(k.bench.join('・'))}`);
   if(k.retired&&k.retired.length) lines.push(`見送り（ゲーム・印刷から外した）：${esc(k.retired.join('・'))}`);
   $('#deckline').innerHTML=lines.join('<br>')+'<br>開始画面でいずれかのデッキ、または好きな18枚を選べる。各プレイヤーに3枚配り、2枚を選んで上半身・下半身に仕込む（残りは山へ）。';
 }
@@ -370,7 +372,7 @@ function renderMix(){
   const col=r4.find(r=>r.id==='t9'), col3=r3.find(r=>r.id==='t9');
   const lastAvg=r4.reduce((a,r)=>a+r.last,0)/r4.reduce((a,r)=>a+r.first+r.last,0);
   const items=[
-    [({fresh:'新カード・',mix:'おすすめ・',bench:'2軍・',all:'全カード・'}[DATA.conds[state.cond].deck]||'基本・')+'強い', top4.join('・')||'なし', top4.length?(dk==='all'?`全条件の合算でBASELBL +${(DATA.thr*100).toFixed(0)}pt 以上のカード。`:`4人戦でBASELBL +${(DATA.thr*100).toFixed(0)}pt 以上で、3〜6人戦でもプラスのカード。`):`+2pt を超えるカードはない。いちばん高い${r4[0].name}でも ${spct(r4[0].score)} で、かなり平ら。`],
+    [({fresh:'新カード・',mix:'おすすめ・',bench:'デッキ外・',all:'全カード・'}[DATA.conds[state.cond].deck]||'基本・')+'強い', top4.join('・')||'なし', top4.length?(dk==='all'?`全条件の合算でBASELBL +${(DATA.thr*100).toFixed(0)}pt 以上のカード。`:`4人戦でBASELBL +${(DATA.thr*100).toFixed(0)}pt 以上で、3〜6人戦でもプラスのカード。`):`+2pt を超えるカードはない。いちばん高い${r4[0].name}でも ${spct(r4[0].score)} で、かなり平ら。`],
     ['弱い', weak.join('・')||'なし', weak.length?(dk==='all'?'全条件の合算で −2pt を下回るカード。':'両条件でマイナスのカード。'):`両条件で −2pt を下回るカードはない。いちばん低い${r4[r4.length-1].name}でも ${spct(r4[r4.length-1].score)} で、不発（何も起きない）とほぼ同じ。`],
     ['空撃ち', pct(lastAvg,0), '発動のうち脱落時（2枚目の脱ぎ）に起きた割合。本人には意味のない発動が半分近くある。'],
     ['効果の幅', `${spct(Math.max(...r4.map(r=>r.score)))} 〜 ${spct(Math.min(...r4.map(r=>r.score)))}`, 'トリガーは負けかけた側に起きるので、どれも勝敗を覆すほどの力はない。'],
@@ -442,7 +444,7 @@ function renderAllCards(){
   const rows=DATA.allcards||[]; if(!rows.length) return;
   const rate=Object.fromEntries((DATA.rating||[]).map(r=>[r.id,r]));
   const deckName={basic:'基本',fresh:'新カード',mix:'おすすめ'};
-  const famOrder={'基本':0,'新カード':1,'2軍':2,'見送り':3};
+  const famOrder={'攻撃系':0,'防御系':1,'ルール変更':2,'特殊系':3};
   let list=rows.map(r=>({...r,avg:rate[r.id]?rate[r.id].avg/100:null,total:rate[r.id]?rate[r.id].total:null}));
   if(allState.fam!=='all') list=list.filter(r=>r.family===allState.fam);
   if(allState.q){ const q=allState.q.toLowerCase(); list=list.filter(r=>(r.name+r.text).toLowerCase().includes(q)); }
@@ -450,7 +452,7 @@ function renderAllCards(){
   list.sort((a,b)=> s==='name'?a.name.localeCompare(b.name,'ja') : s==='avg'?((b.avg??-9)-(a.avg??-9)) : s==='total'?((b.total??-1)-(a.total??-1))||((b.fun??0)-(a.fun??0)) : (famOrder[a.family]-famOrder[b.family])||(parseInt(a.id.slice(1))-parseInt(b.id.slice(1))));
   $('#allsub').textContent=`${list.length} / ${rows.length} 枚`;
   const star=n=>n==null?'－':'★'.repeat(n)+'☆'.repeat(5-n);
-  $('#alltbl').innerHTML='<thead><tr><th>カード</th><th>系統</th><th>種類</th><th>デッキ</th><th>効果</th><th>おもしろさ</th><th class="n">BASELBL（平均）</th><th class="n">総合</th></tr></thead><tbody>'+list.map(r=>`<tr${r.retired?' style="opacity:.6"':''}><td class="nm">${esc(r.name)}</td><td>${esc(r.family)}</td><td>${esc(r.kind)}</td><td>${r.decks.map(k=>deckName[k]||k).join('・')||'－'}</td><td class="tx">${esc(r.text)}</td><td title="${r.why?esc(r.why):''}">${star(r.fun)}</td><td class="n">${r.avg==null?'－':spct(r.avg)}</td><td class="n">${r.total==null?'－':r.total+'/10'}</td></tr>`).join('')+'</tbody>';
+  $('#alltbl').innerHTML='<thead><tr><th>カード</th><th>分類</th><th>種類</th><th>デッキ</th><th>効果</th><th>おもしろさ</th><th class="n">BASELBL（平均）</th><th class="n">総合</th></tr></thead><tbody>'+list.map(r=>`<tr${r.retired?' style="opacity:.6"':''}><td class="nm">${esc(r.name)}${r.retired?'（見送り）':''}</td><td>${esc(r.family)}</td><td>${esc(r.kind)}</td><td>${r.decks.map(k=>deckName[k]||k).join('・')||'－'}</td><td class="tx">${esc(r.text)}</td><td title="${r.why?esc(r.why):''}">${star(r.fun)}</td><td class="n">${r.avg==null?'－':spct(r.avg)}</td><td class="n">${r.total==null?'－':r.total+'/10'}</td></tr>`).join('')+'</tbody>';
 }
 function renderPhys(){
   const k=DATA.phys; if(!k){ return; }

@@ -599,7 +599,7 @@ def title_back():
         d = ImageDraw.Draw(im)
     # 説明
     x0 = inner[0] + int(3 * MM); wdt = inner[2] - inner[0] - int(6 * MM)
-    draw_text_block(d, (x0, inner[3] - int(14.5 * MM)), '卓の中央に置く。♥はお兄さんからもらい、払うときもお兄さんに返す。', font(6.5, 'black'), wdt, fill=INK, spacing=1.35, align='center')
+    draw_text_block(d, (x0, inner[3] - int(14.5 * MM)), '卓の中央に置く。♥はお兄さんから\nもらい、払うときもお兄さんに返す。', font(6.5, 'black'), wdt, fill=INK, spacing=1.35, align='center')
     text_center(d, PW / 2, inner[3] - int(3.6 * MM), 'メスガキ・クー', font(5), fill=(184, 48, 106))
     return im
 

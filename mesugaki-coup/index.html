@@ -702,11 +702,11 @@ const chance = p => Math.random()<p;
 const alive = () => S.players.filter(p=>p.alive);
 const othersOf = p => S.players.filter(q=>q.alive && q!==p);
 function orderFrom(p){ const n=S.players.length, out=[]; for(let k=1;k<n;k++){ const q=S.players[(p.i+k)%n]; if(q.alive) out.push(q); } return out; }
-function coupCost(p){ const taxed=S.players.some(q=>q!==p && q.alive && q.flags.coupTax); const base=p.flags.cheapCoup?4:RULES.coupCost; const c=Math.max(1, base + (taxed?RULES.coupCostTaxed-RULES.coupCost:0) - (p.flags.coupDiscount?2:0)); return p.flags.coupFive ? Math.min(c, 5) : c; }
+function coupCost(p){ const taxed=S.players.some(q=>q!==p && q.flags.coupTax); /* みんな生意気：持ち主が脱落しても残る */ const base=p.flags.cheapCoup?4:RULES.coupCost; const c=Math.max(1, base + (taxed?RULES.coupCostTaxed-RULES.coupCost:0) - (p.flags.coupDiscount?2:0)); return p.flags.coupFive ? Math.min(c, 5) : c; }
 // 相手ごとのばいば～い♥コスト（負けませ～ん）
 function coupCostFor(p, q){ const c=coupCost(p) + (q && q.flags.shieldPrice ? 2 : 0); return p.flags.coupFive ? Math.min(c, 5) : c; }
 // ざぁ～こ♥の獲得♥（独り占め）
-function taxAmount(p){ return 3 + (p.flags.taxMonopoly?1:0) - (S.players.some(q=>q!==p && q.alive && q.flags.taxMonopoly)?1:0); }
+function taxAmount(p){ return 3 + (p.flags.taxMonopoly?1:0) - (S.players.some(q=>q!==p && q.flags.taxMonopoly)?1:0); }   // 独り占め：持ち主が脱落しても「ほかの人は2♥」は残る
 const hasRole = (p,r) => p.hand.some(c=>c.role===r);
 function drawCard(){
   if(!S.deck.length && S.discard && S.discard.length){ S.deck=S.discard; S.discard=[]; shuffle(S.deck); log('山札が尽きたので、捨て札を切り直して山札にした', 'sys'); }
@@ -880,7 +880,7 @@ async function performActionInner(p, act, target){
     case 'aid': p.hearts+=2; SFX.play('coin'); log(`${p.name} は2♥獲得`); break;
     case 'tax': {
       const n=taxAmount(p); p.hearts+=n; SFX.play('coin'); log(`${p.name} は${n}♥獲得`);
-      for(const q of othersOf(p)) if(q.alive && q.flags.taxLevy && p.hearts>0){ p.hearts--; q.hearts++; log(`${q.name} の「メスガキ税」：${p.name} から1♥`); }
+      for(const q of othersOf(p)) if(q.flags.taxLevy && p.hearts>0){ p.hearts--; q.hearts++; log(`${q.name} の「メスガキ税」：${p.name} から1♥${q.alive?'':'（脱落後も税は残る）'}`); }
       break;
     }
     case 'steal': { const n=Math.min(2,target.hearts); target.hearts-=n; p.hearts+=n; SFX.play('coin'); log(`${p.name} は ${target.name} から${n}♥奪った`); break; }
@@ -1518,7 +1518,9 @@ function playerPanel(p, isMe){
   const tags=[];
   if(!p.alive) tags.push('脱落');
   const chips=[];
-  if(p.alive && p.flags.coupTax) chips.push('みんな生意気');
+  if(p.flags.coupTax) chips.push('みんな生意気');
+  if(!p.alive && p.flags.taxLevy) chips.push('メスガキ税');
+  if(!p.alive && p.flags.taxMonopoly) chips.push('独り占め');
   if(p.alive && p.flags.coupDiscount) chips.push('甘やかし');
   if(p.alive && p.flags.blockExchange) chips.push(tn('t3'));
   if(p.alive && p.flags.wardAssassin) chips.push(tn('t41'));
@@ -1585,8 +1587,11 @@ function renderEffects(){
   const el=$('#effects'); if(!el) return;
   const items=[];
   for(const p of S.players){
+    const dead = p.alive ? '' : '（脱落後も残る）';
+    if(p.flags.coupTax) items.push(['みんな生意気', `${p.name} 以外の「ばいば～い♥」は8♥${dead}`]);
+    if(p.flags.taxLevy) items.push(['メスガキ税', `ほかの人の「ざぁ～こ♥」から ${p.name} が1♥もらう${dead}`]);
+    if(p.flags.taxMonopoly) items.push(['独り占め', `${p.name} の「ざぁ～こ♥」は4♥、ほかの人は2♥${dead}`]);
     if(!p.alive) continue;
-    if(p.flags.coupTax) items.push(['みんな生意気', `${p.name} 以外の「ばいば～い♥」は8♥`]);
     if(p.flags.coupDiscount) items.push(['甘やかし', `${p.name} の「ばいば～い♥」は5♥`]);
     if(p.flags.blockExchange) items.push([tn('t3'), `${p.name} は「ふ～ん♥」と「見せて」系トリガーをブロックできる`]);
     if(p.flags.wardAssassin) items.push([tn('t41'), `${p.name} は「まけちゃえ～♥」をブロックできる`]);
@@ -1606,10 +1611,8 @@ function renderEffects(){
     if(p.flags.rapid) items.push(['弐撃決殺', `${p.name} は次に ばいば～い♥ を撃った手番にもう1アクション`]);
     if(p.flags.mustCoup) items.push(['みんなざぁ～こ！', `${p.name} は次の手番に必ず ばいば～い♥（その手番は5♥）`]);
     if(p.flags.noForce) items.push(['ざこ免除', `${p.name} は10♥以上でも ばいば～い♥ を強制されない`]);
-    if(p.flags.taxLevy) items.push(['メスガキ税', `ほかの人の「ざぁ～こ♥」から ${p.name} が1♥もらう`]);
     if(p.flags.taxSuspicion) items.push(['ほんとに～？', `${p.name} は「ざぁ～こ♥」へのダウトに外れても2♥で済む`]);
     if(p.flags.taxBlock) items.push(['は？よわ', `${p.name} はメスガキ主張で「ざぁ～こ♥」をブロックできる`]);
-    if(p.flags.taxMonopoly) items.push(['独り占め', `${p.name} の「ざぁ～こ♥」は4♥、ほかの人は2♥`]);
     if(p.flags.win15) items.push(['メンヘラ', `${p.name} は${RULES.collectorGoal}♥集めた時点で勝ち${liftNote()}`]);
   }
   if(!items.length){ el.hidden=true; el.innerHTML=''; return; }
@@ -2182,6 +2185,7 @@ function buildRules(){
     <li>「みんな生意気」は他の全員のばいば～い♥を8♥に、「甘やかし」は自分のばいば～い♥を5♥にする（両方なら6♥）。</li>
     <li>「見せないが？」は公開済みのトリガーによるブロックなので、ダウトできない。</li>
     <li>「魔除け」も同じく公開済みトリガーによるブロック。「見せないが？」は「見せて」が名前に入るトリガー（こっそり見せて・み～んな見せて・いいから見せて）の効果も、自分には効かなくする。</li>
+    <li>脱落したプレイヤーの常時トリガーのうち、場全体に効くもの（みんな生意気・独り占めの「ほかの人は2♥」・メスガキ税）は、脱落後もそのまま残る。本人だけに効くもの（甘やかし・ボディガードなど）は意味がなくなる。</li>
     <li>CPUが脱がせる側のときは、上下をランダムに選ぶ。</li>
   </ul></div>
   <div class="close"><button class="btn" data-close>閉じる</button></div>`;

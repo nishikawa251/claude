@@ -679,8 +679,23 @@ for k in range(args.ref):
 for k in range(args.blank):
     n += 1; cards.append((n, 'blank', f'白紙トリガー_{k + 1}', blank_front(), trigger_back(), 'P'))
 n += 1; cards.append((n, 'title', 'タイトル', title_front(), title_back(), 'P'))
-if args.mono_backs:   # キャラ以外の裏面はグレースケール（PDF では DeviceGray ＝ K版のみ）
-    cards = [(num, kind, name, f, b if kind == 'chara' else b.convert('L'), ori) for num, kind, name, f, b, ori in cards]
+if args.mono_backs:
+    # 両面カラーで刷るキャラカードを先頭のテンプレート（21面ずつ）にまとめ、端数の面はタイトル（お兄さん）→早見表の順で埋める。
+    # 残りのテンプレート（表カラー・裏モノクロ）はガキ→トリガー→ハズレ→白紙→余った早見表の順。
+    # モノクロのテンプレートに1枚でも載る種別は全部の裏をグレースケールにして裏をそろえる（PDF では DeviceGray ＝ K版のみ）。
+    # カラーのテンプレートに全部載る種別（タイトルや早見表が収まるとき）は裏もカラーのまま
+    chara = [c for c in cards if c[1] == 'chara']
+    fill = [c for c in cards if c[1] == 'title'] + [c for c in cards if c[1] == 'ref']
+    rest = [c for c in cards if c[1] not in ('chara', 'title', 'ref')]
+    pad = (-len(chara)) % 21
+    lion_order = chara + fill[:pad] + rest + fill[pad:]
+    n_color = math.ceil(len(chara) / 21)                       # 両面カラーで注文するテンプレート数
+    mono_kinds = {c[1] for c in lion_order[n_color * 21:]}
+    mono_back = {c[0]: c[4].convert('L') for c in cards if c[1] in mono_kinds}
+    _conv = lambda c: (c[0], c[1], c[2], c[3], mono_back.get(c[0], c[4]), c[5])
+    cards = [_conv(c) for c in cards]; lion_order = [_conv(c) for c in lion_order]
+else:
+    lion_order, n_color = cards, None
 
 if args.samples:
     picks = [cards[0], cards[12], cards[15], cards[16], next(c for c in cards if c[1] == 'trigger' and c[2] == 'おしおき返し'), next(c for c in cards if c[1] == 'trigger' and c[2] == '復讐の誓い'), next(c for c in cards if c[1] == 'ref'), cards[-1]]
@@ -741,21 +756,13 @@ cards/ に1枚ずつ、ファイル名の末尾 _front が表、_back が裏。m
 キャラ：{'・'.join(CHAR_NAME[c] for c in PRINT_CHARS)}
 トリガー：{'・'.join(TRIGGERS[t]['name'] for t in TRIG18)}
 """
+KIND_LABEL = {'chara': 'キャラカード', 'title': 'タイトル（お兄さん）', 'ref': '早見表', 'gaki': 'ガキカード', 'trigger': 'トリガー（ハズレ込み）', 'blank': '白紙トリガー'}
 if args.lion:
     # ---- ライオン名刺 異種（21面）用：各面をテンプレートへ貼る向きに回転し、参考面付けも作る
     ldir = os.path.join(OUT, 'lion'); os.makedirs(ldir, exist_ok=True)
     SLOTS = 'ABCDEFGHIJKLMNOPQRSTU'
-    if args.mono_backs:
-        # 両面カラーで刷るキャラカードを先頭のテンプレートにまとめ、端数の面は早見表で埋める（公開札なので、裏がモノクロのまま
-        # カラーのテンプレートに載っても困らない）。残り（裏モノクロ）はガキ→トリガー→ハズレ→白紙→残りの早見表→タイトルの順
-        chara = [c for c in cards if c[1] == 'chara']; refs = [c for c in cards if c[1] == 'ref']
-        rest = [c for c in cards if c[1] not in ('chara', 'ref', 'title')]; title = [c for c in cards if c[1] == 'title']
-        pad = (-len(chara)) % 21
-        order = chara + refs[:pad] + rest + refs[pad:] + title
-        sheets = [order[i:i + 21] for i in range(0, len(order), 21)]
-        n_color = math.ceil(len(chara) / 21)          # 両面カラーで注文するテンプレート数
-    else:
-        sheets = [cards[i:i + 21] for i in range(0, len(cards), 21)]
+    sheets = [lion_order[i:i + 21] for i in range(0, len(lion_order), 21)]
+    if not args.mono_backs:
         n_color = len(sheets)
     sheet_mode = lambda si: '両面カラー' if si <= n_color else '表カラー・裏モノクロ'
     # 参考面付け：A3 縦（297×420mm）に 3列×7行、ピッチ＝仕上がり＋塗り足し2辺ぶん
@@ -874,9 +881,10 @@ if args.lion:
     if args.mono_backs:
         readme += f"""
 [印刷の指定（--mono-backs）]
-  キャラカードだけ両面カラー、それ以外のカードは裏面をモノクロ（グレースケール＝K版のみ。PDF には DeviceGray で入れてある）にしてある。
+  キャラカードを載せたテンプレートだけ両面カラー、それ以外のテンプレートは裏面をモノクロ（グレースケール＝K版のみ。PDF には DeviceGray で入れてある）で注文する前提のデータ。
   テンプレートごとの注文：{'、'.join(f'T{si}＝{sheet_mode(si)}' for si in range(1, len(sheets) + 1))}
-  {', '.join(f'T{si}' for si in range(1, n_color + 1))} にはキャラカード{len([c for c in cards if c[1] == 'chara'])}枚と、端数の面を埋める早見表{(-len([c for c in cards if c[1] == 'chara'])) % 21}枚。残りのテンプレートにガキ・トリガー・ハズレ・白紙・残りの早見表・タイトル。
+  {'・'.join(f'T{si}' for si in range(1, n_color + 1))}（両面カラー）：{'、'.join(f'{KIND_LABEL[k]}{sum(1 for c in lion_order[:n_color * 21] if c[1] == k)}枚' for k in KIND_LABEL if any(c[1] == k for c in lion_order[:n_color * 21]))}。ここに全部載る種別は裏もカラーのまま。
+  {'・'.join(f'T{si}' for si in range(n_color + 1, len(sheets) + 1))}（表カラー・裏モノクロ）：{'、'.join(f'{KIND_LABEL[k]}{sum(1 for c in lion_order[n_color * 21:] if c[1] == k)}枚' for k in KIND_LABEL if any(c[1] == k for c in lion_order[n_color * 21:]))}。この種別は裏を全部グレースケールにしてある。
 """
     if args.template:
         readme += readme_tpl

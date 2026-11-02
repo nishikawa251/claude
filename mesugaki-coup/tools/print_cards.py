@@ -35,6 +35,7 @@ ap.add_argument('--dud', type=int, default=0, help='ハズレ（効果なし）�
 ap.add_argument('--ref', type=int, default=6, help='早見表の枚数')
 ap.add_argument('--blank', type=int, default=0, help='白紙トリガー（自作用）の枚数')
 ap.add_argument('--chara-copies', type=int, default=1, help='キャラカードを何組入れるか（スペア用。2なら各キャラの上下が2枚ずつ）')
+ap.add_argument('--mono-backs', action='store_true', help='キャラカード以外の裏面をモノクロ（グレースケール＝K版のみ）にする。--lion ではキャラカードを先頭のテンプレートにまとめ、そこだけ両面カラー・残りは表カラー／裏モノクロで注文できる面付けにする')
 ap.add_argument('--template', default=None, help='ライオン名刺 異種の AI/PDF テンプレート。指定すると各面に貼り込んだ入稿 PDF（表・裏の2ページ×テンプレート数）を lion/ に出す')
 ap.add_argument('--samples', action='store_true', help='見本（数枚の表裏を1枚の画像に）だけ出す')
 ap.add_argument('--lion', action='store_true', help='ライオン名刺 異種テンプレート向けの回転済み画像と面付けシートも出す')
@@ -222,7 +223,7 @@ def stripes(w, h, c1, c2, step=28):
 
 def trim_guides(im):
     """確認用：仕上がり線（印刷データには入れない）。preview だけで使う"""
-    im = im.copy(); d = ImageDraw.Draw(im)
+    im = im.convert('RGB'); d = ImageDraw.Draw(im)
     w, h = im.size
     d.rectangle((BL, BL, w - BL - 1, h - BL - 1), outline=(255, 0, 90), width=2)
     return im
@@ -678,6 +679,8 @@ for k in range(args.ref):
 for k in range(args.blank):
     n += 1; cards.append((n, 'blank', f'白紙トリガー_{k + 1}', blank_front(), trigger_back(), 'P'))
 n += 1; cards.append((n, 'title', 'タイトル', title_front(), title_back(), 'P'))
+if args.mono_backs:   # キャラ以外の裏面はグレースケール（PDF では DeviceGray ＝ K版のみ）
+    cards = [(num, kind, name, f, b if kind == 'chara' else b.convert('L'), ori) for num, kind, name, f, b, ori in cards]
 
 if args.samples:
     picks = [cards[0], cards[12], cards[15], cards[16], next(c for c in cards if c[1] == 'trigger' and c[2] == 'おしおき返し'), next(c for c in cards if c[1] == 'trigger' and c[2] == '復讐の誓い'), next(c for c in cards if c[1] == 'ref'), cards[-1]]
@@ -742,12 +745,24 @@ if args.lion:
     # ---- ライオン名刺 異種（21面）用：各面をテンプレートへ貼る向きに回転し、参考面付けも作る
     ldir = os.path.join(OUT, 'lion'); os.makedirs(ldir, exist_ok=True)
     SLOTS = 'ABCDEFGHIJKLMNOPQRSTU'
-    sheets = [cards[i:i + 21] for i in range(0, len(cards), 21)]
+    if args.mono_backs:
+        # 両面カラーで刷るキャラカードを先頭のテンプレートにまとめ、端数の面は早見表で埋める（公開札なので、裏がモノクロのまま
+        # カラーのテンプレートに載っても困らない）。残り（裏モノクロ）はガキ→トリガー→ハズレ→白紙→残りの早見表→タイトルの順
+        chara = [c for c in cards if c[1] == 'chara']; refs = [c for c in cards if c[1] == 'ref']
+        rest = [c for c in cards if c[1] not in ('chara', 'ref', 'title')]; title = [c for c in cards if c[1] == 'title']
+        pad = (-len(chara)) % 21
+        order = chara + refs[:pad] + rest + refs[pad:] + title
+        sheets = [order[i:i + 21] for i in range(0, len(order), 21)]
+        n_color = math.ceil(len(chara) / 21)          # 両面カラーで注文するテンプレート数
+    else:
+        sheets = [cards[i:i + 21] for i in range(0, len(cards), 21)]
+        n_color = len(sheets)
+    sheet_mode = lambda si: '両面カラー' if si <= n_color else '表カラー・裏モノクロ'
     # 参考面付け：A3 縦（297×420mm）に 3列×7行、ピッチ＝仕上がり＋塗り足し2辺ぶん
     A3W, A3H = round(297 * MM), round(420 * MM)
     cell_w, cell_h = LW, LH                   # 横型の塗り足し込みサイズ（= 名刺1面）
     gx = (A3W - 3 * cell_w) // 2; gy = (A3H - 7 * cell_h) // 2
-    mapping = ['番号,種別,名前,テンプレート,面(表),面(裏)']
+    mapping = ['番号,種別,名前,テンプレート,面(表),面(裏),テンプレートの印刷']
     try:
         from reportlab.pdfgen import canvas as rl_canvas
         from reportlab.lib.utils import ImageReader
@@ -767,7 +782,7 @@ if args.lion:
             bi.save(os.path.join(ldir, f'T{si}_{slot}_back.png'), dpi=(args.dpi, args.dpi))
             front.paste(fi, (gx + c * cell_w, gy + r * cell_h))
             back.paste(bi, (gx + (2 - c) * cell_w, gy + r * cell_h))     # 裏は中央で鏡合わせ（列を反転）
-            mapping.append(f'{num},{kind},{name},T{si},{slot},{SLOTS[r * 3 + (2 - c)]}の位置に{slot}')
+            mapping.append(f'{num},{kind},{name},T{si},{slot},{SLOTS[r * 3 + (2 - c)]}の位置に{slot},{sheet_mode(si)}')
         # 仕上がり線（参考。赤の点）
         for im in (front, back):
             d = ImageDraw.Draw(im)
@@ -855,6 +870,13 @@ if args.lion:
   T<n>_front.png / T<n>_back.png（lion_sheets.pdf）：参考の面付け（A3・3列×7行・ピッチ {TH_MM + 2 * B_MM:g}×{TW_MM + 2 * B_MM:g}mm・裏面は中央で鏡合わせ）。
   公式テンプレートの面の位置とは一致しない可能性があるので、入稿は公式テンプレートに T<n>_<面>_front/back.png を貼る形が確実。
   slots.csv：カード番号→テンプレート番号・面の対応表。{len(cards)}枚を {len(sheets)} 枚のテンプレート（21面ずつ）に割り当て。
+"""
+    if args.mono_backs:
+        readme += f"""
+[印刷の指定（--mono-backs）]
+  キャラカードだけ両面カラー、それ以外のカードは裏面をモノクロ（グレースケール＝K版のみ。PDF には DeviceGray で入れてある）にしてある。
+  テンプレートごとの注文：{'、'.join(f'T{si}＝{sheet_mode(si)}' for si in range(1, len(sheets) + 1))}
+  {', '.join(f'T{si}' for si in range(1, n_color + 1))} にはキャラカード{len([c for c in cards if c[1] == 'chara'])}枚と、端数の面を埋める早見表{(-len([c for c in cards if c[1] == 'chara'])) % 21}枚。残りのテンプレートにガキ・トリガー・ハズレ・白紙・残りの早見表・タイトル。
 """
     if args.template:
         readme += readme_tpl

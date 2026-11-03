@@ -513,6 +513,7 @@ button{font:inherit;color:inherit}
     <h2>メスガキに「は？」って言うゲーム<br><small>～メスガキ・クー～</small></h2>
     <p>クー(Coup)の基本ルールはそのまま。コインは♥、役職はメスガキたち。ライフを1失うたび、キャラカードの上か下を裏返してボロ絵にし、その下に敷いていたトリガーカードが発動します。</p>
     <div class="row"><label>対戦人数</label><div id="npick" class="popts"></div></div>
+    <div class="row"><label>CPUの強さ</label><div id="lvpick" class="popts"></div></div>
     <div class="row"><label>トリガー</label><div id="deckpick" class="popts"></div></div>
     <div class="row"><label></label><div id="deckinfo" class="deckinfo"></div></div>
     <div class="row"><label>あなたのキャラ</label><div id="chpick" class="chpick"></div></div>
@@ -716,7 +717,7 @@ function coupCostFor(p, q){ const c=coupCost(p) + (q && q.flags.shieldPrice ? 2 
 function taxAmount(p){ return 3 + (p.flags.taxMonopoly?1:0) - (S.players.some(q=>q!==p && q.flags.taxMonopoly)?1:0); }   // 独り占め：持ち主が脱落しても「ほかの人は2♥」は残る
 const hasRole = (p,r) => p.hand.some(c=>c.role===r);
 function drawCard(){
-  if(!S.deck.length && S.discard && S.discard.length){ S.deck=S.discard; S.discard=[]; shuffle(S.deck); log('山札が尽きたので、捨て札を切り直して山札にした', 'sys'); }
+  if(!S.deck.length && S.discard && S.discard.length){ S.deck=S.discard; S.discard=[]; S.pub=[]; shuffle(S.deck); log('山札が尽きたので、捨て札を切り直して山札にした', 'sys'); }
   return { role:S.deck.pop(), faceUp:false };
 }
 // 捨て札：公開・交換で手放したガキカードの置き場。山札が尽きたら切り直して山札になる
@@ -744,13 +745,13 @@ function newGame(n, myChar, opts){
     S.players.push({ i, name:i===0?`${ch.name}（あなた）`:ch.name, cpu:i>0, ch, hearts:2,
       hand:[{role:deck.pop(),faceUp:false},{role:deck.pop(),faceUp:false}], lost:[],
       boro:{top:false,bottom:false}, triggers:{top:{card:null,revealed:false},bottom:{card:null,revealed:false}}, trigHand:[],
-      flags:{}, alive:true, bluffsCaught:0, claims:0 });
+      flags:{}, alive:true, bluffsCaught:0, claims:0, claimed:{}, level:(opts.levels && opts.levels[Math.min(i, opts.levels.length-1)]) || opts.cpuLevel || CPU_LEVEL });
   }
   const deal=Math.max(2, Math.min(RULES.triggerDeal, Math.floor(tdeck.length/n)));
   for(const p of S.players) for(let k=0;k<deal;k++) p.trigHand.push(tdeck.pop());
   S.tdeck=tdeck; S.setupDone=false;
   if(auto){ S.players[0].cpu=true; S.players[0].name=`${S.players[0].ch.name}（おまかせ）`; }
-  S.deck=deck; S.discard=[]; S.turn=rnd(n); S.flags={}; S.winner=null; S.log=[]; S.current=null; S.target=null; S.acts=[]; S.deaths=0;
+  S.deck=deck; S.discard=[]; S.pub=[]; S.turn=rnd(n); S.flags={}; S.winner=null; S.log=[]; S.current=null; S.target=null; S.acts=[]; S.deaths=0;
   TUT.active=false; S.playable=null; S.targetable=null; S.action=null;
   if(opts.tutorial) tutSetup();
   if(!S.headless){ setHighlight(null); document.querySelectorAll('#cut,.cutin').forEach(e=>e.remove()); $('#modalEnd').classList.remove('show'); render(); }
@@ -761,6 +762,7 @@ async function runGame(){
   const gid=S.gameId;
   try{
     log(`ゲーム開始！ ${S.players[S.turn].name} からスタート`, 'sys');
+    { const ls=new Set(S.players.filter(p=>p.cpu).map(p=>lv(p))); if(ls.size===1 && !TUT.active) log(`CPUの強さ：${CPU_LEVELS[[...ls][0]]}`, 'sys'); }
     await setupTriggers();
     await tutHook('start');
     let guard=0;
@@ -833,7 +835,7 @@ async function performAction(p, act, target){
 async function performActionInner(p, act, target){
   const A=ACTIONS[act];
   S.target=target||null;
-  if(A.role) p.claims++;
+  if(A.role){ p.claims++; (p.claimed||(p.claimed={}))[A.role]=((p.claimed||{})[A.role]||0)+1; }
   SFX.play(act==='coup'?'boom':'pop');
   say(p, A.name);
   log(`${p.name}「${A.name}」${target?` → ${target.name}`:''}${A.role?`（${rname(A.role)}を主張）`:''}`, p.cpu?'':'me');
@@ -914,6 +916,7 @@ async function setupTriggers(){
   log('全員がトリガーを仕込んだ', 'sys');
 }
 function cpuPlaceTriggers(p){
+  if(lv(p)===1){ const h=shuffle(p.trigHand.slice()); return [h[0],h[1]]; }   // よわい：適当に2枚
   const sorted=p.trigHand.slice().sort((a,b)=>triggerValue(p,b)-triggerValue(p,a));
   const keep=sorted.slice(0,2); return chance(0.5)?keep:[keep[1],keep[0]];
 }
@@ -957,7 +960,8 @@ async function resolveChallenge(claimant, challenger, role, what){
     SFX.play('chime');
     say(claimant, ROLES[role].phrase);
     log(`${claimant.name} は ${rname(role)} を公開！「${ROLES[role].phrase}」 公開したカードは捨て札にして、山札から1枚引き直す`);
-    returnToDeck(role); claimant.hand[idx]=drawCard(); markFresh(claimant.hand[idx]);
+    returnToDeck(role); (S.pub||(S.pub=[])).push(role); if(claimant.claimed) claimant.claimed[role]=0;   // 公開した札は皆が知る。引き直したので主張は白紙に
+    claimant.hand[idx]=drawCard(); markFresh(claimant.hand[idx]);
     render();
     await fxSwap(claimant, role, `${claimant.name} は ${rname(role)} を公開！`, '本物だった', true);
     render(); await fxDiscard(claimant, 1, role); await fxDraw(claimant, 1); await wait(200);
@@ -1008,7 +1012,7 @@ async function blockWindow(actor, act, target){
     if(S.action){ S.action.phase='block'; S.action.blocker=c; S.action.blockRole=d.role; renderAction(); }
     say(c, ROLES[d.role].line);
     log(`${c.name}「${ROLES[d.role].line}」（${rname(d.role)} でブロック）`, c.cpu?'':'me');
-    c.claims++;
+    c.claims++; (c.claimed||(c.claimed={}))[d.role]=((c.claimed||{})[d.role]||0)+1;
     render(); await wait(700);
     const cands=[actor, ...orderFrom(c).filter(q=>q!==actor)];
     const ok=await challengeWindow(c, d.role, {kind:'block', action:act, target, actor}, cands);
@@ -1321,7 +1325,232 @@ async function endGame(){
 
 /* =====================================================================
  *  CPU の思考
+ *  強さは3段階。p.level（開始画面の CPU_LEVEL か、newGame の opts.cpuLevel / opts.levels）で決まる。
+ *   1 よわい：ハッタリをしない、ほとんど疑わない、相手や捨てる札を適当に選ぶ
+ *   2 ふつう：従来の判断（確率つきのハッタリと勘）
+ *   3 つよい：場に出た札・見た札・主張の履歴から「本当に持っている確率」を見積もり、期待値で判断する
  * ===================================================================== */
+const CPU_LEVELS = { 1:'よわい', 2:'ふつう', 3:'つよい' };
+let CPU_LEVEL = 2;
+function saveCpuLevel(){ try{ localStorage.setItem('mesugaki-coup-cpu', String(CPU_LEVEL)); }catch(e){} }
+function loadCpuLevel(){ try{ const v=parseInt(localStorage.getItem('mesugaki-coup-cpu')||'',10); if(CPU_LEVELS[v]) CPU_LEVEL=v; }catch(e){} }
+const lv = p => (p && p.level) || CPU_LEVEL;
+
+function cpuThreat(p, cands){ if(lv(p)===1) return pick(cands); if(lv(p)===3) return bestTarget(p, cands, 'coup'); return cpuThreatNormal(p, cands); }
+function cpuChooseAction(p, forced){
+  const tv=tutCpu('action'); if(tv!==undefined) return typeof tv==='function'?tv(p):tv;
+  const l=lv(p); return l===1 ? cpuChooseActionEasy(p, forced) : l===3 ? cpuChooseActionHard(p, forced) : cpuChooseActionNormal(p, forced);
+}
+function cpuChallenge(c, claimant, role, what){
+  const tv=tutCpu('challenge'); if(tv!==undefined) return tv;
+  const l=lv(c); return l===1 ? cpuChallengeEasy(c, claimant, role, what) : l===3 ? cpuChallengeHard(c, claimant, role, what) : cpuChallengeNormal(c, claimant, role, what);
+}
+function cpuBlock(c, actor, act, opts){
+  const tv=tutCpu('block'); if(tv!==undefined) return tv;
+  const l=lv(c); return l===1 ? cpuBlockEasy(c, actor, act, opts) : l===3 ? cpuBlockHard(c, actor, act, opts) : cpuBlockNormal(c, actor, act, opts);
+}
+function cpuLoseCard(p){
+  const tv=tutCpu('lose'); if(tv!==undefined) return typeof tv==='function'?tv(p):tv;
+  const l=lv(p); return l===1 ? rnd(p.hand.length) : l===3 ? cpuLoseCardHard(p) : cpuLoseCardNormal(p);
+}
+function cpuFlipOther(c,p){
+  const tv=tutCpu('flip'); if(tv!==undefined) return tv;
+  if(lv(c)===1) return pick(['top','bottom'].filter(k=>!p.boro[k]));
+  return cpuFlipOtherNormal(c,p);
+}
+function cpuExchangeKeep(p, pool, n){
+  const l=lv(p);
+  if(l===1){ const idx=shuffle(pool.map((c,i)=>i)); return idx.slice(0,n); }
+  if(l===3) return cpuExchangeKeepHard(p, pool, n);
+  return cpuExchangeKeepNormal(p, pool, n);
+}
+
+/* ---- よわい：初心者っぽく。場を見ずに気分でハッタリ・ダウトし、相手も捨てる札も適当 ---- */
+function cpuChooseActionEasy(p, forced){
+  const ct=targetsFor(p,'coup');
+  if(forced && ct.length) return {action:'coup', target:pick(ct)};
+  if(p.hearts>=coupCost(p) && ct.length && chance(0.5)) return {action:'coup', target:pick(ct)};
+  const opts=[{action:'income'},{action:'income'},{action:'aid'}];
+  const bluff=chance(0.3);   // 持っていなくても気分で主張する（場に何枚出ているかは見ない）
+  if(hasRole(p,'mesugaki') || bluff) opts.push({action:'tax'},{action:'tax'});
+  const at=targetsFor(p,'assassinate'); if((hasRole(p,'succu') || bluff) && p.hearts>=3 && at.length) opts.push({action:'assassinate', target:pick(at)});
+  const rich=othersOf(p).filter(q=>q.hearts>=1); if((hasRole(p,'kouhai') || bluff) && rich.length) opts.push({action:'steal', target:pick(rich)});
+  if(hasRole(p,'osananajimi')) opts.push({action:'exchange'});
+  return pick(opts);
+}
+function cpuChallengeEasy(c, claimant, role, what){
+  if(claimant.hand.some(x=>x.role===role && (x.faceUp || seenBy(x,c)))) return false;
+  return chance(0.15);   // 根拠なく、気分で
+}
+function cpuBlockEasy(c, actor, act, opts){
+  const trig=opts.find(o=>o.kind==='trigger'); if(trig) return trig;
+  const have=opts.find(o=>o.kind==='role' && hasRole(c,o.role)); if(have) return chance(0.6)?have:null;
+  const ro=opts.filter(o=>o.kind==='role'); if(!ro.length) return null;
+  if(act==='assassinate' && c.hand.length===1) return chance(0.4)?pick(ro):null;   // 追い詰められたときの苦しまぎれ
+  return chance(0.12)?pick(ro):null;   // 気分のハッタリブロック
+}
+
+/* ---- つよい：公開情報からの推定 ---- */
+function nCr(n,r){ if(r<0||r>n) return 0; r=Math.min(r,n-r); let v=1; for(let i=1;i<=r;i++) v=v*(n-r+i)/i; return v; }
+// p から見て「q が role を1枚以上持っている」確率。場に出た札・公開で捨てた札・自分の手札・見せてもらった札を除いた残りで数える
+function roleProb(p, q, role){
+  if(q.hand.some(c=>c.role===role && (c.faceUp || seenBy(c,p) || q===p))) return 1;
+  let out=0, known=0;
+  for(const r of S.players){
+    for(const x of r.lost){ known++; if(x===role) out++; }
+    if(r===p){ for(const c of r.hand){ known++; if(c.role===role) out++; } continue; }
+    for(const c of r.hand) if(c.faceUp || seenBy(c,p)){ known++; if(c.role===role) out++; }
+  }
+  for(const x of (S.pub||[])){ known++; if(x===role) out++; }
+  const k=3-out, U=15-known, h=q.hand.filter(c=>!c.faceUp && !seenBy(c,p)).length;
+  if(k<=0 || h<=0 || U<=0) return 0;
+  return 1 - nCr(U-k,h)/nCr(U,h);
+}
+// q がハッタリをかける傾向（0.05〜0.9）。ばれた回数と、手札より多い種類を主張しているかで上げる
+function bluffRate(q){
+  const distinct=Object.keys(q.claimed||{}).filter(r=>q.claimed[r]>0).length;
+  return Math.max(0.05, Math.min(0.9, 0.3 + 0.15*q.bluffsCaught + 0.12*Math.max(0, distinct-q.hand.length)));
+}
+// 主張を聞いたあとの「本当に持っている」確率（ベイズ更新）。同じ役職を前にも主張して通っていれば少し信じる
+function claimProb(p, q, role){
+  const pr=roleProb(p,q,role); if(pr>=1) return 1; if(pr<=0) return 0;
+  const b=bluffRate(q);
+  const n=Math.max(0, ((q.claimed||{})[role]||0)-1);
+  return Math.min(1, pr/(pr+(1-pr)*b) + 0.05*Math.min(n,3));
+}
+// 自分（c）が role を主張したとき、ダウトされそうな度合い（0〜1）
+function suspicion(c, role){
+  let out=0;
+  for(const r of S.players){ for(const x of r.lost) if(x===role) out++; for(const x of r.hand) if(x.role===role && x.faceUp && r!==c) out++; }
+  for(const x of (S.pub||[])) if(x===role) out++;
+  if(out>=3) return 1;
+  const distinct=Object.keys(c.claimed||{}).filter(r=>c.claimed[r]>0 && r!==role).length;
+  return Math.max(0.05, Math.min(0.97, 0.25 + 0.15*c.bluffsCaught + 0.2*out + 0.12*Math.max(0, distinct+1-c.hand.length)));
+}
+// 誰か1人でもダウトしてくる確率の見積もり（手札1枚の相手は疑いにくい）
+function challengeGuess(p, s){ let keep=1; for(const q of othersOf(p)) keep*=1-s*0.45*(q.hand.length===1?0.5:1); return 1-keep; }
+// q が role を主張して自分のアクションを止めてくる確率（本当に持っている率＋ハッタリ率）
+function blockGuess(p, q, role){ const pr=roleProb(p,q,role); return Math.min(0.95, pr*0.9 + (1-pr)*bluffRate(q)*0.3); }
+// 狙う相手：脱落させられる相手、勝ちに近い相手を優先。わからせおじさんを持っていそうな相手はまけちゃえ～♥では避ける
+function bestTarget(p, cands, act){
+  const DANGER={t1:3, t12:2.5, t28:2.5, t11:1, t17:1, t6:1, t20:1.5, t21:1};
+  let best=null, bs=-1e9;
+  for(const q of cands){
+    let sc=q.hearts*0.6 + (q.hand.length===1?5:2) + (q.hearts>=coupCost(q)-1?3:0) + (q.flags.win15?(3+(q.hearts>=RULES.collectorGoal-3?6:0)):0) + (q.flags.vengeance===p.i?2:0);
+    if(q.flags.bodyguard) sc-=1.5;
+    if(act==='coup' && q.flags.shieldPrice) sc-=1.5;
+    if(act==='assassinate') sc-=roleProb(p,q,'ojisan')*6;
+    for(const k of ['top','bottom']){ const t=q.triggers[k]; if(t && !t.revealed && t.card && (t.card.seenBy||[]).includes(p.i)) sc-=(DANGER[t.card.id]||0); }
+    sc+=Math.random()*0.8;
+    if(sc>bs){ bs=sc; best=q; }
+  }
+  return best;
+}
+function cpuChooseActionHard(p, forced){
+  const others=othersOf(p), cost=coupCost(p), lives=p.hand.length;
+  const L = lives===1 ? 25 : 7;     // 1枚失う痛さ（♥換算）
+  const ct=targetsFor(p,'coup');
+  if(forced && ct.length) return {action:'coup', target:bestTarget(p,ct,'coup')};
+  if(p.flags.win15){   // メンヘラ：届くなら勝ちに行く
+    const need=RULES.collectorGoal-p.hearts;
+    if(need<=1) return {action:'income'};
+    if(need<=2 && chance(0.85)) return {action:'aid'};
+    if(need<=taxAmount(p) && (hasRole(p,'mesugaki') || (lives===2 && challengeGuess(p, suspicion(p,'mesugaki'))<0.5))) return {action:'tax'};
+  }
+  if(p.hearts>=cost && ct.length) return {action:'coup', target:bestTarget(p,ct,'coup')};
+  const cands=[{ev:1, choice:{action:'income'}}];
+  { let keep=1; for(const q of others) keep*=1-blockGuess(p,q,'mesugaki'); cands.push({ev:2*keep, choice:{action:'aid'}}); }
+  { const n=taxAmount(p);
+    if(hasRole(p,'mesugaki')) cands.push({ev:n+0.3, choice:{action:'tax'}});
+    else { const pc=challengeGuess(p, suspicion(p,'mesugaki')); cands.push({ev:(1-pc)*n - pc*L, choice:{action:'tax'}}); } }
+  { const rich=others.filter(q=>q.hearts>=1);
+    if(rich.length){
+      const t=rich.slice().sort((a,b)=>(b.hearts+(b.hearts>=coupCost(b)-2?3:0)+(b.flags.win15?2:0)) - (a.hearts+(a.hearts>=coupCost(a)-2?3:0)+(a.flags.win15?2:0)))[0];
+      const take=Math.min(2,t.hearts);
+      const pb=1-(1-blockGuess(p,t,'kouhai'))*(1-blockGuess(p,t,'osananajimi'));
+      let ev=take*1.3*(1-pb) - (t.flags.bodyguard?2:0);
+      if(!hasRole(p,'kouhai')){ const pc=challengeGuess(p, suspicion(p,'kouhai')); ev=(1-pc)*ev - pc*L; }
+      cands.push({ev, choice:{action:'steal', target:t}});
+    } }
+  if(p.hearts>=3){
+    const at=targetsFor(p,'assassinate');
+    if(at.length){
+      const t=bestTarget(p,at,'assassinate');
+      const pOj=roleProb(p,t,'ojisan'), pb=Math.min(0.95, pOj*0.95 + (1-pOj)*(t.hand.length===1?0.6:bluffRate(t)*0.4));
+      let ev=(t.hand.length===1?18:12)*(1-pb) - 3 - (t.flags.bodyguard?2:0);
+      if(!hasRole(p,'succu')){ const pc=challengeGuess(p, suspicion(p,'succu')); ev=(1-pc)*ev - pc*L; }
+      cands.push({ev, choice:{action:'assassinate', target:t}});
+    } }
+  if(hasRole(p,'osananajimi')){
+    const weak=p.hand.filter(c=>c.role==='ojisan'||c.role==='osananajimi').length + (new Set(p.hand.map(c=>c.role)).size<p.hand.length?1:0);
+    cands.push({ev:0.6+weak*1.1, choice:{action:'exchange'}});
+    if(p.flags.examine){ const cs=others.filter(q=>q.hand.length>0); if(cs.length) cands.push({ev:2.2, choice:{action:'exchange', target:bestTarget(p,cs,'examine')}}); }
+  }
+  for(const c of cands) c.ev+=Math.random()*0.5;
+  cands.sort((a,b)=>b.ev-a.ev);
+  return cands[0].choice;
+}
+function cpuChallengeHard(c, claimant, role, what){
+  const pHas=claimProb(c, claimant, role);
+  if(pHas>=1) return false;
+  const lives=c.hand.length;
+  let loss = lives===1 ? 30 : 10;
+  let gain = claimant.hand.length===1 ? 14 : 8;
+  if(what.kind==='action'){
+    if(what.target===c){
+      if(what.action==='assassinate'){
+        if(lives===1 && !hasRole(c,'ojisan')){   // どうせ脱がされる：ダウトか、おじさんのハッタリブロックか、見込みの高い方
+          const pc=Math.min(0.95, 0.35 + 0.15*c.bluffsCaught + (suspicion(c,'ojisan')>=0.6?0.3:0));
+          return pHas < pc;
+        }
+        gain+=8;
+      } else if(what.action==='steal') gain+=3;
+      else if(what.action==='exchange') gain+=2;
+    }
+    if(what.action==='tax' && claimant.flags.win15 && claimant.hearts+taxAmount(claimant)>=RULES.collectorGoal) gain+=40;
+    if(what.action==='tax' && c.flags.taxSuspicion && c.hearts>=2) loss=3;   // ほんとに～？：外れても2♥
+  } else {
+    if(what.actor===c) gain += what.action==='assassinate' ? 8 : what.action==='steal' ? 3 : 2;
+    else gain-=2;
+  }
+  return (1-pHas)*gain - pHas*loss > 0.5 + Math.random()*1.5;
+}
+function cpuBlockHard(c, actor, act, opts){
+  const trig=opts.find(o=>o.kind==='trigger'); if(trig) return trig;
+  const have=opts.find(o=>o.kind==='role' && hasRole(c,o.role)); if(have) return have;
+  const roleOpts=opts.filter(o=>o.kind==='role'); if(!roleOpts.length) return null;
+  const cand=roleOpts.map(o=>({o, pc:Math.min(0.97, 0.35 + 0.15*c.bluffsCaught + (suspicion(c,o.role)>=0.6?0.3:0) + (suspicion(c,o.role)>=0.97?0.6:0))})).sort((a,b)=>a.pc-b.pc);
+  const {o,pc}=cand[0]; const lives=c.hand.length;
+  if(act==='assassinate'){ if(lives===1) return pc<0.97?o:null; return pc<0.42?o:null; }   // 2枚なら、ダウトされると2枚とも失う
+  if(act==='steal') return Math.min(2,c.hearts)>=2 && pc<0.2 ? o : null;
+  if(act==='aid'){ if(actor.flags.win15 && actor.hearts+2>=RULES.collectorGoal) return pc<0.8?o:null; return pc<0.18 && actor.hearts>=4 ? o : null; }
+  if(act==='exchange') return lives===2 && pc<0.3 ? o : null;
+  if(act==='tax') return pc<0.25 ? o : null;
+  return null;
+}
+// 手札の価値：役職の強さ＋主張して通した役職（証明できる）＋いま必要な守り
+function handValueHard(p, c){
+  let s=ROLES[c.role].value;
+  if(c.faceUp) s-=2;
+  s+=Math.min((p.claimed||{})[c.role]||0, 2)*1.5;
+  if(c.role==='ojisan' && othersOf(p).some(q=>q.hearts>=3 && roleProb(p,q,'succu')>0.35)) s+=2.5;
+  if(c.role==='mesugaki') s+=1;
+  if((c.role==='kouhai'||c.role==='osananajimi') && p.hearts>=2 && othersOf(p).some(q=>roleProb(p,q,'kouhai')>0.4)) s+=1;
+  return s;
+}
+function cpuLoseCardHard(p){
+  let idx=0, bs=1e9;
+  p.hand.forEach((c,i)=>{ const s=handValueHard(p,c) + (p.hand.filter(x=>x.role===c.role).length>1?-2:0); if(s<bs){ bs=s; idx=i; } });
+  return idx;
+}
+function cpuExchangeKeepHard(p, pool, n){
+  const idx=pool.map((c,i)=>i).sort((a,b)=>handValueHard(p,pool[b])-handValueHard(p,pool[a]));
+  const keep=[], seen=new Set();
+  for(const i of idx){ if(keep.length>=n) break; if(seen.has(pool[i].role) && idx.some(j=>!keep.includes(j)&&!seen.has(pool[j].role))) continue; keep.push(i); seen.add(pool[i].role); }
+  for(const i of idx){ if(keep.length>=n) break; if(!keep.includes(i)) keep.push(i); }
+  return keep;
+}
+
 // p が「場に出ている」と知っている role の枚数。except の手札は数えない（主張者本人の手札を疑う材料にしないため）
 function knownCount(p, role, except){
   let n=0;
@@ -1333,13 +1562,12 @@ function knownCount(p, role, except){
   return n;
 }
 function threatScore(p, q){ return q.hearts + q.hand.length*3 + (q.flags.win15?(4+(q.hearts>=RULES.collectorGoal-3?6:0)):0) + (q.hearts>=coupCost(q)?3:0); }
-function cpuThreat(p, cands){
+function cpuThreatNormal(p, cands){
   let best=null, bs=-1;
   for(const q of cands){ const s=threatScore(p,q)+Math.random()*2; if(s>bs){ bs=s; best=q; } }
   return best;
 }
-function cpuChooseAction(p, forced){
-  const tv=tutCpu('action'); if(tv!==undefined) return typeof tv==='function'?tv(p):tv;
+function cpuChooseActionNormal(p, forced){
   const others=othersOf(p), cost=coupCost(p);
   const lives=p.hand.length;
   // メンヘラ持ち：この手番で目標に届くなら、ばいば～い♥より先にそれで勝ちに行く
@@ -1369,8 +1597,7 @@ function cpuChooseAction(p, forced){
   if(chance(0.7)) return {action:'aid'};
   return {action:'income'};
 }
-function cpuChallenge(c, claimant, role, what){
-  const tv=tutCpu('challenge'); if(tv!==undefined) return tv;
+function cpuChallengeNormal(c, claimant, role, what){
   if(claimant.hand.some(x=>x.role===role && (x.faceUp || seenBy(x,c)))) return false; // 持っているのを知っている
   const known=knownCount(c, role, claimant);
   if(known>=3) return true;
@@ -1391,8 +1618,7 @@ function cpuChallenge(c, claimant, role, what){
   if(c.hand.length===1) pr*=0.5;
   return chance(pr);
 }
-function cpuBlock(c, actor, act, opts){
-  const tv=tutCpu('block'); if(tv!==undefined) return tv;
+function cpuBlockNormal(c, actor, act, opts){
   const trig=opts.find(o=>o.kind==='trigger'); if(trig) return trig;
   const have=opts.find(o=>o.kind==='role' && hasRole(c,o.role));
   if(have && chance(0.92)) return have;
@@ -1406,8 +1632,7 @@ function cpuBlock(c, actor, act, opts){
   if(act==='tax') return c.hand.length===2 && chance(0.3) ? pick(bluff) : null;
   return null;
 }
-function cpuLoseCard(p){
-  const tv=tutCpu('lose'); if(tv!==undefined) return typeof tv==='function'?tv(p):tv;
+function cpuLoseCardNormal(p){
   let idx=0, bs=1e9;
   p.hand.forEach((c,i)=>{ const s=ROLES[c.role].value + (c.faceUp?-1:0) + (p.hand.filter(x=>x.role===c.role).length>1?-2:0); if(s<bs){ bs=s; idx=i; } });
   return idx;
@@ -1437,8 +1662,7 @@ function triggerValue(p, card){
     default: return 0;
   }
 }
-function cpuFlipOther(c,p){
-  const tv=tutCpu('flip'); if(tv!==undefined) return tv;
+function cpuFlipOtherNormal(c,p){
   const avail=['top','bottom'].filter(k=>!p.boro[k]);
   // いいから見せてで中身を知っていれば、自分に跳ね返りにくい方を脱がせる（知らなければ1＝ふつう）
   const DANGER={t1:3, t12:2.5, t11:1.5, t17:1.5, t6:1.2, t14:1.2, t9:1, t2:1};
@@ -1452,7 +1676,7 @@ function cpuFlip(p){
   if(a===b) return pick(['top','bottom']);
   return a>b?'top':'bottom';
 }
-function cpuExchangeKeep(p, pool, n){
+function cpuExchangeKeepNormal(p, pool, n){
   const idx=pool.map((c,i)=>i);
   idx.sort((a,b)=>{ const va=ROLES[pool[a].role].value+(pool[a].faceUp?-2:0), vb=ROLES[pool[b].role].value+(pool[b].faceUp?-2:0); return vb-va; });
   const keep=[]; const seen=new Set();
@@ -2225,6 +2449,8 @@ function openStart(){
   $('#deckinfo').innerHTML=`<b>${deckLabel()}</b>（${DECK.ids.length}枚）：${DECK.ids.map(id=>(TRIGGERS.find(t=>t.id===id)||{}).name).join('・')}`;
   const np=$('#npick'); np.innerHTML='';
   for(const n of [3,4,5,6]){ const b=document.createElement('button'); b.className='btn'+(setup.n===n?' primary':''); b.textContent=`${n}人`; b.onclick=()=>{ setup.n=n; openStart(); }; np.appendChild(b); }
+  const lp=$('#lvpick'); lp.innerHTML='';
+  for(const l of [1,2,3]){ const b=document.createElement('button'); b.className='btn'+(CPU_LEVEL===l?' primary':''); b.textContent=CPU_LEVELS[l]; b.title={1:'ハッタリをせず、ほとんど疑わない',2:'勘とハッタリで戦う',3:'場に出た札と主張の履歴から確率で判断する'}[l]; b.onclick=()=>{ CPU_LEVEL=l; saveCpuLevel(); openStart(); }; lp.appendChild(b); }
   const cp=$('#chpick'); cp.innerHTML='';
   CHARS.forEach((ch,i)=>{ const d=document.createElement('div'); d.className='ch'+(setup.ch===i?' on':''); d.appendChild(figureEl(ch,{top:false,bottom:false},'sm',false)); const l=document.createElement('span'); l.textContent=`${ch.name}`; d.appendChild(l); d.onclick=()=>{ setup.ch=i; openStart(); }; cp.appendChild(d); });
   let auto=$('#autoPick');
@@ -2258,7 +2484,7 @@ function renderDeckPicker(){
 }
 function init(){
   preloadImages();
-  loadDeck();
+  loadDeck(); loadCpuLevel();
   $('#btnDeckOk').onclick=()=>{ if(deckDraft.length!==DECK_SIZE) return; const preset = ['basic','fresh','mix'].find(k=>DECK_PRESETS[k].every(id=>deckDraft.includes(id))) || 'custom'; setDeck(preset, deckDraft); $('#modalDeck').classList.remove('show'); openStart(); };
   $('#btnDeckBasic').onclick=()=>{ deckDraft=DECK_PRESETS.basic.slice(); renderDeckPicker(); };
   window.addEventListener('resize', ()=>renderArrows());
@@ -2275,7 +2501,7 @@ function init(){
   $('#btnSound').onclick=toggleSound; $('#btnSound2').onclick=toggleSound;
   document.addEventListener('pointerdown', ()=>SFX.init(), {passive:true});
   $('#prompt').addEventListener('click', e=>{ if(e.target.closest('.btn,.at,.rc.sel,.tc.sel')) SFX.play('tick'); });
-  $('#btnStart').onclick=()=>{ $('#modalStart').classList.remove('show'); newGame(setup.n, setup.ch, {auto:setup.auto}); };
+  $('#btnStart').onclick=()=>{ $('#modalStart').classList.remove('show'); newGame(setup.n, setup.ch, {auto:setup.auto, cpuLevel:CPU_LEVEL}); };
   $('#btnTutorial').onclick=()=>{ $('#modalStart').classList.remove('show'); newGame(2, setup.ch, {tutorial:true}); };
   openStart();
 }

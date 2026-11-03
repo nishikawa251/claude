@@ -3,7 +3,7 @@ const url = 'file:///home/user/claude/mesugaki-coup/index.html';
 const N = parseInt(process.argv[2] || '100', 10);
 const PLAYERS = (process.argv[3] || '4').split(',').map(Number);
 const DUD = parseInt(process.argv[4] || '5', 10);
-// 任意：RULES の上書き（例 collectorGoal=8,coupCost=6）
+// 任意：RULES の上書き（例 collectorGoal=8,coupCost=6）。deck=basic|fresh|mix|t1+t2+…、level=1|2|3（全CPU）、levels=3+2+2+2（席ごと。足りない席は最後の値）
 const OVR = {}; for (const kv of (process.argv[5] || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); OVR[k] = isNaN(Number(v)) ? (v === 'true' ? true : v === 'false' ? false : v) : Number(v); }
 (async () => {
   const browser = await chromium.launch();
@@ -15,18 +15,21 @@ const OVR = {}; for (const kv of (process.argv[5] || '').split(',').filter(Boole
     S.headless = true; RULES.dudCount = DUD;
     // deck=basic|fresh|t1+t2+... でトリガーデッキを選ぶ。それ以外のキーは RULES の上書き
     if (OVR.deck !== undefined) { const v = String(OVR.deck); DECK.ids = DECK_PRESETS[v] ? DECK_PRESETS[v].slice() : v.split('+'); DECK.preset = DECK_PRESETS[v] ? v : 'custom'; delete OVR.deck; }
+    let levels = null; if (OVR.levels !== undefined) { levels = String(OVR.levels).split('+').map(Number); delete OVR.levels; } else if (OVR.level !== undefined) { levels = [Number(OVR.level)]; delete OVR.level; }
     Object.assign(RULES, OVR);
     const ids = [...TRIGGERS.map(t => t.id), 'none'];
     const st = {}; for (const id of ids) st[id] = { held: 0, heldWin: 0, first: 0, firstWin: 0, last: 0, firstByWin: 0, firstBy: 0, revive: 0, reviveWin: 0 };
-    const out = { games: 0, turns: 0, winnerLostLife: 0, winnerHearts: 0, lifeLossTotal: 0, errors: 0, winBySeat: {}, firstTurnWin: 0 };
+    const out = { games: 0, turns: 0, winnerLostLife: 0, winnerHearts: 0, lifeLossTotal: 0, errors: 0, winBySeat: {}, firstTurnWin: 0, byLevel: {}, levels };
     out.deck = DECK.ids.slice();
     for (let g = 0; g < N; g++) {
       const n = PLAYERS[g % PLAYERS.length];
       let first;
-      try { await newGame(n, Math.floor(Math.random() * CHARS.length), { auto: true }); } catch (e) { out.errors++; continue; }
+      try { await newGame(n, Math.floor(Math.random() * CHARS.length), { auto: true, levels }); } catch (e) { out.errors++; continue; }
       if (!S.winner) { out.errors++; continue; }
       out.games++; out.turns += S.log.length; out.winnerHearts += S.winner.hearts;
       const w = S.winner;
+      out.winBySeat[w.i] = (out.winBySeat[w.i] || 0) + 1;
+      for (const p of S.players) { const b = out.byLevel[p.level] || (out.byLevel[p.level] = { seats: 0, wins: 0 }); b.seats++; if (p === w) b.wins++; }
       for (const p of S.players) {
         const win = p === w ? 1 : 0;
         for (const k of ['top', 'bottom']) { const id = p.triggers[k].card.id; st[id].held++; st[id].heldWin += win; }

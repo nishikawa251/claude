@@ -17,7 +17,7 @@ usage: python3 -I print_cards.py --out <dir> [--art <元立ち絵dir>] [--size 9
   README.txt                                      … 仕様とカード一覧
 
 ・ガキカード15（表5種×3、裏共通）、キャラカード12（6キャラ×上下。表＝通常絵、裏＝ボロ絵の両面）、
-  トリガー18（基本12＋おすすめデッキの新カード6。裏共通）、早見表6（表裏別）、タイトル1（表裏別）
+  トリガー18（基本セット＝ --base-set のプリセット。裏共通）、早見表6（表裏別）、タイトル1（表裏別）。--all-triggers で残りのトリガーを「拡張」として別枠に足す
 ・カード文言と枚数は index.html の定義（ROLES / ACTIONS / TRIGGERS / DECK_PRESETS）から読む。
 ・キャラカードは横長（63×88 を横に使う）。元立ち絵（--art）が無いときはゲーム用 img/*.webp から作る（低解像度）。
 """
@@ -30,7 +30,8 @@ ap.add_argument('--art', default=None, help='Bombergirl 立ち絵（<name>000.pn
 ap.add_argument('--index', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'index.html'))
 ap.add_argument('--size', default='91x55', help='仕上がり mm（長辺x短辺）')
 ap.add_argument('--bleed', type=float, default=1.5, help='塗り足し mm（各辺）')
-ap.add_argument('--all-triggers', action='store_true', help='定義されている全トリガー（見送り以外）を入れる')
+ap.add_argument('--all-triggers', action='store_true', help='定義されている全トリガー（見送り以外）を入れる。基本セットの18枚のあとに、残りを「拡張」として別枠で並べる')
+ap.add_argument('--base-set', default='mix', choices=['basic', 'fresh', 'mix'], help='基本セットに入れるトリガー18枚のプリセット（既定 mix＝おすすめデッキ）')
 ap.add_argument('--dud', type=int, default=0, help='ハズレ（効果なし）トリガーの枚数')
 ap.add_argument('--ref', type=int, default=6, help='早見表の枚数')
 ap.add_argument('--blank', type=int, default=0, help='白紙トリガー（自作用）の枚数')
@@ -127,9 +128,11 @@ CHARS = [(m.group(1), m.group(2)) for m in re.finditer(r"\{ id:'([a-z]+)',\s*nam
 CHAR_NAME = dict(CHARS)
 PRINT_CHARS = [c for c, _ in CHARS] if args.chars == 'all' else [c for c in args.chars.split(',') if c]
 assert all(c in CHAR_NAME for c in PRINT_CHARS), f'知らないキャラ id: {PRINT_CHARS}'
-TRIG18 = list(PRESETS['basic'])   # 52枚版に入れるトリガー＝基本デッキ18枚
-if args.all_triggers:   # 攻撃系 → 防御系 → ルール変更 → 特殊系 の順に全部（見送り札は除く）
-    TRIG18 = [i for k in ('attack', 'defense', 'rule', 'special') for i in TRIGGERS if cat_of(i) == k and not TRIGGERS[i]['retired']]
+BASE_SET = set(PRESETS[args.base_set])    # 基本セットのトリガー18枚
+_all_cat = [i for k in ('attack', 'defense', 'rule', 'special') for i in TRIGGERS if cat_of(i) == k and not TRIGGERS[i]['retired']]
+TRIG_BASE = [i for i in _all_cat if i in BASE_SET]                              # 基本セット（分類順）
+TRIG_EXT = [i for i in _all_cat if i not in BASE_SET] if args.all_triggers else []   # 別枠の拡張トリガー（分類順）
+TRIG18 = TRIG_BASE + TRIG_EXT
 
 # ---------------------------------------------------------------- 描画ユーティリティ
 INK = (40, 22, 48)
@@ -324,8 +327,8 @@ def trigger_front(tid):
         if top + n * int(f.size * 1.5) <= bottom and not (n > 1 and len(ls[-1]) <= 2): break
         fs -= 0.5
     draw_text_block(d, (x0, top), body, font(fs), wdt, fill=INK, spacing=1.5)
-    # 下：分類／おすすめ、ロゴ
-    sets = 'おすすめ' if tid in PRESETS['mix'] else ''
+    # 下：分類／基本セットか拡張か、ロゴ
+    sets = '基本' if tid in BASE_SET else '拡張'
     d.line((inner[0] + int(4 * MM), inner[3] - int(9.5 * MM), inner[2] - int(4 * MM), inner[3] - int(9.5 * MM)), fill=mix(col, (255, 255, 255), 0.6), width=int(0.4 * MM))
     text_center(d, PW / 2, inner[3] - int(8 * MM), CAT_LABEL[cat] + ('／' + sets if sets else ''), font(5.5, 'black'), fill=col)
     text_center(d, PW / 2, inner[3] - int(3.8 * MM), 'メスガキ・クー', font(5), fill=DIM)
@@ -611,18 +614,24 @@ def title_front():
     text_center(d, PW / 2, inner[1] + int(47 * MM), 'ハッタリと「は？」でわからせ合う', font(6), fill=(217, 184, 230))
     # 内容物（カード種別ごとの枚数）
     n_chara = len(PRINT_CHARS) * 2 * args.chara_copies
+    n_base = len(ROLES) * 3 + n_chara + len(TRIG_BASE) + args.ref + 1
+    n_ext = len(TRIG_EXT) + args.dud + args.blank
     items = [('ガキカード', f'{len(ROLES) * 3}枚'), ('キャラカード', f'{n_chara}枚' + (f'（{len(PRINT_CHARS)}キャラ×上下×{args.chara_copies}組）' if args.chara_copies > 1 else f'（{len(PRINT_CHARS)}キャラ×上下）')),
-             ('トリガーカード', f'{len(TRIG18)}枚' + ((f'＋ハズレ{args.dud}' if args.dud else '') + (f'＋白紙{args.blank}' if args.blank else ''))),
-             ('早見表', f'{args.ref}枚'), ('お兄さん', '1枚（この札の裏）')]
+             ('トリガーカード', f'{len(TRIG_BASE)}枚'), ('早見表', f'{args.ref}枚'), ('お兄さん', '1枚（この札の裏）')]
+    ext = [x for x in ((f'拡張トリガー{len(TRIG_EXT)}' if TRIG_EXT else ''), (f'ハズレ{args.dud}' if args.dud else ''), (f'白紙トリガー{args.blank}' if args.blank else '')) if x]
     bx0, bx1 = inner[0] + int(2.5 * MM), inner[2] - int(2.5 * MM)
-    by0 = inner[1] + int(53 * MM); by1 = inner[3] - int(6 * MM)
+    by0 = inner[1] + int(51.5 * MM); by1 = inner[3] - int(6 * MM)
     d.rounded_rectangle((bx0, by0, bx1, by1), radius=int(1.5 * MM), fill=(30, 10, 34))
-    text_center(d, PW / 2, by0 + int(1.2 * MM), '内容物', font(6, 'black'), fill=(255, 209, 102))
-    y = by0 + int(5.2 * MM); lx = bx0 + int(2 * MM); vx = bx0 + int(17 * MM)
+    text_center(d, PW / 2, by0 + int(1.0 * MM), f'内容物（基本セット {n_base}枚）', font(5.5, 'black'), fill=(255, 209, 102))
+    y = by0 + int(4.4 * MM); lx = bx0 + int(2 * MM); vx = bx0 + int(16 * MM)
     for k, v in items:
-        d.text((lx, y), k, font=font(5.5, 'black'), fill=(255, 255, 255))
-        y = draw_text_block(d, (vx, y), v, font(5.5), bx1 - vx - int(1.5 * MM), fill=(217, 184, 230), spacing=1.2) + int(0.6 * MM)
-    text_center(d, PW / 2, inner[3] - int(4.2 * MM), f'合計 {len(ROLES) * 3 + n_chara + len(TRIG18) + args.dud + args.blank + args.ref + 1}枚', font(5), fill=(217, 184, 230))
+        d.text((lx, y), k, font=font(5, 'black'), fill=(255, 255, 255))
+        y = draw_text_block(d, (vx, y), v, font(5), bx1 - vx - int(1.5 * MM), fill=(217, 184, 230), spacing=1.15) + int(0.4 * MM)
+    if ext:
+        y += int(0.4 * MM)
+        d.text((lx, y), f'別枠 {n_ext}枚', font=font(5, 'black'), fill=(255, 209, 102))
+        draw_text_block(d, (vx, y), '・'.join(ext), font(5), bx1 - vx - int(1.5 * MM), fill=(217, 184, 230), spacing=1.15)
+    text_center(d, PW / 2, inner[3] - int(4.2 * MM), f'合計 {n_base + n_ext}枚', font(5), fill=(217, 184, 230))
     return im
 
 
@@ -669,16 +678,19 @@ for cid in PRINT_CHARS:
     for k in range(args.chara_copies):
         for half in ('top', 'bottom'):
             n += 1; cards.append((n, 'chara', f'{CHAR_NAME[cid]}_{"上" if half == "top" else "下"}' + (f'_{k + 1}' if args.chara_copies > 1 else ''), cc[half][0], cc[half][1], 'L'))
-for tid in TRIG18:
+for tid in TRIG_BASE:
     n += 1; cards.append((n, 'trigger', TRIGGERS[tid]['name'], trigger_front(tid), trigger_back(), 'P'))
-for k in range(args.dud):
-    n += 1; cards.append((n, 'trigger', f'ハズレ_{k + 1}', dud_front(), trigger_back(), 'P'))
 qf, qb = quick_front(), quick_back()
 for k in range(args.ref):
     n += 1; cards.append((n, 'ref', f'早見表_{k + 1}', qf, qb, 'P'))
+n += 1; cards.append((n, 'title', 'タイトル', title_front(), title_back(), 'P'))
+# ---- ここから別枠（基本セットには入れない）
+for tid in TRIG_EXT:
+    n += 1; cards.append((n, 'trigger', TRIGGERS[tid]['name'], trigger_front(tid), trigger_back(), 'P'))
+for k in range(args.dud):
+    n += 1; cards.append((n, 'trigger', f'ハズレ_{k + 1}', dud_front(), trigger_back(), 'P'))
 for k in range(args.blank):
     n += 1; cards.append((n, 'blank', f'白紙トリガー_{k + 1}', blank_front(), trigger_back(), 'P'))
-n += 1; cards.append((n, 'title', 'タイトル', title_front(), title_back(), 'P'))
 if args.mono_backs:
     # 両面カラーで刷るキャラカードを先頭のテンプレート（21面ずつ）にまとめ、端数の面はタイトル（お兄さん）→早見表の順で埋める。
     # 残りのテンプレート（表カラー・裏モノクロ）はガキ→トリガー→ハズレ→白紙→余った早見表の順。
@@ -752,9 +764,11 @@ cards/ に1枚ずつ、ファイル名の末尾 _front が表、_back が裏。m
 仕上がり線から内側 3mm に文字と枠を収めてある。preview.png の赤線が仕上がり線（印刷データには入っていない）。
 キャラカード（{len(PRINT_CHARS) * 2 * args.chara_copies}枚）だけ横長。表裏は上下が同じ向き（長辺でめくる想定）。
 
-枚数：ガキカード {len(ROLES) * 3}、キャラカード {len(PRINT_CHARS) * 2 * args.chara_copies}{f'（{len(PRINT_CHARS)}キャラ×上下×{args.chara_copies}組）' if args.chara_copies > 1 else ''}、トリガー {len(TRIG18)}{f'、ハズレ {args.dud}' if args.dud else ''}、早見表 {args.ref}{f'、白紙トリガー {args.blank}' if args.blank else ''}、タイトル 1 ＝ {len(cards)}枚
+枚数：基本セット＝ガキカード {len(ROLES) * 3}、キャラカード {len(PRINT_CHARS) * 2 * args.chara_copies}{f'（{len(PRINT_CHARS)}キャラ×上下×{args.chara_copies}組）' if args.chara_copies > 1 else ''}、トリガー {len(TRIG_BASE)}、早見表 {args.ref}、タイトル 1 ＝ {len(ROLES) * 3 + len(PRINT_CHARS) * 2 * args.chara_copies + len(TRIG_BASE) + args.ref + 1}枚
+　　　別枠＝拡張トリガー {len(TRIG_EXT)}{f'、ハズレ {args.dud}' if args.dud else ''}{f'、白紙トリガー {args.blank}' if args.blank else ''} ＝ {len(TRIG_EXT) + args.dud + args.blank}枚　　合計 {len(cards)}枚
 キャラ：{'・'.join(CHAR_NAME[c] for c in PRINT_CHARS)}
-トリガー：{'・'.join(TRIGGERS[t]['name'] for t in TRIG18)}
+基本セットのトリガー（{args.base_set}）：{'・'.join(TRIGGERS[t]['name'] for t in TRIG_BASE)}
+拡張トリガー：{'・'.join(TRIGGERS[t]['name'] for t in TRIG_EXT) or 'なし'}
 """
 KIND_LABEL = {'chara': 'キャラカード', 'title': 'タイトル（お兄さん）', 'ref': '早見表', 'gaki': 'ガキカード', 'trigger': 'トリガー（ハズレ込み）', 'blank': '白紙トリガー'}
 if args.lion:

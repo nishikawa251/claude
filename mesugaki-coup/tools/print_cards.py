@@ -387,7 +387,7 @@ def trigger_back():
     im = stripes(PW, PH, (43, 49, 72), (35, 40, 66), step=int(2.2 * MM)); d = ImageDraw.Draw(im)
     d.rounded_rectangle((BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE), radius=int(3 * MM), outline=(90, 106, 168), width=int(0.8 * MM))
     # 稲妻（多角形）。中心にやや傾けて、後ろに淡い光
-    bw, bh = int(30 * MM), int(50 * MM)
+    bw, bh = int(22 * MM), int(36 * MM)
     pts = [(0.62, 0.0), (0.14, 0.56), (0.46, 0.56), (0.30, 1.0), (0.88, 0.40), (0.56, 0.40), (0.72, 0.0)]
     import math
     def shape(scale, dx=0, dy=0, ang=-8):
@@ -402,8 +402,8 @@ def trigger_back():
     d.polygon(shape(1.08), fill=(120, 96, 60))                       # 縁
     d.polygon(shape(1.0), fill=(255, 209, 102))                      # 本体
     d.polygon(shape(0.62, int(-2 * MM), int(-3 * MM)), fill=(255, 236, 170))   # ハイライト
-    text_center(d, PW / 2, PH / 2 + int(26 * MM), 'TRIGGER', font(12, 'head'), fill=(255, 209, 102))
-    text_center(d, PW / 2, PH / 2 + int(34 * MM), 'メスガキ・クー', font(6), fill=(138, 152, 214))
+    text_center(d, PW / 2, PH / 2 + int(20 * MM), 'TRIGGER', font(12, 'head'), fill=(255, 209, 102))
+    text_center(d, PW / 2, PH / 2 + int(28 * MM), 'メスガキ・クー', font(6), fill=(138, 152, 214))
     return im
 
 
@@ -529,9 +529,9 @@ def trigger_back_land():
     """横向きの裏：紺の縞。左に大きな稲妻、右に TRIGGER"""
     im = stripes(LW, LH, (43, 49, 72), (35, 40, 66), step=int(2.2 * MM)); d = ImageDraw.Draw(im)
     d.rounded_rectangle((BL + SAFE, BL + SAFE, LW - BL - SAFE, LH - BL - SAFE), radius=int(3 * MM), outline=(90, 106, 168), width=int(0.8 * MM))
-    cx, cy = LW * 0.33, LH / 2
-    _bolt(d, cx, cy, int(26 * MM), int(42 * MM), -8, [(1.22, 0, 0, (74, 70, 110)), (1.08, 0, 0, (120, 96, 60)), (1.0, 0, 0, (255, 209, 102)), (0.62, int(-2 * MM), int(-3 * MM), (255, 236, 170))])
-    tx = LW * 0.69
+    cx, cy = LW * 0.35, LH / 2
+    _bolt(d, cx, cy, int(19 * MM), int(31 * MM), -8, [(1.22, 0, 0, (74, 70, 110)), (1.08, 0, 0, (120, 96, 60)), (1.0, 0, 0, (255, 209, 102)), (0.62, int(-2 * MM), int(-3 * MM), (255, 236, 170))])
+    tx = LW * 0.67
     text_center(d, tx, cy - int(9 * MM), 'TRIGGER', font(16, 'head'), fill=(255, 209, 102))
     text_center(d, tx, cy + int(3 * MM), 'メスガキ・クー', font(6), fill=(138, 152, 214))
     return im

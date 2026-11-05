@@ -31,6 +31,7 @@ ap.add_argument('--index', default=os.path.join(os.path.dirname(os.path.abspath(
 ap.add_argument('--size', default='91x55', help='仕上がり mm（長辺x短辺）')
 ap.add_argument('--bleed', type=float, default=1.5, help='塗り足し mm（各辺）')
 ap.add_argument('--all-triggers', action='store_true', help='定義されている全トリガー（見送り以外）を入れる。基本セットの18枚のあとに、残りを「拡張」として別枠で並べる')
+ap.add_argument('--trigger-land', action='store_true', help='トリガー（ハズレ・白紙も）を横向きのデザインにする（キャラカードと同じ向き）')
 ap.add_argument('--base-set', default='mix', choices=['basic', 'fresh', 'mix'], help='基本セットに入れるトリガー18枚のプリセット（既定 mix＝おすすめデッキ）')
 ap.add_argument('--dud', type=int, default=0, help='ハズレ（効果なし）トリガーの枚数')
 ap.add_argument('--ref', type=int, default=6, help='早見表の枚数')
@@ -406,6 +407,136 @@ def trigger_back():
     return im
 
 
+# ---------------------------------------------------------------- トリガーカード（横向き）
+def _bolt(d, cx, cy, bw, bh, ang, layers):
+    """稲妻の多角形を中心 (cx,cy)・幅 bw・高さ bh で描く。layers=[(scale,dx,dy,fill),...]"""
+    import math
+    pts = [(0.62, 0.0), (0.14, 0.56), (0.46, 0.56), (0.30, 1.0), (0.88, 0.40), (0.56, 0.40), (0.72, 0.0)]
+    r = math.radians(ang)
+    for scale, dx, dy, fill in layers:
+        out = []
+        for x, y in pts:
+            px, py = (x - 0.5) * bw * scale, (y - 0.5) * bh * scale
+            out.append((cx + dx + px * math.cos(r) - py * math.sin(r), cy + dy + px * math.sin(r) + py * math.cos(r)))
+        d.polygon(out, fill=fill)
+
+
+def _land_frame(col):
+    """横向きの共通枠：淡い地、白の角丸、左の色ブロック。(im, d, inner, 左ブロックの右端x) を返す"""
+    im = Image.new('RGB', (LW, LH), PAPER); d = ImageDraw.Draw(im)
+    d.rectangle((0, 0, LW, LH), fill=mix(col, (255, 255, 255), 0.88))
+    inner = (BL + SAFE, BL + SAFE, LW - BL - SAFE, LH - BL - SAFE)
+    d.rounded_rectangle(inner, radius=int(3 * MM), fill=(255, 255, 255), outline=col, width=int(0.6 * MM))
+    lb = inner[0] + int(30 * MM)
+    d.rounded_rectangle((inner[0], inner[1], lb, inner[3]), radius=int(3 * MM), fill=col)
+    d.rectangle((lb - int(4 * MM), inner[1], lb, inner[3]), fill=col)
+    return im, d, inner, lb
+
+
+def name_lines(name, nw):
+    """カード名を1行、入らなければ釣り合いのよい2行に（行頭の小書き仮名や「～」「！」は避ける）。(font, lines)"""
+    small = NO_START + 'ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ'
+    for fs in (13, 12, 11, 10, 9):
+        nf = font(fs, 'head')
+        if nf.getlength(name) <= nw: return nf, [name]
+    for fs in (13, 12, 11, 10, 9):
+        nf = font(fs, 'head'); mid = (len(name) + 1) // 2
+        for sp in (mid, mid + 1, mid - 1, mid + 2, mid - 2):
+            if sp < 2 or len(name) - sp < 2: continue
+            a, b = name[:sp], name[sp:]
+            if b[0] in small or a[-1] in NO_END: continue
+            if nf.getlength(a) <= nw and nf.getlength(b) <= nw: return nf, [a, b]
+    nf = font(9, 'head'); return nf, wrap(name, nf, nw)[:2]
+
+
+def trigger_front_land(tid):
+    T = TRIGGERS[tid]; cat = cat_of(tid); col = CAT_COLOR[cat]
+    im, d, inner, lb = _land_frame(col)
+    bx = (inner[0] + lb) / 2
+    # 右の地に薄い稲妻（透かし）
+    _bolt(d, inner[2] - int(16 * MM), inner[3] - int(21 * MM), int(22 * MM), int(38 * MM), -8, [(1.0, 0, 0, mix(col, (255, 255, 255), 0.9))])
+    # 左ブロック：TRIGGER／名前（2行まで）／常時・即効／分類
+    text_center(d, bx, inner[1] + int(2 * MM), 'TRIGGER', font(5), fill=mix(col, (255, 255, 255), 0.75))
+    name = T['name']; nw = lb - inner[0] - int(5 * MM)
+    nf, ls = name_lines(name, nw)
+    lh = int(nf.size * 1.25); y = inner[1] + int(8 * MM) + (int(2 * 1.25 * font(13, 'head').size) - lh * len(ls)) // 2
+    for l in ls:
+        text_center(d, bx, y, l, nf, fill=(255, 255, 255)); y += lh
+    tag = '常時' if T['persistent'] else ('1回' if '（1回）' in T['text'] else '即効')
+    gold = T['persistent']; tf = font(6, 'black'); tw = tf.getlength(tag) + int(5 * MM); ty = inner[1] + int(27 * MM)
+    d.rounded_rectangle((bx - tw / 2, ty, bx + tw / 2, ty + int(5.6 * MM)), radius=int(1.2 * MM), fill=(255, 209, 102) if gold else (255, 255, 255))
+    text_center(d, bx, ty + int(1.0 * MM), tag, tf, fill=(58, 42, 0) if gold else col)
+    sets = '基本' if tid in BASE_SET else '拡張'
+    d.line((inner[0] + int(4 * MM), inner[3] - int(9 * MM), lb - int(4 * MM), inner[3] - int(9 * MM)), fill=mix(col, (255, 255, 255), 0.45), width=int(0.4 * MM))
+    text_center(d, bx, inner[3] - int(7.5 * MM), CAT_LABEL[cat], font(5.5, 'black'), fill=(255, 255, 255))
+    text_center(d, bx, inner[3] - int(3.8 * MM), sets + 'セット' if sets == '基本' else sets, font(5), fill=mix(col, (255, 255, 255), 0.8))
+    # 右：効果文（収まる最大サイズ）
+    x0 = lb + int(4 * MM); wdt = inner[2] - x0 - int(4 * MM)
+    body = T['text'].replace('（1回）', '')
+    top, bottom = inner[1] + int(5 * MM), inner[3] - int(8 * MM)
+    fs = 12 if len(body) <= 24 else 11 if len(body) <= 40 else 10 if len(body) <= 60 else 9
+    while fs > 7:
+        f = font(fs); ls = wrap(body, f, wdt); n = len(ls)
+        if top + n * int(f.size * 1.5) <= bottom and not (n > 1 and len(ls[-1]) <= 2): break
+        fs -= 0.5
+    draw_text_block(d, (x0, top), body, font(fs), wdt, fill=INK, spacing=1.5)
+    d.text((inner[2] - int(4 * MM) - font(5).getlength('メスガキ・クー'), inner[3] - int(5.5 * MM)), 'メスガキ・クー', font=font(5), fill=DIM)
+    return im
+
+
+def dud_front_land():
+    col = (150, 150, 162)
+    im, d, inner, lb = _land_frame(col); bx = (inner[0] + lb) / 2
+    text_center(d, bx, inner[1] + int(2 * MM), 'TRIGGER', font(5), fill=mix(col, (255, 255, 255), 0.75))
+    text_center(d, bx, inner[1] + int(14 * MM), 'ハズレ', font(13, 'head'), fill=(255, 255, 255))
+    x0 = lb + int(4 * MM); cx = (x0 + inner[2] - int(4 * MM)) / 2
+    text_center(d, cx, inner[1] + int(14 * MM), '効果なし', font(12, 'black'), fill=(120, 120, 134))
+    text_center(d, cx, inner[1] + int(25 * MM), '脱いだのに何も起きない……', font(6.5), fill=DIM)
+    d.text((inner[2] - int(4 * MM) - font(5).getlength('メスガキ・クー'), inner[3] - int(5.5 * MM)), 'メスガキ・クー', font=font(5), fill=DIM)
+    return im
+
+
+def blank_front_land():
+    """白紙（自作用）の横向き：左に名前欄と常時／即効のチェック、右に罫線"""
+    col = (184, 48, 106)
+    im = Image.new('RGB', (LW, LH), PAPER); d = ImageDraw.Draw(im)
+    d.rectangle((0, 0, LW, LH), fill=mix(col, (255, 255, 255), 0.9))
+    inner = (BL + SAFE, BL + SAFE, LW - BL - SAFE, LH - BL - SAFE)
+    d.rounded_rectangle(inner, radius=int(3 * MM), fill=(255, 255, 255), outline=col, width=int(0.6 * MM))
+    lb = inner[0] + int(30 * MM)
+    d.rounded_rectangle((inner[0], inner[1], lb, inner[3]), radius=int(3 * MM), fill=mix(col, (255, 255, 255), 0.9))
+    d.rectangle((lb - int(4 * MM), inner[1], lb, inner[3]), fill=mix(col, (255, 255, 255), 0.9))
+    bx = (inner[0] + lb) / 2
+    text_center(d, bx, inner[1] + int(2 * MM), 'TRIGGER', font(5), fill=col)
+    d.rounded_rectangle((inner[0] + int(3 * MM), inner[1] + int(6.5 * MM), lb - int(3 * MM), inner[3] - int(26 * MM)), radius=int(1.2 * MM), fill=(255, 255, 255), outline=mix(col, (255, 255, 255), 0.5), width=int(0.4 * MM))
+    d.text((inner[0] + int(4 * MM), inner[1] + int(7.2 * MM)), 'なまえ', font=font(4.5), fill=mix(col, (255, 255, 255), 0.4))
+    cy = inner[3] - int(21 * MM)
+    for k, lab in enumerate(('常時', '即効')):
+        yy = cy + k * int(7 * MM); bxx = inner[0] + int(6 * MM)
+        d.rounded_rectangle((bxx, yy, bxx + int(4 * MM), yy + int(4 * MM)), radius=int(0.8 * MM), fill=(255, 255, 255), outline=col, width=int(0.4 * MM))
+        d.text((bxx + int(5.2 * MM), yy - int(0.3 * MM)), lab, font=font(6, 'black'), fill=col)
+    text_center(d, bx, inner[3] - int(5.5 * MM), '自作トリガー', font(5.5, 'black'), fill=col)
+    x0 = lb + int(4 * MM); y0 = inner[1] + int(4 * MM); y1 = inner[3] - int(8 * MM)
+    d.rounded_rectangle((x0, y0, inner[2] - int(4 * MM), y1), radius=int(1.2 * MM), outline=mix(col, (255, 255, 255), 0.5), width=int(0.4 * MM))
+    yy = y0 + int(7 * MM)
+    while yy < y1 - int(2 * MM):
+        d.line((x0 + int(2 * MM), yy, inner[2] - int(6 * MM), yy), fill=mix(col, (255, 255, 255), 0.75), width=1); yy += int(7 * MM)
+    d.text((inner[2] - int(4 * MM) - font(5).getlength('メスガキ・クー'), inner[3] - int(5.5 * MM)), 'メスガキ・クー', font=font(5), fill=DIM)
+    return im
+
+
+def trigger_back_land():
+    """横向きの裏：紺の縞。左に大きな稲妻、右に TRIGGER"""
+    im = stripes(LW, LH, (43, 49, 72), (35, 40, 66), step=int(2.2 * MM)); d = ImageDraw.Draw(im)
+    d.rounded_rectangle((BL + SAFE, BL + SAFE, LW - BL - SAFE, LH - BL - SAFE), radius=int(3 * MM), outline=(90, 106, 168), width=int(0.8 * MM))
+    cx, cy = LW * 0.33, LH / 2
+    _bolt(d, cx, cy, int(26 * MM), int(42 * MM), -8, [(1.22, 0, 0, (74, 70, 110)), (1.08, 0, 0, (120, 96, 60)), (1.0, 0, 0, (255, 209, 102)), (0.62, int(-2 * MM), int(-3 * MM), (255, 236, 170))])
+    tx = LW * 0.69
+    text_center(d, tx, cy - int(9 * MM), 'TRIGGER', font(16, 'head'), fill=(255, 209, 102))
+    text_center(d, tx, cy + int(3 * MM), 'メスガキ・クー', font(6), fill=(138, 152, 214))
+    return im
+
+
 # ---------------------------------------------------------------- キャラカード（横長・両面）
 # 立ち絵の腰の高さ（人物範囲の上端=0, 下端=1）とボロ絵の腰（クロップ後）。split_cards.py と同じ値
 WAIST = {'aqua': 0.46, 'asagi': 0.44, 'emera': 0.45, 'grimaloe': 0.46, 'momoko': 0.47, 'oren': 0.48,
@@ -678,19 +809,20 @@ for cid in PRINT_CHARS:
     for k in range(args.chara_copies):
         for half in ('top', 'bottom'):
             n += 1; cards.append((n, 'chara', f'{CHAR_NAME[cid]}_{"上" if half == "top" else "下"}' + (f'_{k + 1}' if args.chara_copies > 1 else ''), cc[half][0], cc[half][1], 'L'))
+TF, TB, DF, BF, TO = (trigger_front_land, trigger_back_land, dud_front_land, blank_front_land, 'L') if args.trigger_land else (trigger_front, trigger_back, dud_front, blank_front, 'P')
 for tid in TRIG_BASE:
-    n += 1; cards.append((n, 'trigger', TRIGGERS[tid]['name'], trigger_front(tid), trigger_back(), 'P'))
+    n += 1; cards.append((n, 'trigger', TRIGGERS[tid]['name'], TF(tid), TB(), TO))
 qf, qb = quick_front(), quick_back()
 for k in range(args.ref):
     n += 1; cards.append((n, 'ref', f'早見表_{k + 1}', qf, qb, 'P'))
 n += 1; cards.append((n, 'title', 'タイトル', title_front(), title_back(), 'P'))
 # ---- ここから別枠（基本セットには入れない）
 for tid in TRIG_EXT:
-    n += 1; cards.append((n, 'trigger', TRIGGERS[tid]['name'], trigger_front(tid), trigger_back(), 'P'))
+    n += 1; cards.append((n, 'trigger', TRIGGERS[tid]['name'], TF(tid), TB(), TO))
 for k in range(args.dud):
-    n += 1; cards.append((n, 'trigger', f'ハズレ_{k + 1}', dud_front(), trigger_back(), 'P'))
+    n += 1; cards.append((n, 'trigger', f'ハズレ_{k + 1}', DF(), TB(), TO))
 for k in range(args.blank):
-    n += 1; cards.append((n, 'blank', f'白紙トリガー_{k + 1}', blank_front(), trigger_back(), 'P'))
+    n += 1; cards.append((n, 'blank', f'白紙トリガー_{k + 1}', BF(), TB(), TO))
 if args.mono_backs:
     # 両面カラーで刷るキャラカードを先頭のテンプレート（21面ずつ）にまとめ、端数の面はタイトル（お兄さん）→早見表の順で埋める。
     # 残りのテンプレート（表カラー・裏モノクロ）はガキ→トリガー→ハズレ→白紙→余った早見表の順。

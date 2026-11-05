@@ -398,10 +398,7 @@ def trigger_back():
             r = math.radians(ang)
             out.append((cx + px * math.cos(r) - py * math.sin(r), cy + px * math.sin(r) + py * math.cos(r)))
         return out
-    d.polygon(shape(1.22), fill=(74, 70, 110))                       # 光（にじみ）
-    d.polygon(shape(1.08), fill=(120, 96, 60))                       # 縁
-    d.polygon(shape(1.0), fill=(255, 209, 102))                      # 本体
-    d.polygon(shape(0.62, int(-2 * MM), int(-3 * MM)), fill=(255, 236, 170))   # ハイライト
+    d.polygon(shape(1.0), fill=(255, 209, 102))                      # 稲妻は一つの形だけ
     text_center(d, PW / 2, PH / 2 + int(20 * MM), 'TRIGGER', font(12, 'head'), fill=(255, 209, 102))
     text_center(d, PW / 2, PH / 2 + int(28 * MM), 'メスガキ・クー', font(6), fill=(138, 152, 214))
     return im
@@ -530,7 +527,7 @@ def trigger_back_land():
     im = stripes(LW, LH, (43, 49, 72), (35, 40, 66), step=int(2.2 * MM)); d = ImageDraw.Draw(im)
     d.rounded_rectangle((BL + SAFE, BL + SAFE, LW - BL - SAFE, LH - BL - SAFE), radius=int(3 * MM), outline=(90, 106, 168), width=int(0.8 * MM))
     cx, cy = LW * 0.35, LH / 2
-    _bolt(d, cx, cy, int(19 * MM), int(31 * MM), -8, [(1.22, 0, 0, (74, 70, 110)), (1.08, 0, 0, (120, 96, 60)), (1.0, 0, 0, (255, 209, 102)), (0.62, int(-2 * MM), int(-3 * MM), (255, 236, 170))])
+    _bolt(d, cx, cy, int(19 * MM), int(31 * MM), -8, [(1.0, 0, 0, (255, 209, 102))])   # 稲妻は一つの形だけ
     tx = LW * 0.67
     text_center(d, tx, cy - int(9 * MM), 'TRIGGER', font(16, 'head'), fill=(255, 209, 102))
     text_center(d, tx, cy + int(3 * MM), 'メスガキ・クー', font(6), fill=(138, 152, 214))

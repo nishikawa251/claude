@@ -572,7 +572,7 @@ def action_tile_front(aid):
     nf = fit_font(A['name'], bx1 - inner[0] - int(6 * MM), 20, 12, 'head')
     d.text((inner[0] + int(3 * MM), inner[1] + int(5.2 * MM) + (font(20, 'head').size - nf.size) // 2), A['name'], font=nf, fill=(255, 255, 255))
     # 本文：必要なもの／効果／は？／ダウト
-    x0 = inner[0] + int(3 * MM); lx = x0 + int(13 * MM); wdt = inner[2] - lx - int(3 * MM)
+    x0 = inner[0] + int(3 * MM); lx = x0 + int(13 * MM); wdt = inner[2] - lx - int(3 * MM) - (int(15 * MM) if R else 0)   # 絵のぶん右を空ける
     need = f'「{R["name"]}」のカード（持っていなくても宣言できる＝ハッタリ）' if R else '誰でも。ダウトもされない'
     eff = A['desc'] + (f'。{RULES.get("forcedCoupAt", 10)}♥以上なら必ずこれ' if aid == 'coup' else '')
     rows = [('必要', need), ('効果', eff), ('は？', _blockers_text(aid)), ('ダウト', 'される（持っていなければ脱ぐ）' if R else 'されない')]
@@ -582,11 +582,10 @@ def action_tile_front(aid):
         y = draw_text_block(d, (lx, y), v, font(6.5), wdt, fill=INK, spacing=1.3) + int(1.2 * MM)
     # イラスト（必要なカードの絵）を右下に
     if R:
-        art = os.path.join(os.path.dirname(os.path.abspath(args.index)), 'img', 'roles', f'{R["id"] if "id" in R else aid}.png')
         art = os.path.join(os.path.dirname(os.path.abspath(args.index)), 'img', 'roles', f'{A["role"]}.png')
         if os.path.exists(art):
-            pic = Image.open(art).convert('RGBA'); ph = int(16 * MM); pic = pic.resize((max(1, int(pic.size[0] * ph / pic.size[1])), ph), Image.LANCZOS)
-            im.paste(pic, (inner[2] - int(3 * MM) - pic.size[0], inner[3] - int(2 * MM) - pic.size[1]), pic); d = ImageDraw.Draw(im)
+            pic = Image.open(art).convert('RGBA'); ph = int(15 * MM); pic = pic.resize((max(1, int(pic.size[0] * ph / pic.size[1])), ph), Image.LANCZOS)
+            im.paste(pic, (inner[2] - int(2.5 * MM) - pic.size[0], inner[3] - int(2 * MM) - pic.size[1]), pic); d = ImageDraw.Draw(im)
     d.text((x0, inner[3] - int(5.5 * MM)), '宣言したら、手番マーカーをこの札に', font=font(5), fill=DIM)
     return im
 

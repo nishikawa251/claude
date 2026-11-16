@@ -16,7 +16,7 @@ usage: python3 -I print_cards.py --out <dir> [--art <元立ち絵dir>] [--size 9
   preview.png                                     … 全カードの表裏一覧
   README.txt                                      … 仕様とカード一覧
 
-・ガキカード15（表5種×3、裏共通）、キャラカード12（6キャラ×上下。表＝通常絵、裏＝ボロ絵の両面）、
+・アクションカード15（表5種×3、裏共通）、キャラカード12（6キャラ×上下。表＝通常絵、裏＝ボロ絵の両面）、
   トリガー18（基本セット＝ --base-set のプリセット。裏共通）、早見表6（表裏別）、タイトル1（表裏別）。--all-triggers で残りのトリガーを「拡張」として別枠に足す
 ・カード文言と枚数は index.html の定義（ROLES / ACTIONS / TRIGGERS / DECK_PRESETS）から読む。
 ・キャラカードは横長（63×88 を横に使う）。元立ち絵（--art）が無いときはゲーム用 img/*.webp から作る（低解像度）。
@@ -233,7 +233,7 @@ def trim_guides(im):
     return im
 
 
-# ---------------------------------------------------------------- ガキカード
+# ---------------------------------------------------------------- アクションカード
 def role_front(rid):
     R = ROLES[rid]; col = hexrgb(R['color'])
     im = Image.new('RGB', (PW, PH), PAPER); d = ImageDraw.Draw(im)
@@ -246,7 +246,7 @@ def role_front(rid):
     d.rounded_rectangle((inner[0], inner[1], inner[2], inner[1] + hb), radius=int(3 * MM), fill=col)
     d.rectangle((inner[0], inner[1] + hb // 2, inner[2], inner[1] + hb), fill=col)
     text_center(d, PW / 2, inner[1] + int(1.8 * MM), R['name'], fit_font(R['name'], inner[2] - inner[0] - int(6 * MM), 16, 10, 'head'), fill=(255, 255, 255))
-    text_center(d, PW / 2, inner[1] + int(8.6 * MM), 'GAKI CARD', font(6), fill=mix(col, (255, 255, 255), 0.75))
+    text_center(d, PW / 2, inner[1] + int(8.6 * MM), 'ACTION CARD', font(6), fill=mix(col, (255, 255, 255), 0.75))
     y = inner[1] + hb + int(31 * MM)
     # イラスト（img/roles/<id>.png があればバストアップを置く。無ければ頭文字）
     art = os.path.join(os.path.dirname(os.path.abspath(args.index)), 'img', 'roles', f'{rid}.png')
@@ -288,7 +288,7 @@ def role_back():
     im = stripes(PW, PH, (76, 42, 94), (59, 31, 75), step=int(2.2 * MM)); d = ImageDraw.Draw(im)
     d.rounded_rectangle((BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE), radius=int(3 * MM), outline=(122, 74, 142), width=int(0.8 * MM))
     text_center(d, PW / 2, PH / 2 - int(14 * MM), '♥', font(44), fill=(217, 184, 230))
-    text_center(d, PW / 2, PH / 2 + int(4 * MM), 'GAKI', font(14, 'head'), fill=(217, 184, 230))
+    text_center(d, PW / 2, PH / 2 + int(4 * MM), 'ACTION', font(13, 'head'), fill=(217, 184, 230))
     text_center(d, PW / 2, PH / 2 + int(11 * MM), 'メスガキ・クー', font(7), fill=(180, 150, 200))
     return im
 
@@ -639,7 +639,7 @@ def char_cards(cid):
 
 # ---------------------------------------------------------------- 早見表・タイトル
 def quick_front():
-    """クーの早見表にならった構成：上＝だれでもできる3アクション、下＝ガキカードごとのアクションと「は？」"""
+    """クーの早見表にならった構成：上＝だれでもできる3アクション、下＝アクションカードごとのアクションと「は？」"""
     im = Image.new('RGB', (PW, PH), PAPER); d = ImageDraw.Draw(im)
     pink = (184, 48, 106)
     inner = (BL + SAFE, BL + SAFE, PW - BL - SAFE, PH - BL - SAFE)
@@ -675,7 +675,7 @@ def quick_front():
     general(AN['aid'], '2♥もらう', f"は？：「{AN['tax']}」のカード")
     general(AN['coup'], f'{RULES.get("coupCost", 7)}♥で相手のプライドを1つ奪う', f'止められない。{RULES.get("forcedCoupAt", 10)}♥以上は必須')
     y += int(0.4 * MM)
-    section('ガキカード（持ってなくても宣言OK＝ハッタリ）')
+    section('アクションカード（持ってなくても宣言OK＝ハッタリ）')
     rows = [   # カード名＝技名。act は名前と別に書き添えるものだけ
         ('mesugaki',    '', '3♥もらう',                      '',                                              f"{AN['aid']} を止める"),
         ('kouhai',      '', '相手1人から2♥奪う',             f"は？：「{AN['steal']}」「{AN['exchange']}」のカード", f"{AN['steal']} を止める"),
@@ -713,10 +713,10 @@ def quick_back():
     text_center(d, PW / 2, inner[1] + int(1.2 * MM), '手番の流れとプライド', font(8.5, 'head'), fill=(255, 255, 255))
     x0 = inner[0] + int(1.6 * MM); x1 = inner[2] - int(1.6 * MM); wdt = x1 - x0 - int(6 * MM); y = inner[1] + hb + int(1.6 * MM)
     secs = [
-        ('1', '宣言', 'アクションを1つ宣言する。ガキカードのアクションは持っていなくても宣言できる（ハッタリ）。'),
-        ('2', '割り込み', 'ほかの人は「ダウト！」か「は？」ができる。ダウト：ハッタリならその人、本物ならダウトした人がプライドを1つ失う。は？：ガキカードでブロック（これにもダウトできる）。'),
+        ('1', '宣言', 'アクションを1つ宣言する。アクションカードの技は持っていなくても宣言できる（ハッタリ）。'),
+        ('2', '割り込み', 'ほかの人は「ダウト！」か「は？」ができる。ダウト：ハッタリならその人、本物ならダウトした人がプライドを1つ失う。は？：アクションカードでブロック（これにもダウトできる）。'),
         ('3', '解決', f"通れば効果。止められたら不発。10♥以上なら手番で必ず {ACTIONS['coup']['name']}。"),
-        ('♥', 'プライドを失ったら', '手札のガキカードを1枚捨てる → 失わせた相手が上半身・下半身どちらを脱がせるか選んで裏返す → その横のトリガーを表にして発動。'),
+        ('♥', 'プライドを失ったら', '手札のアクションカードを1枚捨てる → 失わせた相手が上半身・下半身どちらを脱がせるか選んで裏返す → その横のトリガーを表にして発動。'),
         ('★', '勝ち', f"上下とも裏返ったら脱落。最後の1人が勝ち。{TRIGGERS['t9']['name']}を持つ人は{RULES.get('collectorGoal', 9)}♥集めても勝ち。"),
     ]
     for no, h, body in secs:
@@ -743,7 +743,7 @@ def title_front():
     n_chara = len(PRINT_CHARS) * 2 * args.chara_copies
     n_base = len(ROLES) * 3 + n_chara + len(TRIG_BASE) + args.ref + 1
     n_ext = len(TRIG_EXT) + args.dud + args.blank
-    items = [('ガキカード', f'{len(ROLES) * 3}枚'), ('キャラカード', f'{n_chara}枚' + (f'（{len(PRINT_CHARS)}キャラ×上下×{args.chara_copies}組）' if args.chara_copies > 1 else f'（{len(PRINT_CHARS)}キャラ×上下）')),
+    items = [('アクションカード', f'{len(ROLES) * 3}枚'), ('キャラカード', f'{n_chara}枚' + (f'（{len(PRINT_CHARS)}キャラ×上下×{args.chara_copies}組）' if args.chara_copies > 1 else f'（{len(PRINT_CHARS)}キャラ×上下）')),
              ('トリガーカード', f'{len(TRIG_BASE)}枚'), ('早見表', f'{args.ref}枚'), ('お兄さん', '1枚（この札の裏）')]
     ext = [x for x in ((f'拡張トリガー{len(TRIG_EXT)}' if TRIG_EXT else ''), (f'ハズレ{args.dud}' if args.dud else ''), (f'白紙トリガー{args.blank}' if args.blank else '')) if x]
     bx0, bx1 = inner[0] + int(2.5 * MM), inner[2] - int(2.5 * MM)
@@ -892,13 +892,13 @@ cards/ に1枚ずつ、ファイル名の末尾 _front が表、_back が裏。m
 仕上がり線から内側 3mm に文字と枠を収めてある。preview.png の赤線が仕上がり線（印刷データには入っていない）。
 キャラカード（{len(PRINT_CHARS) * 2 * args.chara_copies}枚）だけ横長。表裏は上下が同じ向き（長辺でめくる想定）。
 
-枚数：基本セット＝ガキカード {len(ROLES) * 3}、キャラカード {len(PRINT_CHARS) * 2 * args.chara_copies}{f'（{len(PRINT_CHARS)}キャラ×上下×{args.chara_copies}組）' if args.chara_copies > 1 else ''}、トリガー {len(TRIG_BASE)}、早見表 {args.ref}、タイトル 1 ＝ {len(ROLES) * 3 + len(PRINT_CHARS) * 2 * args.chara_copies + len(TRIG_BASE) + args.ref + 1}枚
+枚数：基本セット＝アクションカード {len(ROLES) * 3}、キャラカード {len(PRINT_CHARS) * 2 * args.chara_copies}{f'（{len(PRINT_CHARS)}キャラ×上下×{args.chara_copies}組）' if args.chara_copies > 1 else ''}、トリガー {len(TRIG_BASE)}、早見表 {args.ref}、タイトル 1 ＝ {len(ROLES) * 3 + len(PRINT_CHARS) * 2 * args.chara_copies + len(TRIG_BASE) + args.ref + 1}枚
 　　　別枠＝拡張トリガー {len(TRIG_EXT)}{f'、ハズレ {args.dud}' if args.dud else ''}{f'、白紙トリガー {args.blank}' if args.blank else ''} ＝ {len(TRIG_EXT) + args.dud + args.blank}枚　　合計 {len(cards)}枚
 キャラ：{'・'.join(CHAR_NAME[c] for c in PRINT_CHARS)}
 基本セットのトリガー（{args.base_set}）：{'・'.join(TRIGGERS[t]['name'] for t in TRIG_BASE)}
 拡張トリガー：{'・'.join(TRIGGERS[t]['name'] for t in TRIG_EXT) or 'なし'}
 """
-KIND_LABEL = {'chara': 'キャラカード', 'title': 'タイトル（お兄さん）', 'ref': '早見表', 'gaki': 'ガキカード', 'trigger': 'トリガー（ハズレ込み）', 'blank': '白紙トリガー'}
+KIND_LABEL = {'chara': 'キャラカード', 'title': 'タイトル（お兄さん）', 'ref': '早見表', 'gaki': 'アクションカード', 'trigger': 'トリガー（ハズレ込み）', 'blank': '白紙トリガー'}
 if args.lion:
     # ---- ライオン名刺 異種（21面）用：各面をテンプレートへ貼る向きに回転し、参考面付けも作る
     ldir = os.path.join(OUT, 'lion'); os.makedirs(ldir, exist_ok=True)

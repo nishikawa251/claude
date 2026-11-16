@@ -31,6 +31,9 @@ ap.add_argument('--index', default=os.path.join(os.path.dirname(os.path.abspath(
 ap.add_argument('--size', default='91x55', help='仕上がり mm（長辺x短辺）')
 ap.add_argument('--bleed', type=float, default=1.5, help='塗り足し mm（各辺）')
 ap.add_argument('--all-triggers', action='store_true', help='定義されている全トリガー（見送り以外）を入れる。基本セットの18枚のあとに、残りを「拡張」として別枠で並べる')
+ap.add_argument('--board', action='store_true', help='アクションボード（7つのアクションを1枚ずつにした横向きの札）を入れる。卓の中央に並べ、宣言したら手番マーカーを置く')
+ap.add_argument('--markers', action='store_true', help='手番マーカー（--chars のキャラごとに1枚、横向き）を入れる')
+ap.add_argument('--no-chara', action='store_true', help='キャラカードを入れない（--chars は手番マーカー用に残る）')
 ap.add_argument('--no-title', action='store_true', help='タイトル（お兄さん）カードを入れない（アクションカードとトリガーだけ刷り直すときなど）')
 ap.add_argument('--trigger-land', action='store_true', help='トリガー（ハズレ・白紙も）を横向きのデザインにする（キャラカードと同じ向き）')
 ap.add_argument('--base-set', default='mix', choices=['basic', 'fresh', 'mix'], help='基本セットに入れるトリガー18枚のプリセット（既定 mix＝おすすめデッキ）')
@@ -534,6 +537,89 @@ def trigger_back_land():
     return im
 
 
+# ---------------------------------------------------------------- アクションボードと手番マーカー（横向き）
+BOARD_ORDER = ['income', 'aid', 'coup', 'tax', 'steal', 'exchange', 'assassinate']
+BOARD_FREE = (120, 90, 130)      # 誰でもできるアクションの色
+
+
+def _blockers_text(aid):
+    A = ACTIONS[aid]
+    if aid == 'coup': return '止められない。ダウトもできない'
+    if aid == 'aid': return f'「{ROLES["mesugaki"]["name"]}」のカードを持っている人なら誰でも止められる'
+    if A['blockedBy']: return '狙われた人が' + 'か'.join(f'「{ROLES[r]["name"]}」' for r in A['blockedBy']) + 'のカードで止められる'
+    return '止められない'
+
+
+def action_tile_front(aid):
+    """アクションボードの1枚：技名を大きく、必要なカード・コスト・効果・止め方。手番マーカーを置く目印"""
+    A = ACTIONS[aid]; R = ROLES[A['role']] if A['role'] else None
+    col = hexrgb(R['color']) if R else BOARD_FREE
+    im = Image.new('RGB', (LW, LH), PAPER); d = ImageDraw.Draw(im)
+    d.rectangle((0, 0, LW, LH), fill=mix(col, (255, 255, 255), 0.86))
+    inner = (BL + SAFE, BL + SAFE, LW - BL - SAFE, LH - BL - SAFE)
+    d.rounded_rectangle(inner, radius=int(3 * MM), fill=(255, 255, 255), outline=col, width=int(0.8 * MM))
+    hb = int(16 * MM)
+    d.rounded_rectangle((inner[0], inner[1], inner[2], inner[1] + hb), radius=int(3 * MM), fill=col)
+    d.rectangle((inner[0], inner[1] + hb // 2, inner[2], inner[1] + hb), fill=col)
+    d.text((inner[0] + int(3 * MM), inner[1] + int(1.6 * MM)), 'ACTION BOARD', font=font(5), fill=mix(col, (255, 255, 255), 0.75))
+    cost = A['cost'] or (RULES.get('coupCost', 7) if aid == 'coup' else 0)
+    bx1 = inner[2] - int(3 * MM)
+    if cost:   # 右上にコストの丸
+        r_ = int(6.5 * MM); cx_, cy_ = bx1 - r_, inner[1] + hb / 2
+        d.ellipse((cx_ - r_, cy_ - r_, cx_ + r_, cy_ + r_), fill=(255, 255, 255))
+        text_center(d, cx_, cy_ - int(3.4 * MM), f'{cost}♥', font(9, 'black'), fill=col)
+        bx1 = cx_ - r_ - int(2 * MM)
+    nf = fit_font(A['name'], bx1 - inner[0] - int(6 * MM), 20, 12, 'head')
+    d.text((inner[0] + int(3 * MM), inner[1] + int(5.2 * MM) + (font(20, 'head').size - nf.size) // 2), A['name'], font=nf, fill=(255, 255, 255))
+    # 本文：必要なもの／効果／は？／ダウト
+    x0 = inner[0] + int(3 * MM); lx = x0 + int(13 * MM); wdt = inner[2] - lx - int(3 * MM)
+    need = f'「{R["name"]}」のカード（持っていなくても宣言できる＝ハッタリ）' if R else '誰でも。ダウトもされない'
+    eff = A['desc'] + (f'。{RULES.get("forcedCoupAt", 10)}♥以上なら必ずこれ' if aid == 'coup' else '')
+    rows = [('必要', need), ('効果', eff), ('は？', _blockers_text(aid)), ('ダウト', 'される（持っていなければ脱ぐ）' if R else 'されない')]
+    y = inner[1] + hb + int(2.5 * MM)
+    for k, v in rows:
+        d.text((x0, y + int(0.3 * MM)), k, font=font(6, 'black'), fill=col)
+        y = draw_text_block(d, (lx, y), v, font(6.5), wdt, fill=INK, spacing=1.3) + int(1.2 * MM)
+    # イラスト（必要なカードの絵）を右下に
+    if R:
+        art = os.path.join(os.path.dirname(os.path.abspath(args.index)), 'img', 'roles', f'{R["id"] if "id" in R else aid}.png')
+        art = os.path.join(os.path.dirname(os.path.abspath(args.index)), 'img', 'roles', f'{A["role"]}.png')
+        if os.path.exists(art):
+            pic = Image.open(art).convert('RGBA'); ph = int(16 * MM); pic = pic.resize((max(1, int(pic.size[0] * ph / pic.size[1])), ph), Image.LANCZOS)
+            im.paste(pic, (inner[2] - int(3 * MM) - pic.size[0], inner[3] - int(2 * MM) - pic.size[1]), pic); d = ImageDraw.Draw(im)
+    d.text((x0, inner[3] - int(5.5 * MM)), '宣言したら、手番マーカーをこの札に', font=font(5), fill=DIM)
+    return im
+
+
+def action_tile_back():
+    im = stripes(LW, LH, (56, 22, 60), (44, 16, 48), step=int(2.4 * MM)); d = ImageDraw.Draw(im)
+    d.rounded_rectangle((BL + SAFE, BL + SAFE, LW - BL - SAFE, LH - BL - SAFE), radius=int(3 * MM), outline=(255, 95, 168), width=int(0.8 * MM))
+    text_center(d, LW / 2, LH / 2 - int(12 * MM), '♥', font(22), fill=(255, 95, 168))
+    text_center(d, LW / 2, LH / 2 + int(1 * MM), 'ACTION BOARD', font(13, 'head'), fill=(255, 209, 102))
+    text_center(d, LW / 2, LH / 2 + int(9 * MM), '卓の中央に7枚並べる', font(6), fill=(217, 184, 230))
+    return im
+
+
+def marker_front(cid):
+    """手番マーカー：キャラの上半身の絵に「手番マーカー」の帯"""
+    im = char_cards(cid)['top'][0].copy(); d = ImageDraw.Draw(im)
+    gold = (255, 209, 102)
+    band = int(13 * MM); y0 = LH - BL - SAFE - band
+    d.rounded_rectangle((BL + SAFE, y0, LW - BL - SAFE, LH - BL - SAFE), radius=int(2 * MM), fill=(40, 22, 48))
+    text_center(d, LW / 2, y0 + int(1.8 * MM), '手番マーカー', font(12, 'head'), fill=gold)
+    text_center(d, LW / 2, y0 + int(8.4 * MM), '宣言したアクションの札に置く', font(5.5), fill=(217, 184, 230))
+    d.rounded_rectangle((BL + SAFE, BL + SAFE, LW - BL - SAFE, LH - BL - SAFE), radius=int(3 * MM), outline=gold, width=int(1 * MM))
+    return im
+
+
+def marker_back():
+    im = stripes(LW, LH, (56, 22, 60), (44, 16, 48), step=int(2.4 * MM)); d = ImageDraw.Draw(im)
+    d.rounded_rectangle((BL + SAFE, BL + SAFE, LW - BL - SAFE, LH - BL - SAFE), radius=int(3 * MM), outline=(255, 209, 102), width=int(1 * MM))
+    text_center(d, LW / 2, LH / 2 - int(9 * MM), '手番マーカー', font(14, 'head'), fill=(255, 209, 102))
+    text_center(d, LW / 2, LH / 2 + int(2 * MM), 'メスガキ・クー', font(6), fill=(217, 184, 230))
+    return im
+
+
 # ---------------------------------------------------------------- キャラカード（横長・両面）
 # 立ち絵の腰の高さ（人物範囲の上端=0, 下端=1）とボロ絵の腰（クロップ後）。split_cards.py と同じ値
 WAIST = {'aqua': 0.46, 'asagi': 0.44, 'emera': 0.45, 'grimaloe': 0.46, 'momoko': 0.47, 'oren': 0.48,
@@ -741,12 +827,13 @@ def title_front():
     text_center(d, PW / 2, inner[1] + int(41.5 * MM), '3〜6人 ／ 15〜30分', font(7, 'black'), fill=(255, 209, 102))
     text_center(d, PW / 2, inner[1] + int(47 * MM), 'ハッタリと「は？」でわからせ合う', font(6), fill=(217, 184, 230))
     # 内容物（カード種別ごとの枚数）
-    n_chara = len(PRINT_CHARS) * 2 * args.chara_copies
+    n_chara = 0 if args.no_chara else len(PRINT_CHARS) * 2 * args.chara_copies
     n_base = len(ROLES) * 3 + n_chara + len(TRIG_BASE) + args.ref + 1
-    n_ext = len(TRIG_EXT) + args.dud + args.blank
+    n_board, n_marker = (len(BOARD_ORDER) if args.board else 0), (len(PRINT_CHARS) if args.markers else 0)
+    n_ext = len(TRIG_EXT) + args.dud + args.blank + n_board + n_marker
     items = [('アクションカード', f'{len(ROLES) * 3}枚'), ('キャラカード', f'{n_chara}枚' + (f'（{len(PRINT_CHARS)}キャラ×上下×{args.chara_copies}組）' if args.chara_copies > 1 else f'（{len(PRINT_CHARS)}キャラ×上下）')),
              ('トリガーカード', f'{len(TRIG_BASE)}枚'), ('早見表', f'{args.ref}枚'), ('お兄さん', '1枚（この札の裏）')]
-    ext = [x for x in ((f'拡張トリガー{len(TRIG_EXT)}' if TRIG_EXT else ''), (f'ハズレ{args.dud}' if args.dud else ''), (f'白紙トリガー{args.blank}' if args.blank else '')) if x]
+    ext = [x for x in ((f'拡張トリガー{len(TRIG_EXT)}' if TRIG_EXT else ''), (f'ハズレ{args.dud}' if args.dud else ''), (f'白紙トリガー{args.blank}' if args.blank else ''), (f'アクションボード{n_board}' if n_board else ''), (f'手番マーカー{n_marker}' if n_marker else '')) if x]
     bx0, bx1 = inner[0] + int(2.5 * MM), inner[2] - int(2.5 * MM)
     by0 = inner[1] + int(51.5 * MM); by1 = inner[3] - int(6 * MM)
     d.rounded_rectangle((bx0, by0, bx1, by1), radius=int(1.5 * MM), fill=(30, 10, 34))
@@ -801,7 +888,7 @@ n = 0
 for rid in ROLES:
     for k in range(3):
         n += 1; cards.append((n, 'gaki', f'{ROLES[rid]["name"]}_{k + 1}', role_front(rid), role_back(), 'P'))
-for cid in PRINT_CHARS:
+for cid in ([] if args.no_chara else PRINT_CHARS):
     cc = char_cards(cid)
     for k in range(args.chara_copies):
         for half in ('top', 'bottom'):
@@ -821,6 +908,12 @@ for k in range(args.dud):
     n += 1; cards.append((n, 'trigger', f'ハズレ_{k + 1}', DF(), TB(), TO))
 for k in range(args.blank):
     n += 1; cards.append((n, 'blank', f'白紙トリガー_{k + 1}', BF(), TB(), TO))
+if args.board:
+    for aid in BOARD_ORDER:
+        n += 1; cards.append((n, 'board', f'ボード_{ACTIONS[aid]["name"]}', action_tile_front(aid), action_tile_back(), 'L'))
+if args.markers:
+    for cid in PRINT_CHARS:
+        n += 1; cards.append((n, 'marker', f'手番マーカー_{CHAR_NAME[cid]}', marker_front(cid), marker_back(), 'L'))
 if args.mono_backs:
     # 両面カラーで刷るキャラカードを先頭のテンプレート（21面ずつ）にまとめ、端数の面はタイトル（お兄さん）→早見表の順で埋める。
     # 残りのテンプレート（表カラー・裏モノクロ）はガキ→トリガー→ハズレ→白紙→余った早見表の順。
@@ -892,15 +985,15 @@ readme = f"""メスガキ・クー 物理版 印刷データ
 仕上がり {TW_MM:g}×{TH_MM:g}mm、塗り足し各{B_MM:g}mm（データは {TW_MM + 2 * B_MM:g}×{TH_MM + 2 * B_MM:g}mm）、{args.dpi}dpi、RGB PNG。
 cards/ に1枚ずつ、ファイル名の末尾 _front が表、_back が裏。mesugaki-coup_cards.pdf は同じ内容を1ページ1面で表→裏の順に並べたもの。
 仕上がり線から内側 3mm に文字と枠を収めてある。preview.png の赤線が仕上がり線（印刷データには入っていない）。
-キャラカード（{len(PRINT_CHARS) * 2 * args.chara_copies}枚）だけ横長。表裏は上下が同じ向き（長辺でめくる想定）。
+キャラカード（{0 if args.no_chara else len(PRINT_CHARS) * 2 * args.chara_copies}枚）{'とトリガー' if args.trigger_land else ''}{'、アクションボードと手番マーカー' if args.board or args.markers else ''}は横長。表裏は上下が同じ向き（長辺でめくる想定）。
 
-枚数：基本セット＝アクションカード {len(ROLES) * 3}、キャラカード {len(PRINT_CHARS) * 2 * args.chara_copies}{f'（{len(PRINT_CHARS)}キャラ×上下×{args.chara_copies}組）' if args.chara_copies > 1 else ''}、トリガー {len(TRIG_BASE)}、早見表 {args.ref}、タイトル {0 if args.no_title else 1} ＝ {len(ROLES) * 3 + len(PRINT_CHARS) * 2 * args.chara_copies + len(TRIG_BASE) + args.ref + (0 if args.no_title else 1)}枚
-　　　別枠＝拡張トリガー {len(TRIG_EXT)}{f'、ハズレ {args.dud}' if args.dud else ''}{f'、白紙トリガー {args.blank}' if args.blank else ''} ＝ {len(TRIG_EXT) + args.dud + args.blank}枚　　合計 {len(cards)}枚
+枚数：基本セット＝アクションカード {len(ROLES) * 3}、キャラカード {0 if args.no_chara else len(PRINT_CHARS) * 2 * args.chara_copies}{f'（{len(PRINT_CHARS)}キャラ×上下×{args.chara_copies}組）' if args.chara_copies > 1 and not args.no_chara else ''}、トリガー {len(TRIG_BASE)}、早見表 {args.ref}、タイトル {0 if args.no_title else 1} ＝ {len(ROLES) * 3 + (0 if args.no_chara else len(PRINT_CHARS) * 2 * args.chara_copies) + len(TRIG_BASE) + args.ref + (0 if args.no_title else 1)}枚
+　　　別枠＝拡張トリガー {len(TRIG_EXT)}{f'、ハズレ {args.dud}' if args.dud else ''}{f'、白紙トリガー {args.blank}' if args.blank else ''}{f'、アクションボード {len(BOARD_ORDER)}' if args.board else ''}{f'、手番マーカー {len(PRINT_CHARS)}' if args.markers else ''} ＝ {len(cards) - (len(ROLES) * 3 + (0 if args.no_chara else len(PRINT_CHARS) * 2 * args.chara_copies) + len(TRIG_BASE) + args.ref + (0 if args.no_title else 1))}枚　　合計 {len(cards)}枚
 キャラ：{'・'.join(CHAR_NAME[c] for c in PRINT_CHARS)}
 基本セットのトリガー（{args.base_set}）：{'・'.join(TRIGGERS[t]['name'] for t in TRIG_BASE)}
 拡張トリガー：{'・'.join(TRIGGERS[t]['name'] for t in TRIG_EXT) or 'なし'}
 """
-KIND_LABEL = {'chara': 'キャラカード', 'title': 'タイトル（お兄さん）', 'ref': '早見表', 'gaki': 'アクションカード', 'trigger': 'トリガー（ハズレ込み）', 'blank': '白紙トリガー'}
+KIND_LABEL = {'chara': 'キャラカード', 'title': 'タイトル（お兄さん）', 'ref': '早見表', 'gaki': 'アクションカード', 'trigger': 'トリガー（ハズレ込み）', 'blank': '白紙トリガー', 'board': 'アクションボード', 'marker': '手番マーカー'}
 if args.lion:
     # ---- ライオン名刺 異種（21面）用：各面をテンプレートへ貼る向きに回転し、参考面付けも作る
     ldir = os.path.join(OUT, 'lion'); os.makedirs(ldir, exist_ok=True)

@@ -555,12 +555,13 @@ button{font:inherit;color:inherit}
  *  データ：役職（ガキカード）・アクション・トリガー・キャラ
  *  台詞やカード名は早見表のもの。トリガー名は仮置き（早見表では空欄）。
  * ===================================================================== */
+// ガキカードはキャラ名ではなく「技名」で呼ぶ（カード＝アクション）。アクションを持たない札は、ブロックの台詞が名前
 const ROLES = {
-  mesugaki:   { id:'mesugaki',   name:'メスガキ',       action:'tax',         blocks:['aid'],         line:'は？弱くないが？',     phrase:'ざぁこ♡',                      color:'#ff5fa8', value:5 },
-  kouhai:     { id:'kouhai',     name:'後輩ガキ',       action:'steal',       blocks:['steal'],       line:'は？情けなくないが？', phrase:'なっさけな〜い♡',              color:'#ff9f43', value:3 },
-  osananajimi:{ id:'osananajimi',name:'幼馴染ガキ',     action:'exchange',    blocks:['steal'],       line:'は？情けなくないが？', phrase:'わからされちゃう〜怖いよ〜♡(棒読み)', color:'#3fb67a', value:2 },
-  succu:      { id:'succu',      name:'サキュガキ',     action:'assassinate', blocks:[],              line:'は？負けないが？',     phrase:'負けちゃえ〜♡',                color:'#9b6bff', value:4 },
-  ojisan:     { id:'ojisan',     name:'わからせおじさん', action:null,        blocks:['assassinate'], line:'は？負けさせないが？', phrase:'変態♡',                        color:'#5f7d99', value:3 },
+  mesugaki:   { id:'mesugaki',   name:'ざぁ～こ♥',       action:'tax',         blocks:['aid'],         line:'は？弱くないが？',     phrase:'ざぁこ♡',                      color:'#ff5fa8', value:5 },
+  kouhai:     { id:'kouhai',     name:'なさけな～い♥',       action:'steal',       blocks:['steal'],       line:'は？情けなくないが？', phrase:'なっさけな〜い♡',              color:'#ff9f43', value:3 },
+  osananajimi:{ id:'osananajimi',name:'ふ～ん♥',     action:'exchange',    blocks:['steal'],       line:'は？情けなくないが？', phrase:'わからされちゃう〜怖いよ〜♡(棒読み)', color:'#3fb67a', value:2 },
+  succu:      { id:'succu',      name:'まけちゃえ～♥',     action:'assassinate', blocks:[],              line:'は？負けないが？',     phrase:'負けちゃえ〜♡',                color:'#9b6bff', value:4 },
+  ojisan:     { id:'ojisan',     name:'は？負けさせないが？', action:null,        blocks:['assassinate'], line:'は？負けさせないが？', phrase:'変態♡',                        color:'#5f7d99', value:3 },
 };
 const ROLE_IDS = Object.keys(ROLES);
 
@@ -598,7 +599,7 @@ const TRIGGERS = [
   { id:'t7', name:'まわして',      text:'全員手札を1枚選び、右隣のプレイヤーに渡す。', retired:true },
   { id:'t8', name:'みんな生意気',  text:'自分以外のプレイヤーは「ばいば～い♥」の使用条件が「8♥を支払う」になる', persistent:true },
   { id:'t9', name:'メンヘラ',      text:`自分の勝利条件に「${RULES.collectorGoal}♥集める」を追加し、自分より♥の多い全員から1♥ずつもらう`, persistent:true },
-  { id:'t10', name:'テレパシー',    text:'以後、自分の「ふ～ん♥」は通常かみせて♥（相手の手札1枚を見て、捨てさせて山札から引き直させる）かを宣言時に選べる。みせて♥は幼馴染ガキでブロック可', persistent:true },
+  { id:'t10', name:'テレパシー',    text:'以後、自分の「ふ～ん♥」は通常かみせて♥（相手の手札1枚を見て、捨てさせて山札から引き直させる）かを宣言時に選べる。みせて♥は「ふ～ん♥」のカードでブロック可', persistent:true },
   { id:'t11', name:'こっそり見せて', text:'自分を脱がせた相手の手札を1枚こっそり見る（自分だけ見える）' },
   { id:'t12', name:'しかえし',      text:'自分を脱がせた相手から3♥奪う' },
   { id:'t13', name:'山分け',        text:'自分より♥の多い全員から1♥ずつもらう', retired:true },
@@ -630,7 +631,7 @@ const TRIGGERS = [
   // ---- ざぁ～こ♥に関わる札 ----
   { id:'t37', name:'メスガキ税',     text:'以後、ほかの人が「ざぁ～こ♥」で♥を得るたび、そのうち1♥を自分がもらう', persistent:true },
   { id:'t38', name:'ほんとに～？',   text:'以後、自分が「ざぁ～こ♥」にダウトして外れても、プライドの代わりに2♥を払う（♥が足りなければプライドを失う）', persistent:true },
-  { id:'t39', name:'は？よわ',       text:'以後、自分はメスガキを主張して「ざぁ～こ♥」をブロックできる（ダウト可）', persistent:true, retired:true },
+  { id:'t39', name:'は？よわ',       text:'以後、自分は「ざぁ～こ♥」のカードを主張して「ざぁ～こ♥」をブロックできる（ダウト可）', persistent:true, retired:true },
   { id:'t40', name:'独り占め',       text:'以後、自分の「ざぁ～こ♥」は4♥になり、ほかの人の「ざぁ～こ♥」は2♥になる', persistent:true },
   // ---- 追加 ----
   { id:'t41', name:'魔除け',         text:'これを持っていれば「まけちゃえ～♥」をブロックできる（公開済みなのでダウトできない）。撃った人が払った3♥は戻らない', persistent:true },
@@ -856,7 +857,7 @@ async function performActionInner(p, act, target){
   if(A.role){ p.claims++; (p.claimed||(p.claimed={}))[A.role]=((p.claimed||{})[A.role]||0)+1; }
   SFX.play(act==='coup'?'boom':'pop');
   say(p, A.name);
-  log(`${p.name}「${A.name}」${target?` → ${target.name}`:''}${A.role?`（${rname(A.role)}を主張）`:''}`, p.cpu?'':'me');
+  log(`${p.name}「${A.name}」${target?` → ${target.name}`:''}${A.role?'（カードを主張）':''}`, p.cpu?'':'me');
   render(); await wait(700);
   // はい無敵～（次の1アクション）／ぜ～ったい許さない（脱がせた相手へのアクション）：ダウトもブロックもなし
   let free=false;
@@ -971,17 +972,17 @@ async function challengeWindow(claimant, role, what, candidates){
 async function resolveChallenge(claimant, challenger, role, what){
   SFX.play('sting');
   say(challenger, 'ダウト！');
-  log(`${challenger.name}「ダウト！」 ${claimant.name} の ${rname(role)} を疑う`, challenger.cpu?'':'me');
+  log(`${challenger.name}「ダウト！」 ${claimant.name} の「${rname(role)}」のカードを疑う`, challenger.cpu?'':'me');
   render(); await wait(800);
   const idx=claimant.hand.findIndex(c=>c.role===role);
   if(idx>=0){
     SFX.play('chime');
     say(claimant, ROLES[role].phrase);
-    log(`${claimant.name} は ${rname(role)} を公開！「${ROLES[role].phrase}」 公開したカードは捨て札にして、山札から1枚引き直す`);
+    log(`${claimant.name} は「${rname(role)}」のカードを公開！「${ROLES[role].phrase}」 公開したカードは捨て札にして、山札から1枚引き直す`);
     returnToDeck(role); (S.pub||(S.pub=[])).push(role); if(claimant.claimed) claimant.claimed[role]=0;   // 公開した札は皆が知る。引き直したので主張は白紙に
     claimant.hand[idx]=drawCard(); markFresh(claimant.hand[idx]);
     render();
-    await fxSwap(claimant, role, `${claimant.name} は ${rname(role)} を公開！`, '本物だった', true);
+    await fxSwap(claimant, role, `${claimant.name} は「${rname(role)}」のカードを公開！`, '本物だった', true);
     render(); await fxDiscard(claimant, 1, role); await fxDraw(claimant, 1); await wait(200);
     if(what && what.kind==='action' && what.action==='tax' && challenger.flags.taxSuspicion && challenger.hearts>=2){ challenger.hearts-=2; SFX.play('coin'); log(`${challenger.name} の「ほんとに～？」：プライドの代わりに2♥払った`); render(); await wait(400); }
     else await loseInfluence(challenger, claimant, 'ダウト失敗');
@@ -989,7 +990,7 @@ async function resolveChallenge(claimant, challenger, role, what){
   } else {
     claimant.bluffsCaught++;
     if(challenger.flags.bounty){ challenger.hearts+=2; SFX.play('coin'); log(`${challenger.name} はダウト成功の「ごほうび」で2♥もらった`); }
-    log(`${claimant.name} は ${rname(role)} を持っていなかった！ハッタリ失敗`, 'hurt');
+    log(`${claimant.name} は「${rname(role)}」のカードを持っていなかった！ハッタリ失敗`, 'hurt');
     render();
     await fxBluff(claimant, challenger, role);
     await loseInfluence(claimant, challenger, 'ハッタリ失敗');
@@ -1029,7 +1030,7 @@ async function blockWindow(actor, act, target){
     SFX.play('buzz');
     if(S.action){ S.action.phase='block'; S.action.blocker=c; S.action.blockRole=d.role; renderAction(); }
     say(c, ROLES[d.role].line);
-    log(`${c.name}「${ROLES[d.role].line}」（${rname(d.role)} でブロック）`, c.cpu?'':'me');
+    log(`${c.name}「${ROLES[d.role].line}」（「${rname(d.role)}」のカードでブロック）`, c.cpu?'':'me');
     c.claims++; (c.claimed||(c.claimed={}))[d.role]=((c.claimed||{})[d.role]||0)+1;
     render(); await wait(700);
     const cands=[actor, ...orderFrom(c).filter(q=>q!==actor)];
@@ -1049,7 +1050,7 @@ async function loseInfluence(p, by, reason){
   const [card]=p.hand.splice(idx,1); p.lost.push(card.role);
   SFX.play('hit');
   say(p, '……っ！');
-  log(`${p.name} は ${rname(card.role)} を失った（${reason}）`, 'hurt');
+  log(`${p.name} は「${rname(card.role)}」のカードを失った（${reason}）`, 'hurt');
   fxHit(p); await wait(850);
 
   const avail=['top','bottom'].filter(k=>!p.boro[k]);
@@ -1156,7 +1157,7 @@ async function resolveTrigger(p, card, by){
     }
     case 't8': p.flags.coupTax=true; log(`${p.name} 以外は「ばいば～い♥」に8♥必要になった`); return;
     case 't9': { p.flags.win15=true; const got=shareUp(p); log(`${p.name} は${RULES.collectorGoal}♥集めても勝利になった${liftNote()}。♥の多い相手から1♥ずつもらった（+${got}♥）`); return; }
-    case 't10': p.flags.examine=true; log(`${p.name} の「ふ～ん♥」は、通常かみせて♥（相手の手札1枚を見て、捨てさせて山札から引き直させる）かを選べるようになった。みせて♥は幼馴染ガキでブロック可`, 'sys'); return;
+    case 't10': p.flags.examine=true; log(`${p.name} の「ふ～ん♥」は、通常かみせて♥（相手の手札1枚を見て、捨てさせて山札から引き直させる）かを選べるようになった。みせて♥は「ふ～ん♥」のカードでブロック可`, 'sys'); return;
     case 't11': {
       if(!by || by===p || !by.hand.length){ log(`脱がせた相手がいないので不発`); return; }
       if(by.flags.blockExchange){ log(`${by.name} の「${tn('t3')}」：${tn('t11')} は効かない`); return; }
@@ -1281,7 +1282,7 @@ async function resolveTrigger(p, card, by){
     case 't36': p.flags.noForce=true; log(`${p.name} は10♥以上でも ばいば～い♥ を強制されなくなった（ざこ免除）`); return;
     case 't37': p.flags.taxLevy=true; log(`${p.name} は、ほかの人の「ざぁ～こ♥」から1♥ずつもらうようになった（メスガキ税）`); return;
     case 't38': p.flags.taxSuspicion=true; log(`${p.name} は「ざぁ～こ♥」へのダウトに外れてもプライドの代わりに2♥で済むようになった（ほんとに～？）`); return;
-    case 't39': p.flags.taxBlock=true; log(`${p.name} はメスガキを主張して「ざぁ～こ♥」をブロックできるようになった（は？よわ）`); return;
+    case 't39': p.flags.taxBlock=true; log(`${p.name} は「ざぁ～こ♥」のカードを主張して「ざぁ～こ♥」をブロックできるようになった（は？よわ）`); return;
     case 't41': p.flags.wardAssassin=true; log(`${p.name} は以後「まけちゃえ～♥」をブロックできる（${tn('t41')}）`); return;
     case 't40': p.flags.taxMonopoly=true; log(`${p.name} の「ざぁ～こ♥」は4♥、ほかの人は2♥になった（独り占め）`); return;
     case 't13': {
@@ -1449,7 +1450,7 @@ function suspicion(c, role){
 function challengeGuess(p, s){ let keep=1; for(const q of othersOf(p)) keep*=1-s*0.45*(q.hand.length===1?0.5:1); return 1-keep; }
 // q が role を主張して自分のアクションを止めてくる確率（本当に持っている率＋ハッタリ率）
 function blockGuess(p, q, role){ const pr=roleProb(p,q,role); return Math.min(0.95, pr*0.9 + (1-pr)*bluffRate(q)*0.3); }
-// 狙う相手：脱落させられる相手、勝ちに近い相手を優先。わからせおじさんを持っていそうな相手はまけちゃえ～♥では避ける
+// 狙う相手：脱落させられる相手、勝ちに近い相手を優先。「は？負けさせないが？」のカードを持っていそうな相手はまけちゃえ～♥では避ける
 function bestTarget(p, cands, act){
   const DANGER={t1:3, t12:2.5, t28:2.5, t11:1, t17:1, t6:1, t20:1.5, t21:1};
   let best=null, bs=-1e9;
@@ -1592,7 +1593,7 @@ function cpuChooseActionNormal(p, forced){
   if(p.flags.win15 && !forced){
     const need=RULES.collectorGoal-p.hearts;
     if(need<=1) return {action:'income'};                                  // ざこ♥は止められない
-    if(need<=2 && chance(0.85)) return {action:'aid'};                     // ざこざこ♥はメスガキ主張でしか止まらない
+    if(need<=2 && chance(0.85)) return {action:'aid'};                     // ざこざこ♥は「ざぁ～こ♥」のカードの主張でしか止まらない
     if(need<=3 && (hasRole(p,'mesugaki') || (lives===2 && knownCount(p,'mesugaki')<2 && chance(0.5)))) return {action:'tax'};
   }
   { const ct=targetsFor(p,'coup'); if((forced || p.hearts>=cost) && ct.length) return {action:'coup', target:cpuThreat(p,ct)}; }
@@ -1721,7 +1722,8 @@ function roleCardEl(role, o={}){
   d.className='rc'+(o.small?' sm':'')+(o.lost?' lost':'')+(o.faceUp?' faceup':'')+(o.peek?' peek':'');
   d.style.setProperty('--rcol',R.color);
   d.dataset.role=role;
-  d.innerHTML=`<div class="rn">${R.name}</div><div class="rl act">できる: <b>${R.action?ACTIONS[R.action].name:'—'}</b></div><div class="rl">ブロック: <b>${R.blocks.length?R.blocks.map(a=>ACTIONS[a].name).join('・'):'—'}</b></div><img class="ri" src="img/roles/${role}.png" alt="" draggable="false">`;
+  const EFF={tax:'3♥もらう', steal:'相手から2♥奪う', exchange:'2枚引いて2枚戻す', assassinate:'3♥で脱がせる'};
+  d.innerHTML=`<div class="rn">${R.name}</div><div class="rl act">${R.action?`効果: <b>${EFF[R.action]}</b>`:'<b>ブロック専門</b>'}</div><div class="rl">止める: <b>${R.blocks.length?R.blocks.map(a=>ACTIONS[a].name).join('・'):'なし'}</b></div><img class="ri" src="img/roles/${role}.png" alt="" draggable="false">`;
   if(o.faceUp){ const f=document.createElement('span'); f.className='fu'; f.textContent='表'; d.appendChild(f); }
   else if(o.peek){ const f=document.createElement('span'); f.className='fu pk'; f.textContent='👁 自分だけ'; d.appendChild(f); }
   return d;
@@ -1736,8 +1738,8 @@ function actionTileEl(id, p, cost){
   const costTxt = id==='coup'?`${cost}♥払う`: id==='assassinate'?'3♥払う':'';
   const effect = (id==='exchange'&&p&&p.flags.examine) ? '山札から2枚引いて2枚捨てる／みせて♥：相手の手札1枚を見て、捨てさせて山札から引き直させる（選べる）' : A.desc.replace(/^\d♥を支払い、/,'');
   let blockers=A.blockedBy||[]; if(id==='exchange') blockers=[];
-  const blk = blockers.length ? `は？：${blockers.map(r=>ROLES[r].name).join('・')}がブロック可` : (id==='coup'||id==='income'?'ブロック不可・ダウト不可':(id==='exchange'&&p&&p.flags.examine)?'通常はブロック不可・みせて♥は幼馴染ガキがブロック可':'ブロック不可');
-  b.innerHTML=`<div class="ah">${A.name}</div><div class="ar">${A.role?`<b>${ROLES[A.role].name}</b> のアクション`:'誰でも'}${costTxt?`・${costTxt}`:''}</div><div class="ae">${effect}</div><div class="ab">${blk}</div>${state?`<span class="ast">${state}</span>`:''}`;
+  const blk = blockers.length ? `は？：${blockers.map(r=>`「${ROLES[r].name}」`).join('')}のカードで止められる` : (id==='coup'||id==='income'?'ブロック不可・ダウト不可':(id==='exchange'&&p&&p.flags.examine)?'通常はブロック不可・みせて♥は「ふ～ん♥」のカードでブロック可':'ブロック不可');
+  b.innerHTML=`<div class="ah">${A.name}</div><div class="ar">${A.role?'ガキカードのアクション':'誰でも'}${costTxt?`・${costTxt}`:''}</div><div class="ae">${effect}</div><div class="ab">${blk}</div>${state?`<span class="ast">${state}</span>`:''}`;
   return b;
 }
 function blockTileEl(o, c){
@@ -1746,7 +1748,7 @@ function blockTileEl(o, c){
   const R=ROLES[o.role]; b.style.setProperty('--rcol',R.color); b.dataset.act='block:'+o.role;
   const held=hasRole(c,o.role); if(!held) b.classList.add('bluff');
   b.onmouseenter=()=>linkRole(o.role,true); b.onmouseleave=()=>linkRole(o.role,false);
-  b.innerHTML=`<div class="ah">${R.name}でブロック</div><div class="ar">「${R.line}」</div><div class="ae">${held?'持っているので、ダウトされても安心':'持っていないのでハッタリ。ダウトされるとプライドを失う'}</div><span class="ast">${held?'✓ 持ってる':'ハッタリ'}</span>`;
+  b.innerHTML=`<div class="ah">「${R.name}」のカードでブロック</div><div class="ar">「${R.line}」</div><div class="ae">${held?'持っているので、ダウトされても安心':'持っていないのでハッタリ。ダウトされるとプライドを失う'}</div><span class="ast">${held?'✓ 持ってる':'ハッタリ'}</span>`;
   return b;
 }
 // 分類色（印刷版と同じ）と、稲妻（裏面）
@@ -1866,7 +1868,7 @@ function renderEffects(){
     if(p.flags.coupDiscount) items.push(['甘やかし', `${p.name} の「ばいば～い♥」は5♥`]);
     if(p.flags.blockExchange) items.push([tn('t3'), `${p.name} は「ふ～ん♥」と「見せて」系トリガーをブロックできる`]);
     if(p.flags.wardAssassin) items.push([tn('t41'), `${p.name} は「まけちゃえ～♥」をブロックできる`]);
-    if(p.flags.examine) items.push(['テレパシー', `${p.name} の「ふ～ん♥」は通常かみせて♥かを選べる（みせて♥は幼馴染ガキでブロック可）`]);
+    if(p.flags.examine) items.push(['テレパシー', `${p.name} の「ふ～ん♥」は通常かみせて♥かを選べる（みせて♥は「ふ～ん♥」のカードでブロック可）`]);
     if(p.flags.bodyguard) items.push(['ボディガード', `${p.name} を狙う ばいば～い♥・まけちゃえ～♥・なさけな～い♥ は、使った人が追加で2♥を ${p.name} に払う`]);
     if(p.flags.aidUnblockable) items.push(['人気者', `${p.name} の「ざこざこ♥」はブロックできない`]);
     if(p.flags.vengeance!=null && S.players[p.flags.vengeance]) items.push(['ぜ～ったい許さない', `${p.name} → ${S.players[p.flags.vengeance].name} へのアクションはダウト・ブロック不可`]);
@@ -1883,7 +1885,7 @@ function renderEffects(){
     if(p.flags.mustCoup) items.push(['みんなざぁ～こ！', `${p.name} は次の手番に必ず ばいば～い♥（その手番は5♥）`]);
     if(p.flags.noForce) items.push(['ざこ免除', `${p.name} は10♥以上でも ばいば～い♥ を強制されない`]);
     if(p.flags.taxSuspicion) items.push(['ほんとに～？', `${p.name} は「ざぁ～こ♥」へのダウトに外れても2♥で済む`]);
-    if(p.flags.taxBlock) items.push(['は？よわ', `${p.name} はメスガキ主張で「ざぁ～こ♥」をブロックできる`]);
+    if(p.flags.taxBlock) items.push(['は？よわ', `${p.name} は「ざぁ～こ♥」のカードの主張で「ざぁ～こ♥」をブロックできる`]);
     if(p.flags.win15) items.push(['メンヘラ', `${p.name} は${RULES.collectorGoal}♥集めた時点で勝ち${liftNote()}`]);
   }
   if(!items.length){ el.hidden=true; el.innerHTML=''; return; }
@@ -1950,7 +1952,7 @@ async function humanChooseAction(p, forced){
     }, 'action');
     const A=ACTIONS[act];
     if(act==='exchange' && p.flags.examine){   // テレパシー持ち：通常かみせて♥かを選ぶ
-      const mode=await askButtons('「ふ～ん♥」の効果を選んでください', [{label:'通常', value:'normal', primary:true, sub:'山札から2枚引いて2枚捨てる（ブロック不可）'},{label:'みせて♥', value:'examine', sub:'相手の手札1枚を見て、捨てさせて山札から引き直させる（幼馴染ガキでブロック可）'},{label:'もどる', value:null}], undefined, 'examineMode');
+      const mode=await askButtons('「ふ～ん♥」の効果を選んでください', [{label:'通常', value:'normal', primary:true, sub:'山札から2枚引いて2枚捨てる（ブロック不可）'},{label:'みせて♥', value:'examine', sub:'相手の手札1枚を見て、捨てさせて山札から引き直させる（「ふ～ん♥」のカードでブロック可）'},{label:'もどる', value:null}], undefined, 'examineMode');
       if(mode===null) continue;
       if(mode==='normal') return {action:act};
       const ec=others.filter(q=>q.hand.length>0);
@@ -1979,17 +1981,17 @@ function passText(what, claimant, me){
   switch(what.action){
     case 'aid': return `${who(claimant)} が2♥獲得（${claimant.hearts}♥ → ${claimant.hearts+2}♥）`;
     case 'tax': { const n=taxAmount(claimant); return `${who(claimant)} が${n}♥獲得（${claimant.hearts}♥ → ${claimant.hearts+n}♥）`; }
-    case 'steal': { const n=Math.min(2,t.hearts); return `${who(claimant)} が ${who(t)} から${n}♥奪う（${who(t)} ${t.hearts}♥ → ${t.hearts-n}♥、${who(claimant)} ${claimant.hearts}♥ → ${claimant.hearts+n}♥）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと後輩ガキ・幼馴染ガキでブロックできる':''); }
-    case 'assassinate': return `${who(t)} がプライドを1つ失う（手札1枚を捨て、服を1枚脱ぐ）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと わからせおじさん でブロックできる':'');
-    case 'exchange': return t ? `${who(claimant)} が ${who(t)} の手札1枚を見て、捨てさせられ、山札から引き直す（みせて♥）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと幼馴染ガキでブロックできる':'') : `${who(claimant)} が山札から2枚引いて2枚捨てる（手札を整えられる）`;
+    case 'steal': { const n=Math.min(2,t.hearts); return `${who(claimant)} が ${who(t)} から${n}♥奪う（${who(t)} ${t.hearts}♥ → ${t.hearts-n}♥、${who(claimant)} ${claimant.hearts}♥ → ${claimant.hearts+n}♥）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと「なさけな～い♥」「ふ～ん♥」のカードでブロックできる':''); }
+    case 'assassinate': return `${who(t)} がプライドを1つ失う（手札1枚を捨て、服を1枚脱ぐ）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと 「は？負けさせないが？」のカードでブロックできる':'');
+    case 'exchange': return t ? `${who(claimant)} が ${who(t)} の手札1枚を見て、捨てさせられ、山札から引き直す（みせて♥）`+(t===me&&what.kind==='action'&&!what.atBlock?'。見逃しても、このあと「ふ～ん♥」のカードでブロックできる':'') : `${who(claimant)} が山札から2枚引いて2枚捨てる（手札を整えられる）`;
   }
   return '';
 }
 async function humanChallenge(c, claimant, role, what){
   const A=ACTIONS[what.action];
   const msg = what.kind==='action'
-    ? `${claimant.name} が「${A.name}」（${rname(role)}を主張）${what.target?` → ${what.target===c?'あなた':what.target.name}`:''}`
-    : `${claimant.name} が ${rname(role)} で「${A.name}」をブロック`;
+    ? `${claimant.name} が「${A.name}」（カードを主張）${what.target?` → ${what.target===c?'あなた':what.target.name}`:''}`
+    : `${claimant.name} が「${rname(role)}」のカードで「${A.name}」をブロック`;
   return await prompt((box,done)=>{
     msgEl(box, msg+'。ダウトする？');
     const cl=document.createElement('div'); cl.className='claim';
@@ -2228,7 +2230,7 @@ function fxSwap(p, role, title, label, showRole){
 function fxBluff(claimant, challenger, role){
   if(S.headless) return Promise.resolve();
   const cut=document.createElement('div'); cut.id='cut'; cut.className='cut bluff';
-  cut.innerHTML=`<div class="cutbox"><div class="cutwho">${challenger.name}「ダウト！」 ${claimant.name} は ${rname(role)} を…</div><div class="bluffstage"><div class="bluffx">✗</div></div><div class="swapcap">持っているのか…？</div><div class="cuthint">クリックで飛ばす</div></div>`;
+  cut.innerHTML=`<div class="cutbox"><div class="cutwho">${challenger.name}「ダウト！」 ${claimant.name} は「${rname(role)}」のカードを…</div><div class="bluffstage"><div class="bluffx">✗</div></div><div class="swapcap">持っているのか…？</div><div class="cuthint">クリックで飛ばす</div></div>`;
   const box=cut.querySelector('.cutbox'), stage=cut.querySelector('.bluffstage'), cap=cut.querySelector('.swapcap');
   stage.prepend(roleCardEl(role));
   document.body.appendChild(cut);
@@ -2356,16 +2358,16 @@ function tutSetup(){
   TUT.beats=[
     {on:'start', hl:'#meWrap', text:'ようこそ、<b>メスガキ・クー</b>へ。下があなたのパネルです。<b>手札2枚＝ライフ2つ</b>、♥2からスタート。手札のガキカードが「役職」、左のキャラカード（上半身／下半身）が服、その横の2枚が<b>トリガー</b>です。トリガーは<b>自分だけが見られる</b>カードで、本番では開始時に3枚から2枚を選んで上下に仕込みます。'},
     {on:'start', hl:'#opps', text:`上が相手の ${n}。相手の手札は裏向きで見えません。<b>相手の手札を2枚とも失わせたら勝ち</b>。手札を失うたびに服が1枚ボロになり、両方ボロで脱落です。`},
-    {on:'action', only:'tax', text:'あなたの番。手札に<b>メスガキ</b>があるので「<b>ざぁ～こ♥</b>」で3♥もらいましょう（光っている手札のメスガキをクリックしてもOK）。カードの色とアクションの色は対応しています。役職つきのアクションは<b>持っていなくても宣言できます</b>（ハッタリ、破線のタイル）。そのかわり相手から<b>ダウト</b>されることがあります。'},
+    {on:'action', only:'tax', text:'あなたの番。手札に「<b>ざぁ～こ♥</b>」のカードがあるので「<b>ざぁ～こ♥</b>」で3♥もらいましょう（光っている手札のカードをクリックしてもOK）。カードの色とアクションの色は対応しています。役職つきのアクションは<b>持っていなくても宣言できます</b>（ハッタリ、破線のタイル）。そのかわり相手から<b>ダウト</b>されることがあります。'},
     {on:'cpuTurn', hl:'#opps', text:`3♥もらって5♥になりました。次は ${n} の番。相手の行動には<b>「は？」ブロック</b>と<b>ダウト！</b>で割り込めます。`},
-    {on:'challenge', only:false, text:`${n} が<b>メスガキ</b>を主張して「ざぁ～こ♥」。怪しいですが、ダウトを外すと<b>自分がプライドを失います</b>。見えているメスガキはあなたの1枚だけで、残り2枚を持っていてもおかしくない……今回は<b>見逃し</b>ましょう。`},
-    {on:'action', only:'aid', text:'相手も5♥になりました。今度は「<b>ざこざこ♥</b>」で2♥もらいましょう。誰でも使えますが、<b>メスガキを持っている人にブロックされる</b>ことがあります。'},
-    {on:'challenge', only:true, text:`${n} がメスガキで「は？弱くないが？」とブロック。<b>ブロックにもダウトできます</b>。さっきもメスガキを主張していた……2回とも本当でしょうか？ ここは<b>ダウト！</b>`},
-    {on:'flipOther', only:'top', text:`ダウト成功！ ${n} はメスガキを持っていませんでした。相手は手札を1枚失い、服を1枚脱ぎます。<b>どちらを脱がせるかは、失わせた側（あなた）が選びます</b>。相手のトリガーは見えないので運だめし。今回は<b>上半身</b>を。`},
+    {on:'challenge', only:false, text:`${n} が「<b>ざぁ～こ♥</b>」のカードを主張して「ざぁ～こ♥」。怪しいですが、ダウトを外すと<b>自分がプライドを失います</b>。見えている「ざぁ～こ♥」のカードはあなたの1枚だけで、残り2枚を持っていてもおかしくない……今回は<b>見逃し</b>ましょう。`},
+    {on:'action', only:'aid', text:'相手も5♥になりました。今度は「<b>ざこざこ♥</b>」で2♥もらいましょう。誰でも使えますが、<b>「ざぁ～こ♥」のカードを持っている人にブロックされる</b>ことがあります。'},
+    {on:'challenge', only:true, text:`${n} が「ざぁ～こ♥」のカードで「は？弱くないが？」とブロック。<b>ブロックにもダウトできます</b>。さっきも「ざぁ～こ♥」のカードを主張していた……2回とも本当でしょうか？ ここは<b>ダウト！</b>`},
+    {on:'flipOther', only:'top', text:`ダウト成功！ ${n} は「ざぁ～こ♥」のカードを持っていませんでした。相手は手札を1枚失い、服を1枚脱ぎます。<b>どちらを脱がせるかは、失わせた側（あなた）が選びます</b>。相手のトリガーは見えないので運だめし。今回は<b>上半身</b>を。`},
     {on:'cpuTurn', hl:'#deckInfo', text:`${n} の上半身がボロ絵に。その下のトリガー「<b>みんな生意気</b>」が発動して、あなたの「ばいば～い♥」は<b>8♥</b>必要になりました（中央の盤面情報を見てください）。`},
-    {on:'challenge', only:false, text:`${n} が<b>サキュガキ</b>で「<b>まけちゃえ～♥</b>」（3♥払って暗殺）をあなたに。まずダウトするかどうか。相手の残り1枚がサキュガキかどうかは分からない……ここは<b>見逃し</b>ます。`},
-    {on:'block', only:null, text:'次にブロック。「まけちゃえ～♥」は<b>わからせおじさん</b>でブロックできますが、あなたは持っていません。ハッタリでブロックもできますが、ダウトされたら痛い。今回は<b>ブロックしない</b>で、プライドを失う流れを体験しましょう。'},
-    {on:'lose', only:1, text:'プライドを失います。<b>失うカードは自分で選べます</b>。メスガキは「ざぁ～こ♥」で稼げる強いカードなので、<b>後輩ガキ</b>を捨てましょう。そのあと<b>どちらを脱ぐかは相手が選び</b>、その下のトリガーが発動します。'},
+    {on:'challenge', only:false, text:`${n} が「<b>まけちゃえ～♥</b>」（3♥払って暗殺）をあなたに。まずダウトするかどうか。相手の残り1枚が本当に「まけちゃえ～♥」のカードかどうかは分からない……ここは<b>見逃し</b>ます。`},
+    {on:'block', only:null, text:'次にブロック。「まけちゃえ～♥」は「<b>は？負けさせないが？</b>」のカードでブロックできますが、あなたは持っていません。ハッタリでブロックもできますが、ダウトされたら痛い。今回は<b>ブロックしない</b>で、プライドを失う流れを体験しましょう。'},
+    {on:'lose', only:1, text:'プライドを失います。<b>失うカードは自分で選べます</b>。「ざぁ～こ♥」は3♥稼げる強いカードなので、<b>なさけな～い♥</b>のカードを捨てましょう。そのあと<b>どちらを脱ぐかは相手が選び</b>、その下のトリガーが発動します。'},
     {on:'action', only:'coup', text:'相手に上半身を脱がされ、トリガー「みかじめ」で全員から1♥もらって8♥たまりました。「<b>ばいば～い♥</b>」は♥を払うだけで<b>ブロックもダウトもされない</b>確実な一撃。相手は残り1枚なので、これで決まりです。<b>10♥以上持っていたら必ずばいば～い♥</b>を撃たされることも覚えておいてください。'},
     {on:'target', only:v=>!!v&&v.cpu, text:'相手を選んで、わからせましょう。'},
   ];
@@ -2429,7 +2431,7 @@ function buildRules(){
 
   <div class="rl-sec"><h3><span class="no">4</span>ガキカード（役職） <small>5種×3枚＝15枚。手札2枚がプライド</small></h3>
   <div class="rl-roles" id="rlRoles"></div>
-  <p class="rl-note">「できる」はそのカードで宣言できるアクション、「ブロック」はそのカードで止められる相手のアクション。</p></div>
+  <p class="rl-note">カードの名前が、そのカードで宣言できるアクション（技）。「止める」はそのカードを主張して止められる相手のアクション。「は？負けさせないが？」はアクションを持たず、まけちゃえ～♥を止める専門。</p></div>
 
   <div class="rl-sec"><h3><span class="no">5</span>ダウト</h3>
   <div class="rl-two">

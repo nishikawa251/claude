@@ -264,20 +264,19 @@ def role_front(rid):
     else:
         text_center(d, PW / 2, inner[1] + hb + int(4 * MM), R['name'][0], font(56, 'head'), fill=mix(col, PAPER, 0.8))
     x0, wdt = inner[0] + int(3 * MM), inner[2] - inner[0] - int(6 * MM)
-    # できる
+    # 効果（カード名＝技名なので、技の名前は繰り返さず効果だけ書く）
     d.rounded_rectangle((inner[0] + int(2 * MM), y - int(1.5 * MM), inner[2] - int(2 * MM), y + int(15 * MM)), radius=int(1.5 * MM), fill=mix(col, (255, 255, 255), 0.9))
-    d.text((x0, y), 'できる', font=font(7), fill=col)
     if R['action']:
         A = ACTIONS[R['action']]
-        d.text((x0, y + int(3.4 * MM)), A['name'], font=font(10.5, 'black'), fill=INK)
-        draw_text_block(d, (x0, y + int(8.6 * MM)), A['desc'], font(6.5), wdt, fill=DIM)
+        d.text((x0, y), '宣言すると', font=font(7), fill=col)
+        draw_text_block(d, (x0, y + int(3.6 * MM)), A['desc'], font(8.5, 'black'), wdt, fill=INK, spacing=1.3)
     else:
-        d.text((x0, y + int(3.4 * MM)), 'なし', font=font(10.5, 'black'), fill=INK)
-        draw_text_block(d, (x0, y + int(8.6 * MM)), 'アクションは持たない。ブロック専門', font(6.5), wdt, fill=DIM)
+        d.text((x0, y), 'アクションなし', font=font(7), fill=col)
+        draw_text_block(d, (x0, y + int(3.6 * MM)), 'ブロック専門のカード', font(8.5, 'black'), wdt, fill=INK, spacing=1.3)
     y += int(17.5 * MM)
-    # ブロック
+    # 止められる相手のアクション
     d.rounded_rectangle((inner[0] + int(2 * MM), y - int(1.5 * MM), inner[2] - int(2 * MM), y + int(13 * MM)), radius=int(1.5 * MM), fill=mix(col, (255, 255, 255), 0.9))
-    d.text((x0, y), '「は？」ブロック', font=font(7), fill=col)
+    d.text((x0, y), '「は？」で止める', font=font(7), fill=col)
     blocks = '・'.join(ACTIONS[b]['name'] for b in R['blocks']) or 'なし'
     d.text((x0, y + int(3.4 * MM)), blocks, font=fit_font(blocks, wdt, 10.5, 7, 'black'), fill=INK)
     draw_text_block(d, (x0, y + int(8.6 * MM)), f'「{R["line"]}」', font(6.5), wdt, fill=DIM)
@@ -673,16 +672,16 @@ def quick_front():
 
     section('だれでもできる')
     general(AN['income'], '1♥もらう', '止められない')
-    general(AN['aid'], '2♥もらう', 'は？：メスガキ')
+    general(AN['aid'], '2♥もらう', f"は？：「{AN['tax']}」のカード")
     general(AN['coup'], f'{RULES.get("coupCost", 7)}♥で相手のプライドを1つ奪う', f'止められない。{RULES.get("forcedCoupAt", 10)}♥以上は必須')
     y += int(0.4 * MM)
     section('ガキカード（持ってなくても宣言OK＝ハッタリ）')
-    rows = [
-        ('mesugaki',    AN['tax'],      '3♥もらう',                      '',                           f"{AN['aid']} を止める"),
-        ('kouhai',      AN['steal'],    '相手1人から2♥奪う',             'は？：後輩ガキ・幼馴染ガキ', f"{AN['steal']} を止める"),
-        ('osananajimi', AN['exchange'], '山札から2枚引き、2枚捨てる',    '',                           f"{AN['steal']} を止める"),
-        ('succu',       AN['assassinate'], '3♥払って相手のプライドを1つ奪う', 'は？：わからせおじさん', ''),
-        ('ojisan',      '（アクションなし）', '',                           '',                           f"{AN['assassinate']} を止める"),
+    rows = [   # カード名＝技名。act は名前と別に書き添えるものだけ
+        ('mesugaki',    '', '3♥もらう',                      '',                                              f"{AN['aid']} を止める"),
+        ('kouhai',      '', '相手1人から2♥奪う',             f"は？：「{AN['steal']}」「{AN['exchange']}」のカード", f"{AN['steal']} を止める"),
+        ('osananajimi', '', '山札から2枚引き、2枚捨てる',    '',                                              f"{AN['steal']} を止める"),
+        ('succu',       '', '3♥払って相手のプライドを1つ奪う', f"は？：「{ROLES['ojisan']['name']}」のカード",   ''),
+        ('ojisan',      '', 'アクションなし（ブロック専門）', '',                                              f"{AN['assassinate']} を止める"),
     ]
     for rid, act, eff, stop, blocks in rows:
         col = hexrgb(ROLES[rid]['color'])
@@ -695,7 +694,7 @@ def quick_front():
         d.rectangle((inner[0] + int(0.8 * MM), y - int(0.5 * MM), inner[0] + int(2.6 * MM), y + rh - int(1.2 * MM)), fill=col)
         d.text((xr, y), ROLES[rid]['name'], font=font(6.6, 'black'), fill=col)
         nx = xr + font(6.6, 'black').getlength(ROLES[rid]['name']) + int(2 * MM)
-        d.text((nx, y - int(0.2 * MM)), act, font=font(7 if rid != 'ojisan' else 5.6, 'black'), fill=INK)
+        if act: d.text((nx, y - int(0.2 * MM)), act, font=font(7, 'black'), fill=INK)
         if eff:
             d.text((xr, y + int(3.3 * MM)), eff, font=font(5.8), fill=INK)
         draw_text_block(d, (xr, y + top3), line3, font(5.5), x1 - xr, fill=DIM, spacing=1.2)

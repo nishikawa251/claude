@@ -31,6 +31,7 @@ ap.add_argument('--index', default=os.path.join(os.path.dirname(os.path.abspath(
 ap.add_argument('--size', default='91x55', help='仕上がり mm（長辺x短辺）')
 ap.add_argument('--bleed', type=float, default=1.5, help='塗り足し mm（各辺）')
 ap.add_argument('--all-triggers', action='store_true', help='定義されている全トリガー（見送り以外）を入れる。基本セットの18枚のあとに、残りを「拡張」として別枠で並べる')
+ap.add_argument('--no-title', action='store_true', help='タイトル（お兄さん）カードを入れない（アクションカードとトリガーだけ刷り直すときなど）')
 ap.add_argument('--trigger-land', action='store_true', help='トリガー（ハズレ・白紙も）を横向きのデザインにする（キャラカードと同じ向き）')
 ap.add_argument('--base-set', default='mix', choices=['basic', 'fresh', 'mix'], help='基本セットに入れるトリガー18枚のプリセット（既定 mix＝おすすめデッキ）')
 ap.add_argument('--dud', type=int, default=0, help='ハズレ（効果なし）トリガーの枚数')
@@ -811,7 +812,8 @@ for tid in TRIG_BASE:
 qf, qb = quick_front(), quick_back()
 for k in range(args.ref):
     n += 1; cards.append((n, 'ref', f'早見表_{k + 1}', qf, qb, 'P'))
-n += 1; cards.append((n, 'title', 'タイトル', title_front(), title_back(), 'P'))
+if not args.no_title:
+    n += 1; cards.append((n, 'title', 'タイトル', title_front(), title_back(), 'P'))
 # ---- ここから別枠（基本セットには入れない）
 for tid in TRIG_EXT:
     n += 1; cards.append((n, 'trigger', TRIGGERS[tid]['name'], TF(tid), TB(), TO))
@@ -892,7 +894,7 @@ cards/ に1枚ずつ、ファイル名の末尾 _front が表、_back が裏。m
 仕上がり線から内側 3mm に文字と枠を収めてある。preview.png の赤線が仕上がり線（印刷データには入っていない）。
 キャラカード（{len(PRINT_CHARS) * 2 * args.chara_copies}枚）だけ横長。表裏は上下が同じ向き（長辺でめくる想定）。
 
-枚数：基本セット＝アクションカード {len(ROLES) * 3}、キャラカード {len(PRINT_CHARS) * 2 * args.chara_copies}{f'（{len(PRINT_CHARS)}キャラ×上下×{args.chara_copies}組）' if args.chara_copies > 1 else ''}、トリガー {len(TRIG_BASE)}、早見表 {args.ref}、タイトル 1 ＝ {len(ROLES) * 3 + len(PRINT_CHARS) * 2 * args.chara_copies + len(TRIG_BASE) + args.ref + 1}枚
+枚数：基本セット＝アクションカード {len(ROLES) * 3}、キャラカード {len(PRINT_CHARS) * 2 * args.chara_copies}{f'（{len(PRINT_CHARS)}キャラ×上下×{args.chara_copies}組）' if args.chara_copies > 1 else ''}、トリガー {len(TRIG_BASE)}、早見表 {args.ref}、タイトル {0 if args.no_title else 1} ＝ {len(ROLES) * 3 + len(PRINT_CHARS) * 2 * args.chara_copies + len(TRIG_BASE) + args.ref + (0 if args.no_title else 1)}枚
 　　　別枠＝拡張トリガー {len(TRIG_EXT)}{f'、ハズレ {args.dud}' if args.dud else ''}{f'、白紙トリガー {args.blank}' if args.blank else ''} ＝ {len(TRIG_EXT) + args.dud + args.blank}枚　　合計 {len(cards)}枚
 キャラ：{'・'.join(CHAR_NAME[c] for c in PRINT_CHARS)}
 基本セットのトリガー（{args.base_set}）：{'・'.join(TRIGGERS[t]['name'] for t in TRIG_BASE)}

@@ -1,0 +1,18 @@
+{
+  "audio": "src/track.wav",
+  "jacket": "src/jacket.jpg",
+  "logo": "src/logo_black.png",
+  "start": 53.56,
+  "duration": 26.84,
+  "lead": 2.30,
+  "slide_start": 1.62,
+  "focus_time": 1.2,
+  "fade_in": 0.2,
+  "fade_out": 2.0,
+  "eyebrow": "6TH EP  PARTY ON THE DEADLINE  /  TR.01",
+  "title": "パーティ・オンザ・デッドライン",
+  "originals_lines": ["廃獄ララバイ / 死体旅行 〜 Be of good cheer!", "緑眼のジェラシー"],
+  "credits": [["作詞", "草野華余子"], ["編曲", "BLACK ALBATROSS"]],
+  "work": "work",
+  "out": "out/KALANCHOE_PartyOnTheDeadline_short_v2.mp4"
+}

@@ -452,6 +452,10 @@ class Short:
           prism   虹色の帯が斜めに通り抜ける。ロゴのピントが合うころに画面の中央を通る
           streak  ロゴのピントが合った瞬間に、ロゴを横切る細い光の筋が走って消える
           burn    サビ頭でジャケットが入る直前に、左上から暖色の光が一瞬画面を焼く
+          warm    光漏れ素材のような暖色の光（芯は白、外は赤）。左から一気に差し込み、ゆっくり漂い、
+                  サビ頭へ向けて加速して画面を満たす。右下からもう一枚、ピンク寄りの光がロゴのピントの少し前に飛び込む
+          flash   ロゴのピントが合った瞬間に、画面がパッ、パッと2回光る
+        種類は ["warm", 0.8] のように重みを付けて書いてもよい
         光はなめらかなので 1/4 の解像度で作って拡大する（streak だけは細いので原寸で作る）"""
         opt = opt if isinstance(opt, dict) else {}
         self.leak_strength = opt.get('strength', 0.8)
@@ -461,7 +465,75 @@ class Short:
                              self.leak_blob(W + 60, H + 40, 700, 560, (0.25, 0.85, 0.80), 0.6),  # 右下：青緑
                              self.leak_blob(W + 40, 200, 360, 300, (0.95, 0.40, 0.55)) * 0.45)   # 右上：ピンク
         self.leak_burn = self.leak_blob(-100, 250, 1150, 1400, (1.0, 0.72, 0.42), 0.5)
-        return layers
+        # warm：参考にした光漏れ素材のように、光の芯は白に近く、外へ向かって黄、橙、深い赤と沈む。
+        # 光の中には斜めの筋（明るい帯と暗いすき間）が走る。筋の模様は 1次元の乱数の帯で作り、時間で横へ流す
+        rng = np.random.default_rng(7)
+        grid = np.arange(4000, dtype=np.float32)
+        S = np.zeros_like(grid)
+        for _ in range(90):
+            c, w, a = rng.uniform(0, 4000), rng.uniform(6, 80), rng.uniform(0.25, 1.0)
+            S += a * np.exp(-((grid - c) / w) ** 2)
+        self.leak_tex = np.clip(S / np.percentile(S, 97), 0, 1) ** 2      # 明るい筋はまばらに
+        self.leak_u = 0.91 * self.lxx + 0.42 * self.lyy + 600          # 筋に垂直な向きの座標（筋は「／」向き）
+        self.leak_vy = 0.65 + 0.35 * np.exp(-((self.lyy - 650) / 800) ** 2)
+        return [l if isinstance(l, (list, tuple)) else (l, 1.0) for l in layers]
+
+    LEAK_X = np.array([0.0, 0.18, 0.40, 0.65, 0.90, 1.15], np.float32)
+    LEAK_AMBER = np.array([[0, 0, 0], [0.12, 0.01, 0.0], [0.75, 0.18, 0.04], [1.0, 0.55, 0.15], [1.0, 0.86, 0.55], [1.0, 1.0, 0.95]], np.float32)
+    LEAK_ROSE = np.array([[0, 0, 0], [0.10, 0.0, 0.03], [0.70, 0.12, 0.22], [1.0, 0.45, 0.45], [1.0, 0.80, 0.72], [1.0, 1.0, 0.96]], np.float32)
+
+    def leak_heat(self, I, ramp):
+        return np.stack([np.interp(I, self.LEAK_X, ramp[:, c]) for c in range(3)], -1).astype(np.float32)
+
+    def leak_sheet(self, Lr, A, off, side):
+        """画面の端から差し込む光の面。Lr は光の届く距離、A は明るさ、off は筋の流れ"""
+        a = 0.25
+        if side == 'left':                         # 左の端から。上のほうが遠くまで届く
+            g = self.lxx * np.cos(a) - (self.lyy - 700) * np.sin(a) * 0.6
+        else:                                      # 右下から。下のほうが遠くまで届く
+            g = (W - self.lxx) * np.cos(a) + (self.lyy - 1250) * np.sin(a) * 0.6
+        d = np.clip(g + 60, 0, None)
+        glow = np.exp(-(d / max(Lr, 1.0)) ** 2)                        # 端に寄ったなめらかな光
+        rays = np.exp(-(d / max(1.5 * Lr, 1.0)) ** 2)                  # 筋は光より少し遠くまで伸びる
+        tex = np.interp(self.leak_u - off, np.arange(4000, dtype=np.float32), self.leak_tex)
+        return A * (glow * (0.75 + 0.25 * tex) + 0.45 * rays * tex) * self.leak_vy
+
+    def leak_warm_curve(self, t):
+        """左の光の動き：一気に差し込んで白く飛び（急）、ゆっくり漂い（緩）、サビ頭へ向けて加速して画面を満たし（急）、
+        ジャケットが入るところで引く"""
+        L, P, t0 = self.lead, self.t_logo0, 0.06
+        if t < t0:
+            return 0.0, 0.0
+        if t < t0 + 0.22:
+            p = DEC((t - t0) / 0.22); return 260 * p, 1.3 * p
+        if t < t0 + 0.6:
+            p = DEC((t - t0 - 0.22) / 0.38); return 260 - 50 * p, 1.3 - 0.45 * p
+        if t < P:
+            p = STD((t - t0 - 0.6) / max(0.05, P - t0 - 0.6)); return 210 + 50 * p, 0.85
+        if t < L:
+            p = ACC((t - P) / (L - P)); return 260 + 1100 * p, 0.85 + 0.45 * p
+        return 1360, 1.3 * np.exp(-(t - L) / 0.12)
+
+    def leak_rose_curve(self, t):
+        """右下の光の動き：ロゴのピントが合う少し前に飛び込み（急）、沈んで漂い、サビ頭で左の光と一緒にあふれる"""
+        L, P, F = self.lead, self.t_logo0, self.t_focus
+        tb = min(F - 0.35, P - 0.3)
+        if t < tb:
+            return 0.0, 0.0
+        if t < tb + 0.16:
+            p = DEC((t - tb) / 0.16); return 220 * p, 1.0 * p
+        if t < P:
+            p = STD((t - tb - 0.16) / max(0.05, P - tb - 0.16)); return 220 - 40 * p, 1.0 - 0.35 * p
+        if t < L:
+            p = ACC((t - P) / (L - P)); return 180 + 700 * p, 0.65 + 0.35 * p
+        return 880, 1.0 * np.exp(-(t - L) / 0.12)
+
+    def leak_flicker(self, i):
+        """フィルムのような細かい明滅と、低音に合わせたわずかな揺れ"""
+        n = math.sin(i * 12.9898) * 43758.5453
+        n = (n - math.floor(n)) * 2 - 1
+        pulse = float(self.pulse[i]) if getattr(self, 'pulse', None) is not None and i < len(self.pulse) else 0.0
+        return (1 + 0.08 * n) * (0.94 + 0.15 * pulse)
 
     def leak_blob(self, cx, cy, rx, ry, col, ang=0.0):
         c, s = np.cos(ang), np.sin(ang)
@@ -469,27 +541,46 @@ class Short:
         u, v = (dx * c + dy * s) / rx, (-dx * s + dy * c) / ry
         return np.exp(-(u ** 2 + v ** 2))[..., None] * np.array(col, np.float32)
 
-    def leak_layer(self, t):
+    def leak_layer(self, t, i=0):
         """時刻 t の光（原寸の RGB、0〜）。冒頭の光（corners、sweep、prism）は 0.5秒で差し込み、
         サビ頭の0.3秒前から0.6秒で消える。streak と burn はそれぞれの瞬間だけ光る"""
         lead, tf = self.lead, self.t_focus
         env = DEC(t / 0.5) * (1 - DEC((t - (lead - 0.3)) / 0.6))
         L = np.zeros((H // 4, W // 4, 3), np.float32)
         streak = None
-        for kind in self.leak:
-            if kind == 'corners' and env > 0:
+        for kind, wgt in self.leak:
+            if kind == 'warm':
+                fk = self.leak_flicker(i)
+                Lr, A = self.leak_warm_curve(t)
+                if A > 0.002:
+                    off = 50 * t + 120 * DEC(t / 0.5) + 520 * ACC(np.clip((t - self.t_logo0) / (lead - self.t_logo0), 0, 1))
+                    L += self.leak_heat(self.leak_sheet(Lr, A * fk, off, 'left'), self.LEAK_AMBER) * wgt
+                Lr, A = self.leak_rose_curve(t)
+                if A > 0.002:
+                    off = -40 * t - 380 * ACC(np.clip((t - self.t_logo0) / (lead - self.t_logo0), 0, 1))
+                    L += self.leak_heat(self.leak_sheet(Lr, A * fk, off + 900, 'right'), self.LEAK_ROSE) * 0.85 * wgt
+            elif kind == 'flash':
+                # ロゴのピントが合った瞬間に、パッ、パッと2回光る（1コマで立ち上がり、すぐ引く）
+                fl = 0.0
+                for tc, amp in ((tf, 0.5), (tf + 0.1, 0.28)):
+                    if t >= tc - 0.5 / FPS:
+                        fl += amp * np.exp(-max(0.0, t - tc) / 0.06)
+                if fl > 0.004:
+                    r = np.exp(-(((self.lxx - W / 2) / 700) ** 2 + ((self.lyy - LOGO0_CY) / 900) ** 2))[..., None]
+                    L += fl * (0.55 + 0.45 * r) * np.array((1.0, 0.93, 0.82), np.float32) * wgt
+            elif kind == 'corners' and env > 0:
                 f = 0.75 + 0.25 * np.sin(t * 2.1)
                 a, b, c = self.leak_corners
-                L += (a * f + b * (1.6 - f) + c) * env
+                L += (a * f + b * (1.6 - f) + c) * env * wgt
             elif kind == 'sweep':
                 p = t / (lead - 0.1)                          # 冒頭からサビ頭の少し前までで通り抜ける
                 if 0 < p < 1:
                     e = 0.8 * np.sin(np.pi * p) * env ** 0.5
                     x = -420 + 1700 * sine_io(p)
-                    thin = 0.0 if 'streak' in self.leak else 0.6     # streak と重ねるときは、流れる細い筋を省く
+                    thin = 0.0 if any(k == 'streak' for k, _ in self.leak) else 0.6     # streak と重ねるときは、流れる細い筋を省く
                     L += (self.leak_blob(x, 520 + 200 * p, 520, 900, (1.0, 0.55, 0.18), 0.25)
                           + self.leak_blob(x - 280, 1300, 640, 480, (0.9, 0.22, 0.10), -0.2) * 0.7
-                          + self.leak_blob(x + 260, 700 + 60 * p, 900, 34, (1.0, 0.85, 0.6), 0.05) * thin) * e
+                          + self.leak_blob(x + 260, 700 + 60 * p, 900, 34, (1.0, 0.85, 0.6), 0.05) * thin) * e * wgt
             elif kind == 'prism':
                 t0, t1 = 0.2 * lead, lead + 0.1
                 p = (t - t0) / (t1 - t0)
@@ -498,7 +589,7 @@ class Short:
                     ang = -0.55; c, s = np.cos(ang), np.sin(ang)
                     d = (self.lxx - (-250 + 1500 * p)) * s + (self.lyy - 900) * c   # 帯からの距離
                     hue = (0.85 + 0.6 * (self.lxx * c - self.lyy * s) / 1400 + 0.2 * p) % 1
-                    L += np.exp(-(d / 170) ** 2)[..., None] * hsv_to_rgb(hue, 0.75) * 0.85 * e
+                    L += np.exp(-(d / 170) ** 2)[..., None] * hsv_to_rgb(hue, 0.75) * 0.85 * e * wgt
             elif kind == 'streak':
                 if tf - 0.12 < t < tf + 1.2:
                     e = DEC((t - (tf - 0.12)) / 0.12) if t < tf else np.exp(-(t - tf) / 0.30)
@@ -508,12 +599,13 @@ class Short:
                     xs = np.exp(-((np.arange(W, dtype=np.float32) - W / 2) / rx) ** 2)
                     ys = np.arange(H, dtype=np.float32) - cy
                     yp = np.exp(-(ys / 5) ** 2) + 0.35 * np.exp(-(ys / 40) ** 2) + 0.12 * np.exp(-(ys / 160) ** 2)
-                    streak = (yp[:, None, None] * xs[None, :, None]) * np.array((0.72, 0.90, 1.0), np.float32) * e
+                    col = (1.0, 0.86, 0.62) if any(k == 'warm' for k, _ in self.leak) else (0.72, 0.90, 1.0)
+                    streak = (yp[:, None, None] * xs[None, :, None]) * np.array(col, np.float32) * e * wgt
             elif kind == 'burn':
                 tp = lead - 0.06                              # ジャケットが入る直前に最大
                 if tp - 0.3 < t < tp + 1.0:
                     e = DEC((t - (tp - 0.3)) / 0.3) if t < tp else np.exp(-(t - tp) / 0.18)
-                    L += self.leak_burn * 0.9 * e
+                    L += self.leak_burn * 0.9 * e * wgt
         if not L.any() and streak is None:
             return None
         out = cv2.resize(L, (W, H), interpolation=cv2.INTER_CUBIC)
@@ -521,8 +613,8 @@ class Short:
             out += streak
         return out * self.leak_strength
 
-    def leak_on(self, fr, t):
-        lay = self.leak_layer(t)
+    def leak_on(self, fr, t, i=0):
+        lay = self.leak_layer(t, i)
         if lay is None:
             return fr
         img = np.asarray(fr, np.float32) / 255
@@ -608,7 +700,7 @@ class Short:
                 fr.alpha_composite(self.fade(self.time_layer(int(t)), p), (self.tbox[0], self.tbox[1] + dy))
         fr = fr.convert('RGB')
         if self.leak and t < self.lead + 1.0:
-            fr = self.leak_on(fr, t)
+            fr = self.leak_on(fr, t, i)
         # 退場：最後の outro 秒で冒頭と同じ暗さまで落とす（ショートのループで冒頭へ自然につながる）
         if t > self.t_out:
             fr = ImageEnhance.Brightness(fr).enhance(1 - 0.55 * ACC((t - self.t_out) / (self.dur - self.t_out)))

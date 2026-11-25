@@ -2,12 +2,12 @@
   "audio": "src/track_tr02.wav",
   "jacket": "src/jacket.jpg",
   "logo": "src/logo_black.png",
-  "start": 47.82,
-  "duration": 29.58,
-  "focus": 1.2,
-  "pickup": 1.68,
-  "lead": 2.1,
-  "land": 3.02,
+  "start": 47.63,
+  "duration": 29.77,
+  "focus": 1.26,
+  "pickup": 1.87,
+  "lead": 2.29,
+  "land": 3.21,
   "gain_db": -5.0,
   "fade_in": 0.02,
   "fade_out": 1.2,
@@ -40,7 +40,7 @@
     ]
   ],
   "work": "work/tr02",
-  "out": "out/KALANCHOE_TheLastRemote_short_v5.mp4",
-  "chorus_in_clip": 0.06,
+  "out": "out/KALANCHOE_TheLastRemote_short_v6.mp4",
+  "chorus_in_clip": 0.05,
   "intro": true
 }

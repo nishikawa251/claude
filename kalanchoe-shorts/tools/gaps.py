@@ -8,7 +8,7 @@ step = float(sys.argv[4]) if len(sys.argv) > 4 else 0.02
 show = len(sys.argv) > 5
 v, sr = sf.read(f'{VOC}/voc_{sid}.wav', start=int(a * 44100), frames=int((b - a) * 44100)); m = v.mean(1)
 midi = np.load(f'{ANA}/{sid}/midi.npy'); bt = np.load(f'{ANA}/{sid}/beats.npy')
-xs = np.arange(a, b, step); rows = []
+xs = np.arange(a, b - step / 2, step); rows = []
 for x in xs:
     s = m[int((x - a) * sr):int((x - a + step) * sr)]; d = 20 * np.log10(np.sqrt((s ** 2).mean()) + 1e-9)
     p = midi[int(x / 0.01):int((x + step) / 0.01)]; p = p[~np.isnan(p)]

@@ -175,8 +175,10 @@ class Short:
             yy, xx = np.mgrid[:H, :W].astype(np.float32)
             d = np.sqrt(((xx - W / 2) / (W * 0.75)) ** 2 + ((yy - H * 0.45) / (H * 0.62)) ** 2)
             self.vig_q = (np.clip(d - 0.35, 0, 1) ** 1.4)[..., None]
-            self.bokeh = self.make_bokeh(cfg.get('bokeh', {}))
-            self.bokeh_hole = (1 - 0.62 * np.exp(-(((xx - W / 2) / 300) ** 2 + ((yy - LOGO0_CY) / 260) ** 2)))[..., None]
+            # 前ボケは設定に "bokeh" があるときだけ使う（v7 で試し、v8 で外した）
+            self.bokeh = self.make_bokeh(cfg['bokeh']) if cfg.get('bokeh') else None
+            if self.bokeh:
+                self.bokeh_hole = (1 - 0.62 * np.exp(-(((xx - W / 2) / 300) ** 2 + ((yy - LOGO0_CY) / 260) ** 2)))[..., None]
 
         # ジャケットの面（角丸と細い縁）。影は動きに合わせて card_at で付ける
         j = jk.resize((JS, JS), Image.LANCZOS).convert('RGBA')
@@ -427,7 +429,7 @@ class Short:
 
     def face_plate(self, t):
         """ジャケットのイラストから顔をアップで切り出す。瞳のアップ（from）からゆっくり引き（to）、
-        ロゴにピントが移るにつれて顔はぼけて暗くなる。手前には光の玉が浮かぶ"""
+        ロゴにピントが移るにつれて顔はぼけて暗くなる。設定に bokeh があれば手前に前ボケを足す"""
         u = STD(t / self.lead)
         cx, cy, cw = [a + (b - a) * u for a, b in zip(self.face['from'], self.face['to'])]
         ch = cw * 16 / 9
@@ -439,9 +441,9 @@ class Short:
         img = lens_blur(img, r)
         bright, vig = 0.54 - 0.14 * pf, 0.50 + 0.15 * pf
         img = np.clip(img * bright * (1 - vig * self.vig_q) * np.array([0.90, 1.0, 1.06], np.float32), 0, 1)
-        # 前ボケ：ピントがロゴへ移るにつれてふくらむ。背景を少し落とし、光として足す（線形光）
+        # 前ボケ（設定にあるときだけ）：ピントがロゴへ移るにつれてふくらむ。背景を少し落とし、光として足す（線形光）
         k = STD((t - 0.3) / max(0.1, self.t_focus - 0.3))
-        if k > 0:
+        if self.bokeh and k > 0:
             lin = (img * (1 - 0.30 * k)) ** 2.2 + self.bokeh_layer(t) * k
             img = np.clip(lin / (1 + 0.6 * np.clip(lin - 0.8, 0, None)), 0, 1) ** (1 / 2.2)
         return Image.fromarray((img * 255).astype(np.uint8)).convert('RGBA')

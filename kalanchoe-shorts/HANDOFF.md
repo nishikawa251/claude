@@ -429,6 +429,10 @@ for f in songs/*.json; do python3 make_short.py $f --render; done
 python3 make_mv_short.py mv/potd.json      # 設定は mv/*.json、書き出しは out/mv/
 ```
 
+**自動追従（パーティ・オンザ・デッドラインだけ、v2）。** 川西さんが「やっぱり切れてるのが気になる」として、パーティ・オンザ・デッドラインだけ自動追従で作りました（`out/mv/KALANCHOE_PartyOnTheDeadline_mv_short_v2_track.mp4`）。`tools/mv_track.py mv/potd.json` が切り抜き位置を `mv/potd.track.json` に書き、`make_mv_short.py mv/potd_track.json`（`"crop": "track"`）がその位置で書き出します。歌詞の文字の検出には `rapidocr_onnxruntime`（pip、PP-OCRv3 の検出モデルが同梱）を使います。明るさや輪郭だけで文字を探す方法は、細い明朝体の歌詞を拾えず飾り枠に引っぱられたので使っていません。新しく現れた歌詞を重く見て、文字がない場面は中央に寄せ、場面の中はカメラを振るようになめらかに動かします。0.5秒ごとの切り抜き枠の一覧は `work/mvtrack/potd_sheet.png` に出ます。「Party!」「Buddy!」のように画面幅の半分近くある文字は、縦いっぱいの枠（元の映像の32%）に入りきらず切れます。
+
+**リサーチ（横長 MV を縦で流すやり方）。** 別の作業者が調べた結果の要点です。縦型版を別に作る例（AKB48、Midnight Grand Orchestra、≒JOY、のんの縦型リリックビデオなど）がいちばん確実です。Premiere の Auto Reframe や CapCut などの自動追従は顔や人物を追う設計で、焼き込まれた文字は考慮しません（Adobe も明言）。Instagram は公式ヘルプで「枠（borders）」のあるリールはおすすめに出にくいとしています。YouTube で「黒帯は伸びない」という公式の発言は見つかっていません。
+
 書き出しは1本1〜3分です（60fps の Moonlight Sanctuary がいちばん長い）。
 
 ## 川西さんからの修正依頼

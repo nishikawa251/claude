@@ -1,0 +1,28 @@
+{
+  "audio": "src/track_tr02.wav",
+  "jacket": "src/jacket.jpg",
+  "logo": "src/logo_black.png",
+  "start": 44.82,
+  "duration": 32.58,
+  "focus": 1.8,
+  "pickup": 2.84,
+  "lead": 3.26,
+  "land": 4.18,
+  "gain_db": -5.0,
+  "fade_in": 0.04,
+  "fade_out": 1.2,
+  "outro": 1.0,
+  "intro_face": {
+    "from": [1035, 915, 340],
+    "to": [1150, 800, 520]
+  },
+  "eyebrow": "6TH EP  PARTY ON THE DEADLINE  /  TR.02",
+  "title": "the last remote",
+  "originals_lines": ["ラストリモート / 地霊達の起床"],
+  "credits": [
+    ["作詞", "草野華余子"],
+    ["編曲", "BLACK ALBATROSS"]
+  ],
+  "work": "work/tr02",
+  "out": "out/KALANCHOE_TheLastRemote_short_v1.mp4"
+}

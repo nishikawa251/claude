@@ -13,8 +13,8 @@
   "fade_out": 1.6,
   "outro": 1.0,
   "intro_face": {
-    "from": [1190, 770, 320],
-    "to": [1010, 1000, 720]
+    "from": [1232, 650, 340],
+    "to": [1215, 760, 470]
   },
   "eyebrow": "6TH EP  PARTY ON THE DEADLINE  /  TR.03",
   "title": "unconscious epilogue",
@@ -24,5 +24,5 @@
     ["編曲", "BLACK ALBATROSS"]
   ],
   "work": "work/tr03",
-  "out": "out/KALANCHOE_UnconsciousEpilogue_short_v1.mp4"
+  "out": "out/KALANCHOE_UnconsciousEpilogue_short_v2.mp4"
 }

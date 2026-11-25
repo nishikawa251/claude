@@ -4,10 +4,10 @@
   "logo": "src/logo_black.png",
   "start": 86.43,
   "duration": 41.51,
-  "focus": 1.2,
-  "pickup": -0.39,
-  "lead": 0.03,
-  "land": 1.13,
+  "focus": 1.29,
+  "pickup": 1.93,
+  "lead": 2.35,
+  "land": 3.45,
   "gain_db": -5.0,
   "fade_in": 0.02,
   "fade_out": 1.2,
@@ -40,5 +40,7 @@
     ]
   ],
   "work": "work/ep2_tr03",
-  "out": "out/KALANCHOE_ep2_tr03_short_v2.mp4"
+  "out": "out/KALANCHOE_ep2_tr03_short_v3.mp4",
+  "chorus_in_clip": 0.03,
+  "intro": true
 }

@@ -4,10 +4,10 @@
   "logo": "src/logo_black.png",
   "start": 32.8,
   "duration": 24.7,
-  "focus": 1.2,
-  "pickup": 0.04,
-  "lead": 0.46,
-  "land": 1.48,
+  "focus": 1.38,
+  "pickup": 2.09,
+  "lead": 2.51,
+  "land": 3.53,
   "gain_db": -5.0,
   "fade_in": 0.04,
   "fade_out": 1.2,
@@ -27,7 +27,7 @@
   "eyebrow": "4TH EP  OBLIVION FEAST  /  TR.02",
   "title": "生命御伽",
   "originals_lines": [
-    "御伽の国の鬼が島 ～ Missing Power"
+    "御伽の国の鬼が島　～ Missing Power"
   ],
   "credits": [
     [
@@ -40,5 +40,7 @@
     ]
   ],
   "work": "work/ep4_tr02",
-  "out": "out/KALANCHOE_ep4_tr02_short_v2.mp4"
+  "out": "out/KALANCHOE_ep4_tr02_short_v4.mp4",
+  "chorus_in_clip": 0.46,
+  "intro": true
 }

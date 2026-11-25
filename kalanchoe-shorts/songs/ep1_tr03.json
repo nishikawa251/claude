@@ -4,10 +4,10 @@
   "logo": "src/logo_black.png",
   "start": 44.6,
   "duration": 21.98,
-  "focus": 1.2,
-  "pickup": -0.38,
-  "lead": 0.04,
-  "land": 1.14,
+  "focus": 1.03,
+  "pickup": 1.18,
+  "lead": 1.6,
+  "land": 2.7,
   "gain_db": -5.0,
   "fade_in": 0.02,
   "fade_out": 1.2,
@@ -28,8 +28,8 @@
   "title": "Night Flight Believer",
   "title_sub": "草野華余子ver.",
   "originals_lines": [
-    "東方妖々夢 ～ Ancient Temple",
-    "広有射怪鳥事 ～ Till When?"
+    "東方妖々夢　～ Ancient Temple",
+    "広有射怪鳥事　～ Till When?"
   ],
   "credits": [
     [
@@ -42,5 +42,7 @@
     ]
   ],
   "work": "work/ep1_tr03",
-  "out": "out/KALANCHOE_ep1_tr03_short_v2.mp4"
+  "out": "out/KALANCHOE_ep1_tr03_short_v4.mp4",
+  "chorus_in_clip": 0.04,
+  "intro": true
 }

@@ -5,9 +5,9 @@
   "start": 46.01,
   "duration": 20.85,
   "focus": 1.2,
-  "pickup": -0.37,
-  "lead": 0.05,
-  "land": 1.15,
+  "pickup": 1.72,
+  "lead": 2.14,
+  "land": 3.24,
   "gain_db": -5.0,
   "fade_in": 0.02,
   "fade_out": 1.2,
@@ -40,5 +40,7 @@
     ]
   ],
   "work": "work/ep5_tr03",
-  "out": "out/KALANCHOE_ep5_tr03_short_v2.mp4"
+  "out": "out/KALANCHOE_ep5_tr03_short_v3.mp4",
+  "chorus_in_clip": 0.05,
+  "intro": true
 }

@@ -2,27 +2,43 @@
   "audio": "src/track_tr03.wav",
   "jacket": "src/jacket.jpg",
   "logo": "src/logo_black.png",
-  "start": 45.14,
-  "duration": 21.07,
-  "focus": 1.7,
-  "pickup": 2.69,
-  "lead": 3.11,
-  "land": 4.11,
+  "start": 44.9,
+  "duration": 21.31,
+  "focus": 1.84,
+  "pickup": 2.93,
+  "lead": 3.35,
+  "land": 4.35,
   "gain_db": -5.0,
-  "fade_in": 0.04,
+  "fade_in": 0.02,
   "fade_out": 1.6,
   "outro": 1.0,
   "intro_face": {
-    "from": [1232, 650, 340],
-    "to": [1215, 760, 470]
+    "from": [
+      1232,
+      650,
+      340
+    ],
+    "to": [
+      1215,
+      760,
+      470
+    ]
   },
   "eyebrow": "6TH EP  PARTY ON THE DEADLINE  /  TR.03",
   "title": "unconscious epilogue",
-  "originals_lines": ["ハルトマンの妖怪少女 / 地霊達の帰宅"],
+  "originals_lines": [
+    "ハルトマンの妖怪少女 / 地霊達の帰宅"
+  ],
   "credits": [
-    ["作詞", "草野華余子"],
-    ["編曲", "BLACK ALBATROSS"]
+    [
+      "作詞",
+      "草野華余子"
+    ],
+    [
+      "編曲",
+      "BLACK ALBATROSS"
+    ]
   ],
   "work": "work/tr03",
-  "out": "out/KALANCHOE_UnconsciousEpilogue_short_v4.mp4"
+  "out": "out/KALANCHOE_UnconsciousEpilogue_short_v5.mp4"
 }

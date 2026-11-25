@@ -110,10 +110,11 @@ class Short:
         self.cfg = cfg
         self.dur = cfg['duration']
         self.n = int(round(self.dur * FPS))
-        self.lead = cfg['lead']                 # サビ頭（動画の開始からの秒）。ロゴのピントがここで合う
+        self.lead = cfg['lead']                 # サビ頭（動画の開始からの秒）。ジャケットがここで上がり始める
         self.land = cfg['land']                 # ジャケットが着地する時刻
-        self.t_logo0 = self.lead - 0.20         # ロゴが上へ動き出す（ジャケットより先に道をあける）
-        self.t_logo1 = self.lead + 0.50
+        self.t_focus = cfg.get('focus', self.lead)            # ロゴのピントが合いきる時刻
+        self.t_logo0 = cfg.get('pickup', self.lead - 0.20)    # ロゴが上へ動き出す（ジャケットより先に道をあける）
+        self.t_logo1 = self.t_logo0 + 0.70
         self.t_text = self.lead + 0.55 * (self.land - self.lead)   # ジャケットが9割ほど上がったところ
         self.t_out = self.dur - cfg.get('outro', 1.2)              # 最後に冒頭と同じ暗さまで落とす（ループ用）
         self.build_static()
@@ -332,7 +333,8 @@ class Short:
         a = 1 / s
         img = self.bg_big.transform((W, H), Image.AFFINE,
                                     (a, 0, self.bw / 2 - W / 2 * a, 0, a, self.bh / 2 - H / 2 * a - dy * a), resample=Image.BILINEAR)
-        k = 0.45 + 0.55 * DEC(t / (self.lead + 0.2))                       # 冒頭は暗く、サビ頭で明るくなる
+        k = 0.45 + 0.15 * DEC(t / self.t_focus)                            # 冒頭はほの暗い
+        k += 0.40 * DEC((t - (self.lead - 0.1)) / 0.6)                     # サビ頭で明るくなる
         k *= 1 + 0.05 * self.pulse[i] * DEC((t - self.lead) / 0.5)         # サビに入ってから低音で脈打つ
         img = ImageEnhance.Brightness(img).enhance(k).convert('RGBA')
         img.alpha_composite(self.shade)
@@ -354,14 +356,17 @@ class Short:
                 card = self.fade(card.resize((sz, sz), Image.BICUBIC), DEC(pt / 0.35))
             cy = JY + JS / 2 + JACKET_RISE * (1 - pj)
             fr.alpha_composite(card, (round(JX + JS / 2 - card.width / 2), round(cy - card.height / 2)))
-        # ロゴ：ボケからサビ頭でピントが合う。サビ頭の少し前から上へ移動して縮む
-        pf = DEC(t / self.lead)
+        # ロゴ：ボケからゆっくりピントが合い（focus）、サビ前のピックアップ（pickup）まで少しずつ寄る。
+        # ピックアップで上へ移動して縮み、サビ頭で上がってくるジャケットに場所を譲る
+        pf = STD(t / self.t_focus)
         pl = STD((t - self.t_logo0) / (self.t_logo1 - self.t_logo0))
         if pf >= 0.999 and pl >= 0.999:
             lg, cy = self.logo_rest, LOGO_Y + LOGO_H / 2
         else:
             breath = 1.0 + (1 - pf) * 0.09
-            h = (LOGO0_H + (LOGO_H - LOGO0_H) * pl) * breath
+            push = 1 + 0.035 * sine_io((t - self.t_focus) / max(0.01, self.t_logo0 - self.t_focus))
+            h0 = LOGO0_H * push
+            h = (h0 + (LOGO_H - h0) * pl) * breath
             cy = LOGO0_CY + ((LOGO_Y + LOGO_H / 2) - LOGO0_CY) * pl
             lg = self.logo_img(h, (1 - pf) * 46, 0.35 + 0.65 * DEC(t / 0.3))
         fr.alpha_composite(lg, (round(W / 2 - lg.width / 2), round(cy - lg.height / 2)))

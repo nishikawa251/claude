@@ -431,6 +431,15 @@ python3 make_mv_short.py mv/potd.json      # 設定は mv/*.json、書き出し�
 
 **自動追従（パーティ・オンザ・デッドラインだけ、v2）。** 川西さんが「やっぱり切れてるのが気になる」として、パーティ・オンザ・デッドラインだけ自動追従で作りました（`out/mv/KALANCHOE_PartyOnTheDeadline_mv_short_v2_track.mp4`）。`tools/mv_track.py mv/potd.json` が切り抜き位置を `mv/potd.track.json` に書き、`make_mv_short.py mv/potd_track.json`（`"crop": "track"`）がその位置で書き出します。歌詞の文字の検出には `rapidocr_onnxruntime`（pip、PP-OCRv3 の検出モデルが同梱）を使います。明るさや輪郭だけで文字を探す方法は、細い明朝体の歌詞を拾えず飾り枠に引っぱられたので使っていません。新しく現れた歌詞を重く見て、文字がない場面は中央に寄せ、場面の中はカメラを振るようになめらかに動かします。0.5秒ごとの切り抜き枠の一覧は `work/mvtrack/potd_sheet.png` に出ます。「Party!」「Buddy!」のように画面幅の半分近くある文字は、縦いっぱいの枠（元の映像の32%）に入りきらず切れます。
 
+**顔で追う＋文字が広い場面だけ引く（パーティ・オンザ・デッドライン、v3）。** 川西さんの「顔で自動追従かなー」「文字が広い場面だけ一時的に引く形を試す」を受けて作りました（`mv/potd_face.json` → `out/mv/KALANCHOE_PartyOnTheDeadline_mv_short_v3_face_zoom.mp4`）。
+
+- キャラクターが1人はっきり映る場面は、顔（頭）を最優先で追います。
+- 1つの文字のかたまりが縦の枠より広いとき（「Party!」「Buddy!」「Dance」など）だけ、0.3秒先読みして引き、上下は同じ映像のぼかしで埋めます。
+- アニメ顔の検出器は、試した2つが使えませんでした。lbpcascade_animeface（OpenCV 5 には CascadeClassifier がないので `work/cv4env` に OpenCV 4 を入れて試した）は、斜めの大きな顔をほぼ拾えません。PyPI の animeface はジャケットの顔すら拾えませんでした。
+- 新しい検出モデルの置き場所（Hugging Face、GitHub のリリース）は、この環境の通信設定で止められています（2026年11月25日、川西さんが PC を閉じていたので許可は求めていない）。
+- いまは、アニメ絵の肌と白っぽい髪の色のかたまりで頭を見つけています。この MV では、こいしちゃんの大写しの場面（0:57〜1:03）で働きます。
+- 文字が回り込んで入ってくる一瞬（「Buddy!」の入り）だけは、まだ切れます。
+
 **リサーチ（横長 MV を縦で流すやり方）。** 別の作業者が調べた結果の要点です。縦型版を別に作る例（AKB48、Midnight Grand Orchestra、≒JOY、のんの縦型リリックビデオなど）がいちばん確実です。Premiere の Auto Reframe や CapCut などの自動追従は顔や人物を追う設計で、焼き込まれた文字は考慮しません（Adobe も明言）。Instagram は公式ヘルプで「枠（borders）」のあるリールはおすすめに出にくいとしています。YouTube で「黒帯は伸びない」という公式の発言は見つかっていません。
 
 書き出しは1本1〜3分です（60fps の Moonlight Sanctuary がいちばん長い）。

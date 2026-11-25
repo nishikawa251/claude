@@ -53,10 +53,13 @@ def main():
 
 
 def render_tracked(m, c, st, dur, fi, fo, sw, sh, cw, out):
-    """コマごとに切り抜き位置を変えて書き出す（自動追従）。位置は小数のまま使い、ゆっくりしたパンでも段がつかないようにする"""
+    """コマごとに映す範囲を変えて書き出す（自動追従）。track.json の cx（中心）と vw（映す幅、元の映像の px）を使う。
+    vw が縦いっぱいの幅より広いとき（文字が広い場面で引いているとき）は、映像を画面の真ん中に置き、
+    上下は同じ映像を拡大してぼかしたもので埋める（境目は少しぼかす）。位置は小数のまま使い、パンに段がつかないようにする"""
     import cv2
-    tr = json.load(open(m['track'], encoding='utf-8')); xs = tr['x']; fps = tr['fps']
-    s = H / sh
+    tr = json.load(open(m['track'], encoding='utf-8')); fps = tr['fps']
+    if 'cx' in tr: cxs, vws = tr['cx'], tr['vw']
+    else: cxs, vws = [x + cw / 2 for x in tr['x']], [cw] * len(tr['x'])
     dec = subprocess.Popen(['ffmpeg', '-v', 'error', '-ss', f'{st - m["offset"]:.3f}', '-t', f'{dur:.3f}', '-i', m['mv'],
                             '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], stdout=subprocess.PIPE)
     tmp = out + '.video.mp4'
@@ -64,16 +67,31 @@ def render_tracked(m, c, st, dur, fi, fo, sw, sh, cw, out):
     enc = subprocess.Popen(['ffmpeg', '-y', '-v', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', f'{num}/{den}',
                             '-i', '-', '-c:v', 'libx264', '-crf', '16', '-preset', 'slow', '-pix_fmt', 'yuv420p',
                             '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', tmp], stdin=subprocess.PIPE)
-    fsz = sw * sh * 3; i = 0
+    fsz = sw * sh * 3; i = 0; full = H / sh; ones = np.ones((sh, sw), np.float32)
     while True:
         buf = dec.stdout.read(fsz)
         if len(buf) < fsz: break
         f = np.frombuffer(buf, np.uint8).reshape(sh, sw, 3)
-        x = xs[min(i, len(xs) - 1)]
-        M = np.float32([[s, 0, -s * x], [0, s, 0]])
-        img = cv2.warpAffine(f, M, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
-        t = i / fps; k = min(1.0, t / 0.25, max(0.0, (dur - t) / fo))
-        if k < 1: img = (img.astype(np.float32) * k).astype(np.uint8)
+        j = min(i, len(cxs) - 1); cx, vw = cxs[j], vws[j]
+        if vw <= cw + 1:
+            M = np.float32([[full, 0, W / 2 - full * cx], [0, full, 0]])
+            img = cv2.warpAffine(f, M, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
+        else:
+            # 上下を埋める背景：縦いっぱいにしたものを縮めてぼかし、暗くする
+            small = cv2.resize(f, (sw // 8, sh // 8), interpolation=cv2.INTER_AREA)
+            small = cv2.GaussianBlur(small, (0, 0), 6)
+            Mb = np.float32([[full / 8 * 8 / 8, 0, 0], [0, 1, 0]])
+            sb = full * 8 * 1.05
+            Mb = np.float32([[sb, 0, W / 2 - sb * cx / 8], [0, sb, H / 2 - sb * sh / 16]])
+            bg = cv2.warpAffine(small, Mb, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT).astype(np.float32) * 0.5
+            sc = W / vw; y0 = (H - sh * sc) / 2
+            M = np.float32([[sc, 0, W / 2 - sc * cx], [0, sc, y0]])
+            fg = cv2.warpAffine(f, M, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT).astype(np.float32)
+            mk = cv2.warpAffine(ones, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+            mk = cv2.GaussianBlur(mk, (0, 0), 6)[..., None]
+            img = np.clip(bg * (1 - mk) + fg * mk, 0, 255).astype(np.uint8)
+        t = i / fps; kk = min(1.0, t / 0.25, max(0.0, (dur - t) / fo))
+        if kk < 1: img = (img.astype(np.float32) * kk).astype(np.uint8)
         enc.stdin.write(img.tobytes()); i += 1
     enc.stdin.close(); enc.wait(); dec.wait()
     af = f"volume={c.get('gain_db', -2.0)}dB,afade=t=in:st=0:d={fi},afade=t=out:st={dur - fo:.3f}:d={fo}"
@@ -81,7 +99,6 @@ def render_tracked(m, c, st, dur, fi, fo, sw, sh, cw, out):
                     '-map', '0:v', '-map', '1:a', '-af', af, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '320k',
                     '-movflags', '+faststart', '-t', f'{dur:.3f}', out], check=True)
     os.remove(tmp); print('wrote', out, 'frames', i)
-
 
 if __name__ == '__main__':
     main()

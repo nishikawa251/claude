@@ -2,12 +2,12 @@
   "audio": "src/ep4_tr01.wav",
   "jacket": "src/jacket_ep4.jpg",
   "logo": "src/logo_black.png",
-  "start": 76.95,
-  "duration": 50.05,
-  "focus": 1.2,
-  "pickup": 1.41,
-  "lead": 1.83,
-  "land": 2.93,
+  "start": 77.41,
+  "duration": 49.59,
+  "focus": 1.45,
+  "pickup": 2.22,
+  "lead": 2.64,
+  "land": 3.74,
   "gain_db": -5.0,
   "fade_in": 0.02,
   "fade_out": 1.1,
@@ -40,7 +40,7 @@
     ]
   ],
   "work": "work/ep4_tr01",
-  "out": "out/KALANCHOE_ep4_tr01_short_v3.mp4",
-  "chorus_in_clip": 0.51,
+  "out": "out/KALANCHOE_ep4_tr01_short_v4.mp4",
+  "chorus_in_clip": 0.05,
   "intro": true
 }

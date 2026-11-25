@@ -3,3 +3,4 @@ src/
 fonts/
 work/
 out/
+__pycache__/

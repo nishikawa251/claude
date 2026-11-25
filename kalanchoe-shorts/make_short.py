@@ -148,6 +148,9 @@ class Short:
         self.t_logo1 = self.t_logo0 + 0.70
         self.t_text = self.lead + 0.55 * (self.land - self.lead)   # ジャケットが9割ほど上がったところ
         self.t_out = self.dur - cfg.get('outro', 1.2)              # 最後に冒頭と同じ暗さまで落とす（ループ用）
+        # 冒頭の演出（顔のアップと大きいロゴ）。サビの歌い出しから始める曲（サビ頭まで1秒未満）は省き、
+        # 最初からジャケットが上がってきて、ロゴは上の小さい位置にフェードで出る。設定の "intro" で指定もできる
+        self.intro = cfg.get('intro', self.lead >= 1.0)
         self.build_static()
 
     # ---------- 静的パーツ ----------
@@ -646,7 +649,7 @@ class Short:
         t = i / FPS
         fr = self.background(i, t)
         # 冒頭は顔のアップ。サビ頭から 0.6秒でいつもの背景へ切り替える
-        if self.face and t < self.lead + 0.6:
+        if self.face and self.intro and t < self.lead + 0.6:
             a = DEC((t - self.lead) / 0.6)
             fp = self.face_plate(t)
             fr = fp if a <= 0 else Image.blend(fp, fr, a)
@@ -667,7 +670,9 @@ class Short:
         # ピックアップで上へ移動して縮み、サビ頭で上がってくるジャケットに場所を譲る
         pf = STD(t / self.t_focus)
         pl = STD((t - self.t_logo0) / (self.t_logo1 - self.t_logo0))
-        if pf >= 0.999 and pl >= 0.999:
+        if not self.intro:
+            lg, cy = self.fade(self.logo_rest, DEC(t / 0.6)), LOGO_Y + LOGO_H / 2
+        elif pf >= 0.999 and pl >= 0.999:
             lg, cy = self.logo_rest, LOGO_Y + LOGO_H / 2
         else:
             breath = 1.0 + (1 - pf) * 0.09

@@ -7,7 +7,7 @@
   "focus": 3.86,
   "pickup": 6.6,
   "lead": 7.02,
-  "land": 8.12,
+  "land": 8.04,
   "gain_db": -5.0,
   "fade_in": 0.03,
   "fade_out": 1.2,
@@ -40,5 +40,5 @@
     ]
   ],
   "work": "work/ep5_tr01",
-  "out": "out/KALANCHOE_ep5_tr01_short_v1.mp4"
+  "out": "out/KALANCHOE_ep5_tr01_short_v2.mp4"
 }

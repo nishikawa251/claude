@@ -4,7 +4,7 @@
   "logo": "src/logo_black.png",
   "start": 48.62,
   "duration": 23.52,
-  "focus": 2.65,
+  "focus": 2.23,
   "pickup": 3.63,
   "lead": 4.05,
   "land": 5.15,
@@ -40,5 +40,5 @@
     ]
   ],
   "work": "work/ep2_tr01",
-  "out": "out/KALANCHOE_ep2_tr01_short_v1.mp4"
+  "out": "out/KALANCHOE_ep2_tr01_short_v2.mp4"
 }

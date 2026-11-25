@@ -4,10 +4,10 @@
   "logo": "src/logo_black.png",
   "start": 64.63,
   "duration": 36.85,
-  "focus": 1.2,
+  "focus": 0.81,
   "pickup": 0.96,
   "lead": 1.38,
-  "land": 2.48,
+  "land": 2.29,
   "gain_db": -5.0,
   "fade_in": 0.03,
   "fade_out": 1.2,
@@ -42,5 +42,5 @@
     ]
   ],
   "work": "work/ep1_tr05",
-  "out": "out/KALANCHOE_ep1_tr05_short_v1.mp4"
+  "out": "out/KALANCHOE_ep1_tr05_short_v2.mp4"
 }

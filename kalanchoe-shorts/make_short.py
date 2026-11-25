@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-"""KALANCHOE RECORDS ショート動画ジェネレーター v3（ジャケット＋音源型・冒頭アニメーション付き）
+"""KALANCHOE RECORDS ショート動画ジェネレーター v4（ジャケット＋音源型・冒頭アニメーション付き）
   python3 make_short.py potd.json --frames 0,0.5,1.2     # テストフレームPNGを work/ に出す
   python3 make_short.py potd.json --render               # 本番書き出し（1080x1920 / 30fps）
 フォントは既定でこのスクリプトと同じ階層の fonts/ から読む（環境変数 KAL_FONTS で変更可）。
+
+動きの決まりごと（上品な性格でそろえる）
+  イージングは3本だけ使う。画面内の移動は STD、登場は DEC、退場は ACC。
+  主動作（ロゴ、ジャケット、文字）、二次動作（ジャケットの影）、アンビエント（背景のゆっくりした動きと
+  低音に合わせた明るさ）の3層で組む。どの要素も1回の動きで画面の高さの1/3（640px）を超えて動かさない。
 """
-import json, os, subprocess, sys
+import json, math, multiprocessing, os, subprocess, sys
 import numpy as np
 import cv2
 import soundfile as sf
@@ -31,16 +36,39 @@ JS, JX, JY = 860, 110, 226
 SPX, SPW, SPY, SPH = 110, 860, 1118, 80
 TX, TXR = 110, 930
 NBARS = 58
-# 冒頭ロゴ（中央・大）
-LOGO0_H, LOGO0_CY = 430, 850
+# 冒頭ロゴ（大）。中心は YouTube の文字が重ならない範囲（y=0〜1527）の中央
+LOGO0_H, LOGO0_CY = 430, 764
+JACKET_RISE = 600        # ジャケットが下から上がる距離
+TEXT_RISE = 24           # 文字が下から上がる距離
+TEXT_DUR, STAGGER = 0.45, 0.07
+BG_MARGIN = 1.12         # 背景を動かすための余白（倍率）
 
 
-def ease_out(p):
-    p = min(1.0, max(0.0, p)); return 1 - (1 - p) ** 3
+def bezier(x1, y1, x2, y2):
+    """CSS の cubic-bezier と同じ曲線。進み具合 p（0〜1）を受け取り、0〜1 を返す"""
+    def f(p):
+        p = min(1.0, max(0.0, p))
+        if p in (0.0, 1.0):
+            return p
+        lo, hi = 0.0, 1.0
+        for _ in range(30):
+            u = (lo + hi) / 2
+            if 3 * (1 - u) ** 2 * u * x1 + 3 * (1 - u) * u ** 2 * x2 + u ** 3 < p:
+                lo = u
+            else:
+                hi = u
+        u = (lo + hi) / 2
+        return 3 * (1 - u) ** 2 * u * y1 + 3 * (1 - u) * u ** 2 * y2 + u ** 3
+    return f
 
 
-def ease_out5(p):
-    p = min(1.0, max(0.0, p)); return 1 - (1 - p) ** 4
+STD = bezier(0.4, 0, 0.2, 1)   # 画面内の移動
+DEC = bezier(0, 0, 0.2, 1)     # 登場（減速して止まる）
+ACC = bezier(0.4, 0, 1, 1)     # 退場（加速して消える）
+
+
+def sine_io(p):
+    p = min(1.0, max(0.0, p)); return 0.5 - 0.5 * math.cos(math.pi * p)
 
 
 def font(spec, size):
@@ -82,39 +110,40 @@ class Short:
         self.cfg = cfg
         self.dur = cfg['duration']
         self.n = int(round(self.dur * FPS))
-        self.lead = cfg['lead']                 # サビ頭までの秒数
-        self.t_slide0 = cfg['slide_start']      # ジャケットが動き出す時刻
-        self.t_slide1 = self.lead               # サビ頭で着地
-        self.t_focus = cfg.get('focus_time', 1.15)
+        self.lead = cfg['lead']                 # サビ頭（動画の開始からの秒）。ロゴのピントがここで合う
+        self.land = cfg['land']                 # ジャケットが着地する時刻
+        self.t_logo0 = self.lead - 0.20         # ロゴが上へ動き出す（ジャケットより先に道をあける）
+        self.t_logo1 = self.lead + 0.50
+        self.t_text = self.lead + 0.55 * (self.land - self.lead)   # ジャケットが9割ほど上がったところ
+        self.t_out = self.dur - cfg.get('outro', 1.2)              # 最後に冒頭と同じ暗さまで落とす（ループ用）
         self.build_static()
 
     # ---------- 静的パーツ ----------
     def build_static(self):
         cfg = self.cfg
         jk = Image.open(cfg['jacket']).convert('RGB')
-        bg = jk.resize((H, H), Image.LANCZOS).crop(((H - W) // 2, 0, (H - W) // 2 + W, H))
-        bg = bg.filter(ImageFilter.GaussianBlur(52))
+        # 背景：ジャケットを拡大してぼかす。動かせるように画面より BG_MARGIN 倍大きく作る
+        self.bw, self.bh = round(W * BG_MARGIN), round(H * BG_MARGIN)
+        bg = jk.resize((self.bh, self.bh), Image.LANCZOS).crop(((self.bh - self.bw) // 2, 0, (self.bh - self.bw) // 2 + self.bw, self.bh))
+        bg = bg.filter(ImageFilter.GaussianBlur(52 * BG_MARGIN))
         bg = ImageEnhance.Brightness(bg).enhance(0.50)
-        bg = ImageEnhance.Color(bg).enhance(1.12)
+        self.bg_big = ImageEnhance.Color(bg).enhance(1.12)
+        # 上下を暗くするグラデーション（画面に固定）
         yy = np.arange(H, dtype=np.float32)
         g = np.clip((yy - 1020) / (H - 1020), 0, 1) ** 1.2 * 0.66
         g = np.maximum(g, np.clip((230 - yy) / 230, 0, 1) ** 1.5 * 0.32)
-        a = np.asarray(bg, dtype=np.float32) * (1 - g[:, None, None])
-        self.bg = Image.fromarray(a.astype(np.uint8))
+        shade = np.zeros((H, W, 4), np.uint8)
+        shade[..., 3] = (np.repeat(g[:, None], W, 1) * 255).astype(np.uint8)
+        self.shade = Image.fromarray(shade, 'RGBA')
 
-        # ジャケット（影つきカード）
-        pad = 70
-        card = Image.new('RGBA', (JS + pad * 2, JS + pad * 2), (0, 0, 0, 0))
-        sh = Image.new('RGBA', card.size, (0, 0, 0, 0))
-        ImageDraw.Draw(sh).rounded_rectangle((pad - 4, pad + 14, pad + JS + 4, pad + JS + 30), 18, fill=(0, 0, 0, 175))
-        card = Image.alpha_composite(card, sh.filter(ImageFilter.GaussianBlur(26)))
+        # ジャケットの面（角丸と細い縁）。影は動きに合わせて card_at で付ける
         j = jk.resize((JS, JS), Image.LANCZOS).convert('RGBA')
         m = Image.new('L', (JS * 2, JS * 2), 0)
         ImageDraw.Draw(m).rounded_rectangle((0, 0, JS * 2 - 1, JS * 2 - 1), 20, fill=255)
         j.putalpha(m.resize((JS, JS), Image.LANCZOS))
-        card.alpha_composite(j, (pad, pad))
-        ImageDraw.Draw(card).rounded_rectangle((pad, pad, pad + JS - 1, pad + JS - 1), 10, outline=(255, 255, 255, 44), width=1)
-        self.card, self.card_pad = card, pad
+        ImageDraw.Draw(j).rounded_rectangle((0, 0, JS - 1, JS - 1), 10, outline=(255, 255, 255, 44), width=1)
+        self.card_face, self.card_pad = j, 150
+        self.card_rest = self.card_at(0.0)
 
         # ロゴ（アルファだけ取り出して白抜きに使う）
         lg = Image.open(cfg['logo']).convert('RGBA')
@@ -172,17 +201,25 @@ class Short:
         self.f_time = font(fonts['time'], 23)
         self.tot_s = f"{int(self.dur) // 60}:{int(self.dur) % 60:02d}"
         self.time_cache = {}
-        # 最終状態の静止ベース（冒頭アニメ後の高速パス用）
-        base = self.bg.convert('RGBA')
-        base.alpha_composite(self.card, (JX - pad, JY - pad))
-        base.alpha_composite(self.logo_img(LOGO_H, 0), ((W - round(LOGO_H * self.logo_ar)) // 2, LOGO_Y))
-        for img, ry in self.rows:
-            base.alpha_composite(img, (0, ry))
-        self.base = base.convert('RGB')
-        self.sbox = (SPX, SPY, SPX + SPW, SPY + SPH)
         self.tbox = (TXR - 200, self.y_eye, TXR + 4, self.y_eye + 40)
-        self.base_s = self.base.crop(self.sbox)
-        self.base_t = self.base.crop(self.tbox)
+        # 動き終わったあとの文字とロゴは1枚にまとめておく（毎フレームの合成を軽くする）
+        rest = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+        for img, ry in self.rows:
+            rest.alpha_composite(img, (0, ry))
+        self.rows_rest = rest
+        self.logo_rest = self.logo_img(LOGO_H, 0)
+
+    def card_at(self, lift):
+        """影つきのジャケット。lift（0〜1）が大きいほど浮いて見える：影が遠く、大きく、薄くなる"""
+        pad = self.card_pad
+        size = JS + pad * 2
+        sh = Image.new('L', (size, size), 0)
+        oy = 14 + 50 * lift
+        ImageDraw.Draw(sh).rounded_rectangle((pad - 4, pad + oy, pad + JS + 4, pad + JS + 16 + oy), 18, fill=round(175 * (1 - 0.4 * lift)))
+        card = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+        card.putalpha(sh.filter(ImageFilter.GaussianBlur(26 + 24 * lift)))
+        card.alpha_composite(self.card_face, (pad, pad))
+        return card
 
     def logo_img(self, h, blur_r, alpha=1.0):
         """白抜きロゴ。blur_r>0 ならレンズのボケ（円形ボケ）をかける。余白込みのRGBAを返す。"""
@@ -211,7 +248,9 @@ class Short:
     def cut_audio(self, out):
         c = self.cfg
         fo = c.get('fade_out', 2.0)
-        af = f"volume=-2dB,afade=t=in:st=0:d={c.get('fade_in', 0.2)},afade=t=out:st={self.dur - fo}:d={fo}"
+        # gain_db：AAC にしたときのピークが 0dBFS を超えないように下げる量。YouTube は再生時に約 -14 LUFS まで
+        # 下げるので、ここで下げても YouTube での聞こえ方の大きさは変わらない
+        af = f"volume={c.get('gain_db', -2.0)}dB,afade=t=in:st=0:d={c.get('fade_in', 0.2)},afade=t=out:st={self.dur - fo}:d={fo}"
         subprocess.run(['ffmpeg', '-y', '-v', 'error', '-ss', str(c['start']), '-t', str(self.dur), '-i', c['audio'],
                         '-af', af, '-c:a', 'pcm_s16le', out], check=True)
         self.spec = self.spectrum(out)
@@ -243,6 +282,13 @@ class Short:
             prev = np.maximum(v[i], prev * 0.84); sm[i] = prev
         rms = np.array([np.sqrt((m[int(i / FPS * sr):int((i + 1) / FPS * sr)] ** 2).mean() + 1e-12) for i in range(self.n)])
         g = np.clip(rms / (np.percentile(rms, 90) + 1e-9), 0, 1) ** 0.5
+        # 低音（45〜110Hz、キックとベース）の包絡。背景の明るさをわずかに脈打たせる
+        low = out[:, :9].mean(axis=1)
+        rl = low[int(self.lead * FPS):]
+        pv = np.clip((low - np.percentile(rl, 20)) / (np.percentile(rl, 98) - np.percentile(rl, 20) + 1e-6), 0, 1) ** 2
+        self.pulse = np.zeros(self.n, np.float32); prev = 0.0
+        for i in range(self.n):
+            prev = max(pv[i], prev * 0.80); self.pulse[i] = prev * g[i]
         return np.clip(sm * 1.3, 0, 1) * g[:, None]
 
     # ---------- 動的パーツ ----------
@@ -278,48 +324,78 @@ class Short:
         return out
 
     # ---------- フレーム ----------
+    def background(self, i, t):
+        """アンビエント層：全編でゆっくり寄りながら少し下がる。ロゴとジャケットが上がるあいだは逆向き（下）に動く"""
+        u = sine_io(t / self.dur)
+        s = 1 + 0.05 * u
+        dy = 60 * STD((t - self.t_logo0) / (self.land - self.t_logo0)) + 30 * u
+        a = 1 / s
+        img = self.bg_big.transform((W, H), Image.AFFINE,
+                                    (a, 0, self.bw / 2 - W / 2 * a, 0, a, self.bh / 2 - H / 2 * a - dy * a), resample=Image.BILINEAR)
+        k = 0.45 + 0.55 * DEC(t / (self.lead + 0.2))                       # 冒頭は暗く、サビ頭で明るくなる
+        k *= 1 + 0.05 * self.pulse[i] * DEC((t - self.lead) / 0.5)         # サビに入ってから低音で脈打つ
+        img = ImageEnhance.Brightness(img).enhance(k).convert('RGBA')
+        img.alpha_composite(self.shade)
+        return img
+
     def frame(self, i):
         t = i / FPS
-        t_text_end = self.t_slide1 + 1.0
-        if t >= t_text_end:                                   # 高速パス
-            fr = self.base.copy()
-            s = self.base_s.convert('RGBA'); s.alpha_composite(self.spectrum_layer(i))
-            fr.paste(s.convert('RGB'), self.sbox[:2])
-            tm = self.base_t.convert('RGBA'); tm.alpha_composite(self.time_layer(int(t)))
-            fr.paste(tm.convert('RGB'), self.tbox[:2])
-            return fr
-        # 冒頭アニメーション
-        k = 0.45 + 0.55 * ease_out(t / 0.9)
-        fr = ImageEnhance.Brightness(self.bg).enhance(k).convert('RGBA')
-        ps = ease_out5((t - self.t_slide0) / (self.t_slide1 - self.t_slide0)) if t >= self.t_slide0 else 0.0
-        # ジャケット：下からスライド
-        if ps > 0:
-            y = JY + (1 - ps) * (H - JY + 40)
-            fr.alpha_composite(self.card, (JX - self.card_pad, int(round(y)) - self.card_pad))
-        # ロゴ：ボケ→ピント、のち上へ
-        pf = ease_out(t / self.t_focus)
-        blur = (1 - pf) * 46
-        breath = 1.0 + (1 - pf) * 0.09
-        h = (LOGO0_H + (LOGO_H - LOGO0_H) * ps) * breath
-        cy = LOGO0_CY + ((LOGO_Y + LOGO_H / 2) - LOGO0_CY) * ps
-        la = 0.35 + 0.65 * min(1.0, t / 0.3)
-        lg = self.logo_img(h, blur, la)
-        fr.alpha_composite(lg, (int(round(W / 2 - lg.width / 2)), int(round(cy - lg.height / 2))))
-        # スペクトラムと文字：サビ頭から順に出す
+        fr = self.background(i, t)
+        # ジャケット：サビ頭から下から上がり、land で着地。浮いているあいだは影が遠く大きい（二次動作）
+        pt = (t - self.lead) / (self.land - self.lead)
+        if pt > 0:
+            pj = DEC(pt)
+            if pj >= 0.999:
+                card = self.card_rest
+            else:
+                card = self.card_at(1 - pj)
+                sc = 0.96 + 0.04 * pj
+                sz = round(card.width * sc)
+                card = self.fade(card.resize((sz, sz), Image.BICUBIC), DEC(pt / 0.35))
+            cy = JY + JS / 2 + JACKET_RISE * (1 - pj)
+            fr.alpha_composite(card, (round(JX + JS / 2 - card.width / 2), round(cy - card.height / 2)))
+        # ロゴ：ボケからサビ頭でピントが合う。サビ頭の少し前から上へ移動して縮む
+        pf = DEC(t / self.lead)
+        pl = STD((t - self.t_logo0) / (self.t_logo1 - self.t_logo0))
+        if pf >= 0.999 and pl >= 0.999:
+            lg, cy = self.logo_rest, LOGO_Y + LOGO_H / 2
+        else:
+            breath = 1.0 + (1 - pf) * 0.09
+            h = (LOGO0_H + (LOGO_H - LOGO0_H) * pl) * breath
+            cy = LOGO0_CY + ((LOGO_Y + LOGO_H / 2) - LOGO0_CY) * pl
+            lg = self.logo_img(h, (1 - pf) * 46, 0.35 + 0.65 * DEC(t / 0.3))
+        fr.alpha_composite(lg, (round(W / 2 - lg.width / 2), round(cy - lg.height / 2)))
+        # 波形と文字：ジャケットが上がりきる手前から、下から順に出す
         order = [('spec', None)] + [('row', r) for r in self.rows]
+        done = (t - self.t_text - STAGGER * (len(order) - 1)) >= TEXT_DUR
+        if done:
+            fr.alpha_composite(self.rows_rest)
         for n, (kind, r) in enumerate(order):
-            p = ease_out((t - self.t_slide1 - 0.07 * n) / 0.42)
-            if p <= 0:
+            ptx = (t - self.t_text - STAGGER * n) / TEXT_DUR
+            if ptx <= 0:
                 continue
-            dy = int(round((1 - p) * 20))
+            p = DEC(ptx)
+            dy = round((1 - p) * TEXT_RISE)
             if kind == 'spec':
                 fr.alpha_composite(self.fade(self.spectrum_layer(i), p), (SPX, SPY + dy))
-            else:
+                continue
+            if not done:
                 img, ry = r
                 fr.alpha_composite(self.fade(img, p), (0, ry + dy))
-                if n == 1:
-                    fr.alpha_composite(self.fade(self.time_layer(int(t)), p), (self.tbox[0], self.tbox[1] + dy))
-        return fr.convert('RGB')
+            if n == 1:
+                fr.alpha_composite(self.fade(self.time_layer(int(t)), p), (self.tbox[0], self.tbox[1] + dy))
+        fr = fr.convert('RGB')
+        # 退場：最後の outro 秒で冒頭と同じ暗さまで落とす（ショートのループで冒頭へ自然につながる）
+        if t > self.t_out:
+            fr = ImageEnhance.Brightness(fr).enhance(1 - 0.55 * ACC((t - self.t_out) / (self.dur - self.t_out)))
+        return fr
+
+
+_SH = None   # 書き出し時に fork した子プロセスへ渡す Short
+
+
+def _frame_bytes(i):
+    return _SH.frame(i).tobytes()
 
 
 def main():
@@ -340,14 +416,17 @@ def main():
     enc = subprocess.Popen(['ffmpeg', '-y', '-v', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS),
                             '-i', '-', '-c:v', 'libx264', '-crf', '16', '-preset', 'medium', '-pix_fmt', 'yuv420p',
                             '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', tmp], stdin=subprocess.PIPE)
-    for i in range(sh.n):
-        enc.stdin.write(sh.frame(i).tobytes())
+    global _SH
+    _SH = sh
+    with multiprocessing.get_context('fork').Pool(max(1, (os.cpu_count() or 2) - 1)) as pool:
+        for buf in pool.imap(_frame_bytes, range(sh.n), chunksize=6):
+            enc.stdin.write(buf)
     enc.stdin.close()
     if enc.wait() != 0:
         sys.exit('encode failed')
     tmp2 = os.path.join(work, 'final2_tmp.mp4')
     subprocess.run(['ffmpeg', '-y', '-v', 'error', '-i', tmp, '-i', clip, '-map', '0:v', '-map', '1:a', '-c:v', 'copy',
-                    '-c:a', 'aac', '-b:a', '320k', '-shortest', '-movflags', '+faststart', tmp2], check=True)
+                    '-c:a', 'aac', '-b:a', '320k', '-movflags', '+faststart', tmp2], check=True)
     os.replace(tmp2, out)
     print('wrote', out)
 

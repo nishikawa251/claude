@@ -179,6 +179,8 @@ class Short:
             self.bokeh = self.make_bokeh(cfg['bokeh']) if cfg.get('bokeh') else None
             if self.bokeh:
                 self.bokeh_hole = (1 - 0.62 * np.exp(-(((xx - W / 2) / 300) ** 2 + ((yy - LOGO0_CY) / 260) ** 2)))[..., None]
+        # 冒頭のライトリーク（設定の "leak" があるときだけ）。四隅から差し込む光で、サビ頭までに消える
+        self.leak = self.make_leak(cfg['leak']) if cfg.get('leak') else None
 
         # ジャケットの面（角丸と細い縁）。影は動きに合わせて card_at で付ける
         j = jk.resize((JS, JS), Image.LANCZOS).convert('RGBA')
@@ -441,6 +443,34 @@ class Short:
         glow = cv2.resize(cv2.GaussianBlur(small, (0, 0), 15), (W, H), interpolation=cv2.INTER_LINEAR)
         return (layer + 0.6 * glow) * self.bokeh_hole
 
+    def make_leak(self, opt):
+        """四隅から差し込む光（案C）。左上は琥珀、右下は青緑、右上に薄いピンク。
+        光はなめらかなので 1/4 の解像度で作って拡大し、3枚を別々に持って時刻ごとに重みだけ変える"""
+        yy, xx = np.mgrid[:H // 4, :W // 4].astype(np.float32) * 4
+
+        def blob(cx, cy, rx, ry, col, ang=0.0):
+            c, s = np.cos(ang), np.sin(ang)
+            u, v = ((xx - cx) * c + (yy - cy) * s) / rx, (-(xx - cx) * s + (yy - cy) * c) / ry
+            g = np.exp(-(u ** 2 + v ** 2))[..., None] * np.array(col, np.float32)
+            return cv2.resize(g, (W, H), interpolation=cv2.INTER_CUBIC)
+        self.leak_strength = opt.get('strength', 0.8) if isinstance(opt, dict) else 0.8
+        return (blob(-80, -60, 640, 520, (1.0, 0.62, 0.25), 0.6),        # 左上：琥珀
+                blob(W + 60, H + 40, 700, 560, (0.25, 0.85, 0.80), 0.6),  # 右下：青緑
+                blob(W + 40, 200, 360, 300, (0.95, 0.40, 0.55)) * 0.45)   # 右上：ピンク
+
+    def leak_on(self, fr, t):
+        """ライトリークをスクリーン合成で重ねる。0.5秒で差し込み、琥珀と青緑がゆっくり入れ替わるように明滅し、
+        サビ頭の0.3秒前から0.6秒で消える（最初のコマは光なしなので、ループの継ぎ目も変わらない）"""
+        k = self.leak_strength * DEC(t / 0.5) * (1 - DEC((t - (self.lead - 0.3)) / 0.6))
+        if k <= 0.001:
+            return fr
+        f = 0.75 + 0.25 * np.sin(t * 2.1)
+        a, b, c = self.leak
+        lay = np.clip((a * f + b * (1.6 - f) + c) * k, 0, 1)
+        img = np.asarray(fr, np.float32) / 255
+        img = 1 - (1 - img) * (1 - lay)
+        return Image.fromarray((img * 255 + 0.5).astype(np.uint8))
+
     def face_plate(self, t):
         """ジャケットのイラストから顔をアップで切り出す。瞳のアップ（from）からゆっくり引き（to）、
         ロゴにピントが移るにつれて顔はぼけて暗くなる。設定に bokeh があれば手前に前ボケを足す"""
@@ -519,6 +549,8 @@ class Short:
             if n == 1:
                 fr.alpha_composite(self.fade(self.time_layer(int(t)), p), (self.tbox[0], self.tbox[1] + dy))
         fr = fr.convert('RGB')
+        if self.leak is not None and t < self.lead + 0.4:
+            fr = self.leak_on(fr, t)
         # 退場：最後の outro 秒で冒頭と同じ暗さまで落とす（ショートのループで冒頭へ自然につながる）
         if t > self.t_out:
             fr = ImageEnhance.Brightness(fr).enhance(1 - 0.55 * ACC((t - self.t_out) / (self.dur - self.t_out)))

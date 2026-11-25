@@ -31,7 +31,16 @@
     "東方妖々夢 ～ Ancient Temple",
     "広有射怪鳥事 ～ Till When?"
   ],
-  "credits": [],
+  "credits": [
+    [
+      "作詞",
+      "草野華余子"
+    ],
+    [
+      "編曲",
+      "伊藤翼、草野華余子"
+    ]
+  ],
   "work": "work/ep1_tr03",
   "out": "out/KALANCHOE_ep1_tr03_short_v1.mp4"
 }

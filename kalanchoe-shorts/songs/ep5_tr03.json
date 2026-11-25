@@ -26,8 +26,19 @@
   },
   "eyebrow": "5TH EP  FANTASTIC DRIFT!  /  TR.03",
   "title": "Fantastic Drift!",
-  "originals_lines": [],
-  "credits": [],
+  "originals_lines": [
+    "ファンタスティックドリフト"
+  ],
+  "credits": [
+    [
+      "作詞",
+      "草野華余子"
+    ],
+    [
+      "編曲",
+      "BLACK ALBATROSS"
+    ]
+  ],
   "work": "work/ep5_tr03",
   "out": "out/KALANCHOE_ep5_tr03_short_v1.mp4"
 }

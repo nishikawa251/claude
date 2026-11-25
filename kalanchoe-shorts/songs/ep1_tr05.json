@@ -31,7 +31,16 @@
     "少女綺想曲 ～ Dream Battle / 恋色マスタースパーク",
     "永夜の報い ～ Imperishable Night."
   ],
-  "credits": [],
+  "credits": [
+    [
+      "作詞",
+      "岸田"
+    ],
+    [
+      "編曲",
+      "草野華余子"
+    ]
+  ],
   "work": "work/ep1_tr05",
   "out": "out/KALANCHOE_ep1_tr05_short_v1.mp4"
 }

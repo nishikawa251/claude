@@ -26,8 +26,20 @@
   },
   "eyebrow": "5TH EP  FANTASTIC DRIFT!  /  TR.02",
   "title": "追憶の石",
-  "originals_lines": [],
-  "credits": [],
+  "originals_lines": [
+    "鹿狩りのレミニセンス",
+    "最後の一人は慣れてるから ～ Stone Goddess"
+  ],
+  "credits": [
+    [
+      "作詞",
+      "草野華余子"
+    ],
+    [
+      "編曲",
+      "草野華余子"
+    ]
+  ],
   "work": "work/ep5_tr02",
-  "out": "out/KALANCHOE_ep5_tr02_short_v1.mp4"
+  "out": "out/KALANCHOE_ep5_tr02_short_v2.mp4"
 }

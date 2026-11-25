@@ -30,7 +30,16 @@
   "originals_lines": [
     "神々が恋した幻想郷"
   ],
-  "credits": [],
+  "credits": [
+    [
+      "作詞",
+      "岸田"
+    ],
+    [
+      "編曲",
+      "草野華余子"
+    ]
+  ],
   "work": "work/ep1_tr04",
-  "out": "out/KALANCHOE_ep1_tr04_short_v1.mp4"
+  "out": "out/KALANCHOE_ep1_tr04_short_v2.mp4"
 }

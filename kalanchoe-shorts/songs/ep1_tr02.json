@@ -29,7 +29,16 @@
   "originals_lines": [
     "風神少女 / 妖怪の山 ～ Mysterious Mountain"
   ],
-  "credits": [],
+  "credits": [
+    [
+      "作詞",
+      "草野華余子"
+    ],
+    [
+      "編曲",
+      "草野華余子"
+    ]
+  ],
   "work": "work/ep1_tr02",
-  "out": "out/KALANCHOE_ep1_tr02_short_v1.mp4"
+  "out": "out/KALANCHOE_ep1_tr02_short_v2.mp4"
 }

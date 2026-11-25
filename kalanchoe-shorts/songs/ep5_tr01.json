@@ -26,8 +26,19 @@
   },
   "eyebrow": "5TH EP  FANTASTIC DRIFT!  /  TR.01",
   "title": "4-color labyrinth",
-  "originals_lines": [],
-  "credits": [],
+  "originals_lines": [
+    "フォーカラーラビリンス"
+  ],
+  "credits": [
+    [
+      "作詞",
+      "草野華余子"
+    ],
+    [
+      "編曲",
+      "BLACK ALBATROSS"
+    ]
+  ],
   "work": "work/ep5_tr01",
   "out": "out/KALANCHOE_ep5_tr01_short_v1.mp4"
 }

@@ -443,32 +443,90 @@ class Short:
         glow = cv2.resize(cv2.GaussianBlur(small, (0, 0), 15), (W, H), interpolation=cv2.INTER_LINEAR)
         return (layer + 0.6 * glow) * self.bokeh_hole
 
+    # ---------- ライトリーク ----------
     def make_leak(self, opt):
-        """四隅から差し込む光（案C）。左上は琥珀、右下は青緑、右上に薄いピンク。
-        光はなめらかなので 1/4 の解像度で作って拡大し、3枚を別々に持って時刻ごとに重みだけ変える"""
-        yy, xx = np.mgrid[:H // 4, :W // 4].astype(np.float32) * 4
+        """冒頭のライトリーク（光漏れ）の準備。opt は {"strength": 0.8, "layers": ["corners", "sweep", ...]}。
+        layers を省くと corners だけ。どれもスクリーン合成で重ね、ロゴのアニメーションのあいだだけ出す。
+          corners 四隅から差し込む光。左上は琥珀、右下は青緑、右上に薄いピンク。冒頭のあいだゆっくり明滅する
+          sweep   琥珀の大きな光が左から右へ通り抜ける。細い横の筋がいっしょに流れる
+          prism   虹色の帯が斜めに通り抜ける。ロゴのピントが合うころに画面の中央を通る
+          streak  ロゴのピントが合った瞬間に、ロゴを横切る細い光の筋が走って消える
+          burn    サビ頭でジャケットが入る直前に、左上から暖色の光が一瞬画面を焼く
+        光はなめらかなので 1/4 の解像度で作って拡大する（streak だけは細いので原寸で作る）"""
+        opt = opt if isinstance(opt, dict) else {}
+        self.leak_strength = opt.get('strength', 0.8)
+        self.lyy, self.lxx = np.mgrid[:H // 4, :W // 4].astype(np.float32) * 4
+        layers = opt.get('layers', ['corners'])
+        self.leak_corners = (self.leak_blob(-80, -60, 640, 520, (1.0, 0.62, 0.25), 0.6),        # 左上：琥珀
+                             self.leak_blob(W + 60, H + 40, 700, 560, (0.25, 0.85, 0.80), 0.6),  # 右下：青緑
+                             self.leak_blob(W + 40, 200, 360, 300, (0.95, 0.40, 0.55)) * 0.45)   # 右上：ピンク
+        self.leak_burn = self.leak_blob(-100, 250, 1150, 1400, (1.0, 0.72, 0.42), 0.5)
+        return layers
 
-        def blob(cx, cy, rx, ry, col, ang=0.0):
-            c, s = np.cos(ang), np.sin(ang)
-            u, v = ((xx - cx) * c + (yy - cy) * s) / rx, (-(xx - cx) * s + (yy - cy) * c) / ry
-            g = np.exp(-(u ** 2 + v ** 2))[..., None] * np.array(col, np.float32)
-            return cv2.resize(g, (W, H), interpolation=cv2.INTER_CUBIC)
-        self.leak_strength = opt.get('strength', 0.8) if isinstance(opt, dict) else 0.8
-        return (blob(-80, -60, 640, 520, (1.0, 0.62, 0.25), 0.6),        # 左上：琥珀
-                blob(W + 60, H + 40, 700, 560, (0.25, 0.85, 0.80), 0.6),  # 右下：青緑
-                blob(W + 40, 200, 360, 300, (0.95, 0.40, 0.55)) * 0.45)   # 右上：ピンク
+    def leak_blob(self, cx, cy, rx, ry, col, ang=0.0):
+        c, s = np.cos(ang), np.sin(ang)
+        dx, dy = self.lxx - cx, self.lyy - cy
+        u, v = (dx * c + dy * s) / rx, (-dx * s + dy * c) / ry
+        return np.exp(-(u ** 2 + v ** 2))[..., None] * np.array(col, np.float32)
+
+    def leak_layer(self, t):
+        """時刻 t の光（原寸の RGB、0〜）。冒頭の光（corners、sweep、prism）は 0.5秒で差し込み、
+        サビ頭の0.3秒前から0.6秒で消える。streak と burn はそれぞれの瞬間だけ光る"""
+        lead, tf = self.lead, self.t_focus
+        env = DEC(t / 0.5) * (1 - DEC((t - (lead - 0.3)) / 0.6))
+        L = np.zeros((H // 4, W // 4, 3), np.float32)
+        streak = None
+        for kind in self.leak:
+            if kind == 'corners' and env > 0:
+                f = 0.75 + 0.25 * np.sin(t * 2.1)
+                a, b, c = self.leak_corners
+                L += (a * f + b * (1.6 - f) + c) * env
+            elif kind == 'sweep':
+                p = t / (lead - 0.1)                          # 冒頭からサビ頭の少し前までで通り抜ける
+                if 0 < p < 1:
+                    e = 0.8 * np.sin(np.pi * p) * env ** 0.5
+                    x = -420 + 1700 * sine_io(p)
+                    thin = 0.0 if 'streak' in self.leak else 0.6     # streak と重ねるときは、流れる細い筋を省く
+                    L += (self.leak_blob(x, 520 + 200 * p, 520, 900, (1.0, 0.55, 0.18), 0.25)
+                          + self.leak_blob(x - 280, 1300, 640, 480, (0.9, 0.22, 0.10), -0.2) * 0.7
+                          + self.leak_blob(x + 260, 700 + 60 * p, 900, 34, (1.0, 0.85, 0.6), 0.05) * thin) * e
+            elif kind == 'prism':
+                t0, t1 = 0.2 * lead, lead + 0.1
+                p = (t - t0) / (t1 - t0)
+                if 0 < p < 1:
+                    e = np.sin(np.pi * p) * env ** 0.5
+                    ang = -0.55; c, s = np.cos(ang), np.sin(ang)
+                    d = (self.lxx - (-250 + 1500 * p)) * s + (self.lyy - 900) * c   # 帯からの距離
+                    hue = (0.85 + 0.6 * (self.lxx * c - self.lyy * s) / 1400 + 0.2 * p) % 1
+                    L += np.exp(-(d / 170) ** 2)[..., None] * hsv_to_rgb(hue, 0.75) * 0.85 * e
+            elif kind == 'streak':
+                if tf - 0.12 < t < tf + 1.2:
+                    e = DEC((t - (tf - 0.12)) / 0.12) if t < tf else np.exp(-(t - tf) / 0.30)
+                    rx = 260 + 520 * DEC((t - (tf - 0.12)) / 0.6)
+                    pl = STD((t - self.t_logo0) / (self.t_logo1 - self.t_logo0))
+                    cy = LOGO0_CY + ((LOGO_Y + LOGO_H / 2) - LOGO0_CY) * pl
+                    xs = np.exp(-((np.arange(W, dtype=np.float32) - W / 2) / rx) ** 2)
+                    ys = np.arange(H, dtype=np.float32) - cy
+                    yp = np.exp(-(ys / 5) ** 2) + 0.35 * np.exp(-(ys / 40) ** 2) + 0.12 * np.exp(-(ys / 160) ** 2)
+                    streak = (yp[:, None, None] * xs[None, :, None]) * np.array((0.72, 0.90, 1.0), np.float32) * e
+            elif kind == 'burn':
+                tp = lead - 0.06                              # ジャケットが入る直前に最大
+                if tp - 0.3 < t < tp + 1.0:
+                    e = DEC((t - (tp - 0.3)) / 0.3) if t < tp else np.exp(-(t - tp) / 0.18)
+                    L += self.leak_burn * 0.9 * e
+        if not L.any() and streak is None:
+            return None
+        out = cv2.resize(L, (W, H), interpolation=cv2.INTER_CUBIC)
+        if streak is not None:
+            out += streak
+        return out * self.leak_strength
 
     def leak_on(self, fr, t):
-        """ライトリークをスクリーン合成で重ねる。0.5秒で差し込み、琥珀と青緑がゆっくり入れ替わるように明滅し、
-        サビ頭の0.3秒前から0.6秒で消える（最初のコマは光なしなので、ループの継ぎ目も変わらない）"""
-        k = self.leak_strength * DEC(t / 0.5) * (1 - DEC((t - (self.lead - 0.3)) / 0.6))
-        if k <= 0.001:
+        lay = self.leak_layer(t)
+        if lay is None:
             return fr
-        f = 0.75 + 0.25 * np.sin(t * 2.1)
-        a, b, c = self.leak
-        lay = np.clip((a * f + b * (1.6 - f) + c) * k, 0, 1)
         img = np.asarray(fr, np.float32) / 255
-        img = 1 - (1 - img) * (1 - lay)
+        img = 1 - (1 - img) * (1 - np.clip(lay, 0, 1))
         return Image.fromarray((img * 255 + 0.5).astype(np.uint8))
 
     def face_plate(self, t):
@@ -549,7 +607,7 @@ class Short:
             if n == 1:
                 fr.alpha_composite(self.fade(self.time_layer(int(t)), p), (self.tbox[0], self.tbox[1] + dy))
         fr = fr.convert('RGB')
-        if self.leak is not None and t < self.lead + 0.4:
+        if self.leak and t < self.lead + 1.0:
             fr = self.leak_on(fr, t)
         # 退場：最後の outro 秒で冒頭と同じ暗さまで落とす（ショートのループで冒頭へ自然につながる）
         if t > self.t_out:
@@ -577,6 +635,9 @@ def main():
         print('text_bottom', sh.text_bottom, 'text_right', round(sh.text_right), 'frames', sh.n)
         return
     out = cfg['out']
+    n = sh.n
+    if len(sys.argv) > 3:                       # --render 秒：冒頭だけ書き出す（試作用）
+        n = min(sh.n, int(round(float(sys.argv[3]) * FPS)))
     os.makedirs(os.path.dirname(out) or '.', exist_ok=True)
     tmp = os.path.join(work, 'video2_tmp.mp4')
     enc = subprocess.Popen(['ffmpeg', '-y', '-v', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS),
@@ -585,13 +646,14 @@ def main():
     global _SH
     _SH = sh
     with multiprocessing.get_context('fork').Pool(max(1, (os.cpu_count() or 2) - 1)) as pool:
-        for buf in pool.imap(_frame_bytes, range(sh.n), chunksize=6):
+        for buf in pool.imap(_frame_bytes, range(n), chunksize=6):
             enc.stdin.write(buf)
     enc.stdin.close()
     if enc.wait() != 0:
         sys.exit('encode failed')
     tmp2 = os.path.join(work, 'final2_tmp.mp4')
     subprocess.run(['ffmpeg', '-y', '-v', 'error', '-i', tmp, '-i', clip, '-map', '0:v', '-map', '1:a', '-c:v', 'copy',
+                    *(['-t', f'{n / FPS:.3f}'] if n < sh.n else []),
                     '-c:a', 'aac', '-b:a', '320k', '-movflags', '+faststart', tmp2], check=True)
     os.replace(tmp2, out)
     print('wrote', out)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""KALANCHOE RECORDS ショート動画ジェネレーター v2（ジャケット＋音源型・冒頭アニメーション付き）
+"""KALANCHOE RECORDS ショート動画ジェネレーター v3（ジャケット＋音源型・冒頭アニメーション付き）
   python3 make_short.py potd.json --frames 0,0.5,1.2     # テストフレームPNGを work/ に出す
   python3 make_short.py potd.json --render               # 本番書き出し（1080x1920 / 30fps）
 フォントは既定でこのスクリプトと同じ階層の fonts/ から読む（環境変数 KAL_FONTS で変更可）。
@@ -11,11 +11,16 @@ import soundfile as sf
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageEnhance
 
 W, H, FPS = 1080, 1920, 30
-FD = os.path.join(os.environ.get('KAL_FONTS', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fonts')), '')
-F_TITLE = FD + 'ShipporiMinchoB1-ExtraBold.ttf'
-F_BODY = FD + 'ZenKakuGothicNew-Medium.ttf'
-F_TAG = FD + 'ZenKakuGothicNew-Bold.ttf'
-F_LATIN = FD + 'Oxanium[wght].ttf'
+FD = os.environ.get('KAL_FONTS', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fonts'))
+# 役割ごとのフォント。[ファイル名, 可変フォントの wght（静的フォントは null）]
+# 設定ファイルの "fonts" で役割ごとに上書きできる。
+FONTS = {
+    'title':   ['axisstd-bold.otf', None],     # 曲名
+    'body':    ['axisstd-regular.otf', None],  # 原曲名とクレジットの本文
+    'tag':     ['axisstd-bold.otf', None],     # 「原曲」「作詞」「編曲」のタグ
+    'eyebrow': ['axisstd-medium.otf', None],   # 英字の小見出し
+    'time':    ['axisstd-regular.otf', None],  # タイマー
+}
 
 INK = (246, 243, 236)
 GOLD = (233, 210, 154)
@@ -38,22 +43,31 @@ def ease_out5(p):
     p = min(1.0, max(0.0, p)); return 1 - (1 - p) ** 4
 
 
-def font(path, size, wght=None):
-    f = ImageFont.truetype(path, size)
+def font(spec, size):
+    path, wght = spec
+    f = ImageFont.truetype(os.path.join(FD, path), size)
     if wght is not None:
         f.set_variation_by_axes([wght])
     return f
 
 
-def text_w(s, f, track=0.0, feats=None):
-    return sum(f.getlength(ch, features=feats) for ch in s) + track * f.size * (len(s) - 1)
+def adv(ch, f, feats=None, tnum=False):
+    """1文字の送り幅。tnum=True なら数字を最も広い数字の幅にそろえる（タイマーの横揺れ防止）"""
+    if tnum and ch.isdigit():
+        return max(f.getlength(c, features=feats) for c in '0123456789')
+    return f.getlength(ch, features=feats)
 
 
-def draw_text(d, x, y, s, f, fill, track=0.0, feats=None):
-    """1文字ずつ字送りを制御して描く（プロポーショナル詰め＋トラッキング）"""
+def text_w(s, f, track=0.0, feats=None, tnum=False):
+    return sum(adv(ch, f, feats, tnum) for ch in s) + track * f.size * (len(s) - 1)
+
+
+def draw_text(d, x, base, s, f, fill, track=0.0, feats=None, tnum=False):
+    """1文字ずつ字送りを制御して描く（プロポーショナル詰め＋トラッキング）。base はベースラインの y"""
     for ch in s:
-        d.text((x, y), ch, font=f, fill=fill, features=feats)
-        x += f.getlength(ch, features=feats) + track * f.size
+        a = adv(ch, f, feats, tnum)
+        d.text((x + (a - f.getlength(ch, features=feats)) / 2, base), ch, font=f, fill=fill, features=feats, anchor='ls')
+        x += a + track * f.size
     return x
 
 
@@ -107,53 +121,55 @@ class Short:
         self.logo_a = lg.crop(lg.getchannel('A').getbbox()).getchannel('A')
         self.logo_ar = self.logo_a.width / self.logo_a.height
 
-        # 文字の行レイヤー
+        # 文字の行レイヤー（y はすべてベースライン。v2 と同じ位置に文字が乗るようにしてある）
+        fonts = {**FONTS, **cfg.get('fonts', {})}
         self.rows = []
         lat = ['kern']
         jp = ['palt', 'kern']
         # 1) 英字の小見出し
-        f_eye = font(F_LATIN, 23, 600)
+        f_eye = font(fonts['eyebrow'], 23)
         row = Image.new('RGBA', (W, 40), (0, 0, 0, 0)); d = ImageDraw.Draw(row)
-        draw_text(d, TX, 6, cfg['eyebrow'], f_eye, GOLD + (255,), track=0.11, feats=lat)
+        draw_text(d, TX, 24, cfg['eyebrow'], f_eye, GOLD + (255,), track=0.11, feats=lat)
         self.y_eye = SPY + SPH + 30
         self.rows.append((with_shadow(row), self.y_eye))
         # 2) 曲名
         size = 68
         while True:
-            f_title = font(F_TITLE, size)
+            f_title = font(fonts['title'], size)
             if text_w(cfg['title'], f_title, 0.03, jp) <= TXR - TX or size <= 40:
                 break
             size -= 1
         row = Image.new('RGBA', (W, size + 44), (0, 0, 0, 0)); d = ImageDraw.Draw(row)
-        draw_text(d, TX - 3, 6, cfg['title'], f_title, INK + (255,), track=0.03, feats=jp)
+        draw_text(d, TX - 3, round(6 + 1.16 * size), cfg['title'], f_title, INK + (255,), track=0.03, feats=jp)
         y = self.y_eye + 42
         self.rows.append((with_shadow(row, 9, 0.65), y))
         y += size + 46
         # 3) 原曲・クレジット（タグ＋本文）
-        f_tag = font(F_TAG, 19)
-        f_body = font(F_BODY, 27)
+        f_tag = font(fonts['tag'], 19)
+        f_body = font(fonts['body'], 27)
         tag_w, tag_h, colx = 62, 30, TX + 82
 
         def tag(d, x, yy, s):
             d.rounded_rectangle((x, yy, x + tag_w, yy + tag_h), 5, outline=INK + (150,), width=2)
             w = text_w(s, f_tag, 0.12)
-            draw_text(d, x + (tag_w - w) / 2 + 1, yy + 1, s, f_tag, INK + (225,), track=0.12)
+            draw_text(d, x + (tag_w - w) / 2 + 1, yy + 23, s, f_tag, INK + (225,), track=0.12)
 
         row = Image.new('RGBA', (W, 44 * len(cfg['originals_lines']) + 10), (0, 0, 0, 0)); d = ImageDraw.Draw(row)
         tag(d, TX, 7, '原曲')
         for i, line in enumerate(cfg['originals_lines']):
-            draw_text(d, colx, 44 * i, line, f_body, INK + (255,), track=0.0, feats=['kern'])
+            draw_text(d, colx, 44 * i + 31, line, f_body, INK + (255,), track=0.0, feats=['kern'])
         self.rows.append((with_shadow(row), y))
         y += 44 * len(cfg['originals_lines']) + 14
         row = Image.new('RGBA', (W, 54), (0, 0, 0, 0)); d = ImageDraw.Draw(row)
         x = TX
         for lab, val in cfg['credits']:
             tag(d, x, 7, lab)
-            x = draw_text(d, x + 82, 0, val, f_body, INK + (255,), track=0.0, feats=['kern']) + 40
+            x = draw_text(d, x + 82, 31, val, f_body, INK + (255,), track=0.0, feats=['kern']) + 40
         self.rows.append((with_shadow(row), y))
         self.text_bottom = y + 44
+        self.text_right = max(text_w(l, f_body, 0.0, ['kern']) for l in cfg['originals_lines']) + colx
         # タイマー
-        self.f_time = font(F_LATIN, 23, 500)
+        self.f_time = font(fonts['time'], 23)
         self.tot_s = f"{int(self.dur) // 60}:{int(self.dur) % 60:02d}"
         self.time_cache = {}
         # 最終状態の静止ベース（冒頭アニメ後の高速パス用）
@@ -248,8 +264,8 @@ class Short:
             w, h = self.tbox[2] - self.tbox[0], self.tbox[3] - self.tbox[1]
             ov = Image.new('RGBA', (w, h), (0, 0, 0, 0)); d = ImageDraw.Draw(ov)
             s = f"{sec // 60}:{sec % 60:02d} / {self.tot_s}"
-            tw = text_w(s, self.f_time, 0.08)
-            draw_text(d, w - 4 - tw, 6, s, self.f_time, INK + (205,), track=0.08)
+            tw = text_w(s, self.f_time, 0.08, tnum=True)
+            draw_text(d, w - 4 - tw, 24, s, self.f_time, INK + (205,), track=0.08, tnum=True)
             self.time_cache[sec] = with_shadow(ov)
         return self.time_cache[sec]
 
@@ -316,7 +332,7 @@ def main():
         for ts in sys.argv[3].split(','):
             i = min(sh.n - 1, int(round(float(ts) * FPS)))
             p = os.path.join(work, f't2_{float(ts):05.2f}.png'); sh.frame(i).save(p)
-        print('text_bottom', sh.text_bottom, 'frames', sh.n)
+        print('text_bottom', sh.text_bottom, 'text_right', round(sh.text_right), 'frames', sh.n)
         return
     out = cfg['out']
     os.makedirs(os.path.dirname(out) or '.', exist_ok=True)

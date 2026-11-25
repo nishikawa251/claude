@@ -70,18 +70,21 @@ python3 make_short.py potd.json --render
 
 ## フォント
 
-Google Fonts の公式リポジトリから次の4ファイルを取得して `fonts/` に置きます。どれも SIL Open Font License です。
+v3 から、文字はすべて AXIS Std に替えました（川西さんの依頼）。AXIS Std は商用フォントで、川西さんから受け取った OTF を使います。リポジトリには入れていないので、`fonts/` に次のファイルを置きます。
 
-| ファイル | 使う場所 | 取得先 |
-|---|---|---|
-| `ShipporiMinchoB1-ExtraBold.ttf` | 曲名 | `https://raw.githubusercontent.com/google/fonts/main/ofl/shipporiminchob1/ShipporiMinchoB1-ExtraBold.ttf` |
-| `ZenKakuGothicNew-Medium.ttf` | 原曲名とクレジットの本文 | `https://raw.githubusercontent.com/google/fonts/main/ofl/zenkakugothicnew/ZenKakuGothicNew-Medium.ttf` |
-| `ZenKakuGothicNew-Bold.ttf` | 「原曲」「作詞」「編曲」のタグ | `https://raw.githubusercontent.com/google/fonts/main/ofl/zenkakugothicnew/ZenKakuGothicNew-Bold.ttf` |
-| `Oxanium[wght].ttf` | 英字の小見出しとタイマー | `https://raw.githubusercontent.com/google/fonts/main/ofl/oxanium/Oxanium%5Bwght%5D.ttf` |
+| 役割 | ファイル |
+|---|---|
+| 曲名、タグ | `axisstd-bold.otf` |
+| 原曲名とクレジットの本文、タイマー | `axisstd-regular.otf` |
+| 英字の小見出し | `axisstd-medium.otf` |
 
-フォントを別のフォルダに置くときは、環境変数 `KAL_FONTS` にそのフォルダを指定します。
+役割ごとのフォントは `make_short.py` の `FONTS` で決めています。設定ファイルに `"fonts": {"title": ["axisstd-heavy.otf", null]}` のように書くと、その曲だけ替えられます。2つ目の値は可変フォントの wght で、静的フォントでは `null` です。
 
-Zen Kaku Gothic New には全角チルダ（U+FF5E）の字形がありません。そのため原曲名「死体旅行 ～ Be of good cheer!」の「～」は、設定ファイルでは波ダッシュ（U+301C）にしています。
+文字の位置はベースラインで指定しているので、フォントを替えても v2 と同じ位置に文字が乗ります。タイマーの数字は幅をそろえて描くので、秒が変わっても横に揺れません。
+
+v2 で使っていた Shippori Mincho B1、Zen Kaku Gothic New、Oxanium は `fetch_fonts.sh` で取得できます（SIL Open Font License）。
+
+AXIS Std には全角チルダ（U+FF5E）があるので、原曲名「死体旅行 ～ Be of good cheer!」は v3 から全角チルダに戻しました。
 
 ## 動画の仕様
 
@@ -89,7 +92,7 @@ Zen Kaku Gothic New には全角チルダ（U+FF5E）の字形がありません
 - 長さは 26.84秒で、805フレームです。
 - 映像は H.264 です。libx264 の crf 16、yuv420p、bt709 で書き出しています。
 - 音声は AAC 320kbps、44.1kHz、ステレオです。
-- 出力先は `out/KALANCHOE_PartyOnTheDeadline_short_v2.mp4` です。
+- 出力先は `out/KALANCHOE_PartyOnTheDeadline_short_v3.mp4` です。
 
 ## 切り出し区間
 

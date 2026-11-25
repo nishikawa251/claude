@@ -105,6 +105,18 @@ def with_shadow(layer, blur=7, strength=0.6):
     return Image.alpha_composite(sh, layer)
 
 
+# 前ボケの色（色相 0〜1）。ジャケットの青緑・水色・青・ラベンダーに、少しのピンクと金
+BOKEH_PALETTE = [0.50, 0.56, 0.62, 0.70, 0.93, 0.12]
+
+
+def hsv_to_rgb(h, s, v=1.0):
+    """色相の配列 h（0〜1）を RGB（…×3）にする"""
+    h6 = h * 6; i = np.floor(h6).astype(int) % 6; f = (h6 - np.floor(h6)).astype(np.float32)
+    p = np.full_like(f, v * (1 - s)); q = v * (1 - s * f); t = v * (1 - s * (1 - f)); vv = np.full_like(f, v)
+    r = np.choose(i, [vv, q, p, p, t, vv]); g = np.choose(i, [t, vv, vv, q, p, p]); b = np.choose(i, [p, p, t, vv, vv, q])
+    return np.stack([r, g, b], -1).astype(np.float32)
+
+
 def disc_kernel(r):
     n = int(np.ceil(r)) * 2 + 1
     yy, xx = np.mgrid[:n, :n] - n // 2
@@ -163,7 +175,8 @@ class Short:
             yy, xx = np.mgrid[:H, :W].astype(np.float32)
             d = np.sqrt(((xx - W / 2) / (W * 0.75)) ** 2 + ((yy - H * 0.45) / (H * 0.62)) ** 2)
             self.vig_q = (np.clip(d - 0.35, 0, 1) ** 1.4)[..., None]
-            self.orbs = self.make_orbs(cfg.get('orb_seed', 3))
+            self.bokeh = self.make_bokeh(cfg.get('bokeh', {}))
+            self.bokeh_hole = (1 - 0.62 * np.exp(-(((xx - W / 2) / 300) ** 2 + ((yy - LOGO0_CY) / 260) ** 2)))[..., None]
 
         # ジャケットの面（角丸と細い縁）。影は動きに合わせて card_at で付ける
         j = jk.resize((JS, JS), Image.LANCZOS).convert('RGBA')
@@ -369,20 +382,48 @@ class Short:
         return img
 
     # ---------- 冒頭の顔のアップ ----------
-    def make_orbs(self, seed):
-        """前ボケの光の玉（青緑・金・白・青）。大きい玉ほど手前にあるので速く上へ流れる"""
-        rng = np.random.default_rng(seed)
-        cols = np.array([[0.55, 0.85, 0.85], [0.92, 0.82, 0.60], [0.95, 0.95, 1.0], [0.45, 0.65, 0.95]], np.float32)
-        orbs = []
-        for k in range(11):
-            r = rng.uniform(28, 120)
-            n = int(np.ceil(r)) + 3
-            yy, xx = np.mgrid[-n:n + 1, -n:n + 1].astype(np.float32)
-            d = np.sqrt(xx ** 2 + yy ** 2) / r
-            disc = np.clip((1 - d) * r / 3, 0, 1) * (0.75 + 0.25 * np.clip((d - 0.75) / 0.25, 0, 1))  # 縁が少し明るい
-            spr = cv2.GaussianBlur(disc, (0, 0), 1.0)[..., None] * cols[k % 4] * rng.uniform(0.06, 0.20) * 0.8
-            orbs.append((spr, rng.uniform(-0.05, 1.05) * W, rng.uniform(0.0, 1.1) * H, 12 + r * 0.25))
-        return orbs
+    def make_bokeh(self, opt):
+        """プリズム調の前ボケ。角の丸い6〜8角形（絞りの形）の玉を、左下から右上へ弧を描く帯に並べる。
+        玉の中で色が流れ、縁で R/G/B の大きさが少しずつ違うので虹色ににじむ。玉は一度だけ作り、
+        フレームごとには位置だけずらす。返すのは (玉の画像, 中心 x, 中心 y, 上へ流れる速さ) の並び"""
+        rng = np.random.default_rng(opt.get('seed', 7))
+        palette = opt.get('palette', BOKEH_PALETTE)
+        strength = opt.get('strength', 0.78)
+        out = []
+        for _ in range(opt.get('count', 28)):
+            u = rng.uniform(0, 1)
+            bx = W * (0.10 + 0.85 * u) + rng.normal(0, 120)
+            by = H * (0.92 - 0.80 * u) + rng.normal(0, 170)
+            r = rng.uniform(70, 260) * (0.75 + 0.5 * np.exp(-((u - 0.5) / 0.3) ** 2))
+            h0 = palette[rng.integers(len(palette))]
+            span = rng.uniform(0.10, 0.22) * rng.choice([-1, 1])
+            n, rot, soft, ca = int(rng.choice([6, 7, 8])), rng.uniform(0, 1), rng.uniform(10, 40), rng.uniform(0.05, 0.11)
+            d = rng.uniform(0, 2 * np.pi); a = rng.uniform(0.10, 0.32) * strength
+            size = int(r * 2 + soft * 6 + 8)
+            yy, xx = np.mgrid[:size, :size].astype(np.float32) - (size - 1) / 2
+            g = np.clip((xx * np.cos(d) + yy * np.sin(d)) / (2 * r) + 0.5, 0, 1)
+            rgb = hsv_to_rgb((h0 + span * g) % 1, 0.85)
+            ang = np.arctan2(yy, xx) - rot; rr = np.sqrt(xx ** 2 + yy ** 2); sector = 2 * np.pi / n
+            shape = 0.65 * rr * np.cos(np.mod(ang, sector) - sector / 2) / np.cos(np.pi / n) + 0.35 * rr   # 角を少し丸めた多角形
+            spr = np.zeros((size, size, 3), np.float32)
+            for c, sc in enumerate((1 + ca, 1.0, 1 - ca)):            # 赤は外、青は内へずらす（色収差）
+                m = np.clip((r * sc - shape) / soft + 0.5, 0, 1)
+                m *= 0.78 + 0.22 * np.clip(1 - np.abs(r * sc - shape) / (soft * 1.6), 0, 1)   # 縁がわずかに明るい
+                spr[..., c] = m * rgb[..., c] * a
+            out.append((spr, bx, by, 70 * (0.6 + u)))
+        return out
+
+    def bokeh_layer(self, t):
+        """前ボケを線形光で足し合わせ、まわりのにじみを足し、ロゴのまわりを弱めたレイヤー"""
+        layer = np.zeros((H, W, 3), np.float32)
+        for spr, bx, by, vy in self.bokeh:
+            s = spr.shape[0]; x0, y0 = int(bx - s / 2), int(by - vy * t - s / 2)
+            xs, ys = max(0, -x0), max(0, -y0); xe, ye = min(s, W - x0), min(s, H - y0)
+            if xs < xe and ys < ye:
+                layer[y0 + ys:y0 + ye, x0 + xs:x0 + xe] += spr[ys:ye, xs:xe]
+        small = cv2.resize(layer, (W // 4, H // 4), interpolation=cv2.INTER_AREA)
+        glow = cv2.resize(cv2.GaussianBlur(small, (0, 0), 15), (W, H), interpolation=cv2.INTER_LINEAR)
+        return (layer + 0.6 * glow) * self.bokeh_hole
 
     def face_plate(self, t):
         """ジャケットのイラストから顔をアップで切り出す。瞳のアップ（from）からゆっくり引き（to）、
@@ -398,18 +439,11 @@ class Short:
         img = lens_blur(img, r)
         bright, vig = 0.54 - 0.14 * pf, 0.50 + 0.15 * pf
         img = np.clip(img * bright * (1 - vig * self.vig_q) * np.array([0.90, 1.0, 1.06], np.float32), 0, 1)
-        fa = DEC((t - 0.6) / 1.4)                       # 光の玉はピントがロゴへ移るにつれて出てくる
-        if fa > 0:
-            for spr, x, y0, vy in self.orbs:
-                y = y0 - vy * t
-                hs = spr.shape[0] // 2
-                x0, y1 = int(round(x)) - hs, int(round(y)) - hs
-                sx0, sy0 = max(0, -x0), max(0, -y1)
-                ex, ey = min(spr.shape[1], W - x0), min(spr.shape[0], H - y1)
-                if sx0 >= ex or sy0 >= ey:
-                    continue
-                reg = img[y1 + sy0:y1 + ey, x0 + sx0:x0 + ex]
-                img[y1 + sy0:y1 + ey, x0 + sx0:x0 + ex] = 1 - (1 - reg) * (1 - spr[sy0:ey, sx0:ex] * fa)
+        # 前ボケ：ピントがロゴへ移るにつれてふくらむ。背景を少し落とし、光として足す（線形光）
+        k = STD((t - 0.3) / max(0.1, self.t_focus - 0.3))
+        if k > 0:
+            lin = (img * (1 - 0.30 * k)) ** 2.2 + self.bokeh_layer(t) * k
+            img = np.clip(lin / (1 + 0.6 * np.clip(lin - 0.8, 0, None)), 0, 1) ** (1 / 2.2)
         return Image.fromarray((img * 255).astype(np.uint8)).convert('RGBA')
 
     def frame(self, i):

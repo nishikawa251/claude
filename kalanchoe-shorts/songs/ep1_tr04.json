@@ -1,0 +1,36 @@
+{
+  "audio": "src/ep1_tr04.wav",
+  "jacket": "src/jacket_ep1.jpg",
+  "logo": "src/logo_black.png",
+  "start": null,
+  "duration": null,
+  "focus": null,
+  "pickup": null,
+  "lead": null,
+  "land": null,
+  "gain_db": -5.0,
+  "fade_in": 0.04,
+  "fade_out": 1.2,
+  "outro": 1.0,
+  "intro_face": {
+    "from": [
+      2300,
+      1420,
+      664
+    ],
+    "to": [
+      2200,
+      1600,
+      920
+    ]
+  },
+  "eyebrow": "1ST EP  WIND OF FAITH  /  TR.04",
+  "title": "幻想に咲いた花",
+  "title_sub": "草野華余子ver.",
+  "originals_lines": [
+    "神々が恋した幻想郷"
+  ],
+  "credits": [],
+  "work": "work/ep1_tr04",
+  "out": "out/KALANCHOE_ep1_tr04_short_v1.mp4"
+}

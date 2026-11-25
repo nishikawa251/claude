@@ -1,0 +1,44 @@
+{
+  "audio": "src/ep2_tr03.wav",
+  "jacket": "src/jacket_ep2.jpg",
+  "logo": "src/logo_black.png",
+  "start": null,
+  "duration": null,
+  "focus": null,
+  "pickup": null,
+  "lead": null,
+  "land": null,
+  "gain_db": -5.0,
+  "fade_in": 0.04,
+  "fade_out": 1.2,
+  "outro": 1.0,
+  "intro_face": {
+    "from": [
+      1600,
+      1140,
+      664
+    ],
+    "to": [
+      1600,
+      1440,
+      920
+    ]
+  },
+  "eyebrow": "2ND EP  MOONLIGHT SANCTUARY  /  TR.03",
+  "title": "Empty Septet",
+  "originals_lines": [
+    "亡き王女の為のセプテット / メイドと血の懐中時計"
+  ],
+  "credits": [
+    [
+      "作詞",
+      "草野華余子"
+    ],
+    [
+      "編曲",
+      "草野華余子"
+    ]
+  ],
+  "work": "work/ep2_tr03",
+  "out": "out/KALANCHOE_ep2_tr03_short_v1.mp4"
+}

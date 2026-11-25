@@ -205,15 +205,21 @@ class Short:
         draw_text(d, TX, 24, cfg['eyebrow'], f_eye, GOLD + (255,), track=0.11, feats=lat)
         self.y_eye = SPY + SPH + 30
         self.rows.append((with_shadow(row), self.y_eye))
-        # 2) 曲名
+        # 2) 曲名。title_sub（「草野華余子ver.」「feat. ○○」など）があれば、曲名のあとに小さく同じ行に並べる
+        sub = cfg.get('title_sub', '')
+        f_sub = font(fonts['body'], 30)
+        sub_w = (text_w(sub, f_sub, 0.02, jp) + 18) if sub else 0
         size = 68
         while True:
             f_title = font(fonts['title'], size)
-            if text_w(cfg['title'], f_title, 0.03, jp) <= TXR - TX or size <= 40:
+            if text_w(cfg['title'], f_title, 0.03, jp) + sub_w <= TXR - TX or size <= 40:
                 break
             size -= 1
         row = Image.new('RGBA', (W, size + 44), (0, 0, 0, 0)); d = ImageDraw.Draw(row)
-        draw_text(d, TX - 3, round(6 + 1.16 * size), cfg['title'], f_title, INK + (255,), track=0.03, feats=jp)
+        base_y = round(6 + 1.16 * size)
+        x_end = draw_text(d, TX - 3, base_y, cfg['title'], f_title, INK + (255,), track=0.03, feats=jp)
+        if sub:
+            draw_text(d, x_end - 0.03 * size + 18, base_y, sub, f_sub, INK + (225,), track=0.02, feats=jp)
         y = self.y_eye + 42
         self.rows.append((with_shadow(row, 9, 0.65), y))
         y += size + 46
@@ -227,20 +233,28 @@ class Short:
             w = text_w(s, f_tag, 0.12)
             draw_text(d, x + (tag_w - w) / 2 + 1, yy + 23, s, f_tag, INK + (225,), track=0.12)
 
-        row = Image.new('RGBA', (W, 44 * len(cfg['originals_lines']) + 10), (0, 0, 0, 0)); d = ImageDraw.Draw(row)
-        tag(d, TX, 7, '原曲')
-        for i, line in enumerate(cfg['originals_lines']):
-            draw_text(d, colx, 44 * i + 31, line, f_body, INK + (255,), track=0.0, feats=['kern'])
-        self.rows.append((with_shadow(row), y))
-        y += 44 * len(cfg['originals_lines']) + 14
-        row = Image.new('RGBA', (W, 54), (0, 0, 0, 0)); d = ImageDraw.Draw(row)
-        x = TX
-        for lab, val in cfg['credits']:
-            tag(d, x, 7, lab)
-            x = draw_text(d, x + 82, 31, val, f_body, INK + (255,), track=0.0, feats=['kern']) + 40
-        self.rows.append((with_shadow(row), y))
-        self.text_bottom = y + 44
-        self.text_right = max(text_w(l, f_body, 0.0, ['kern']) for l in cfg['originals_lines']) + colx
+        # 原曲とクレジットは、設定が空なら行ごと出さない
+        originals = cfg.get('originals_lines') or []
+        credits = cfg.get('credits') or []
+        self.text_right = 0
+        if originals:
+            row = Image.new('RGBA', (W, 44 * len(originals) + 10), (0, 0, 0, 0)); d = ImageDraw.Draw(row)
+            tag(d, TX, 7, '原曲')
+            for i, line in enumerate(originals):
+                draw_text(d, colx, 44 * i + 31, line, f_body, INK + (255,), track=0.0, feats=['kern'])
+                self.text_right = max(self.text_right, colx + text_w(line, f_body, 0.0, ['kern']))
+            self.rows.append((with_shadow(row), y))
+            y += 44 * len(originals) + 14
+        if credits:
+            row = Image.new('RGBA', (W, 54), (0, 0, 0, 0)); d = ImageDraw.Draw(row)
+            x = TX
+            for lab, val in credits:
+                tag(d, x, 7, lab)
+                x = draw_text(d, x + 82, 31, val, f_body, INK + (255,), track=0.0, feats=['kern']) + 40
+            self.text_right = max(self.text_right, x - 40)
+            self.rows.append((with_shadow(row), y))
+            y += 58
+        self.text_bottom = y - 14
         # タイマー
         self.f_time = font(fonts['time'], 23)
         self.tot_s = f"{int(self.dur) // 60}:{int(self.dur) % 60:02d}"

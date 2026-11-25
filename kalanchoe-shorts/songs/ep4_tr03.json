@@ -1,0 +1,44 @@
+{
+  "audio": "src/ep4_tr03.wav",
+  "jacket": "src/jacket_ep4.jpg",
+  "logo": "src/logo_black.png",
+  "start": null,
+  "duration": null,
+  "focus": null,
+  "pickup": null,
+  "lead": null,
+  "land": null,
+  "gain_db": -5.0,
+  "fade_in": 0.04,
+  "fade_out": 1.2,
+  "outro": 1.0,
+  "intro_face": {
+    "from": [
+      1470,
+      1155,
+      498
+    ],
+    "to": [
+      1410,
+      1350,
+      690
+    ]
+  },
+  "eyebrow": "4TH EP  OBLIVION FEAST  /  TR.03",
+  "title": "Imperfect bluemoon",
+  "originals_lines": [
+    "砕月"
+  ],
+  "credits": [
+    [
+      "作詞",
+      "草野華余子"
+    ],
+    [
+      "編曲",
+      "草野華余子"
+    ]
+  ],
+  "work": "work/ep4_tr03",
+  "out": "out/KALANCHOE_ep4_tr03_short_v1.mp4"
+}

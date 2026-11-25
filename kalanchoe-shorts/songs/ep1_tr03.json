@@ -1,0 +1,37 @@
+{
+  "audio": "src/ep1_tr03.wav",
+  "jacket": "src/jacket_ep1.jpg",
+  "logo": "src/logo_black.png",
+  "start": null,
+  "duration": null,
+  "focus": null,
+  "pickup": null,
+  "lead": null,
+  "land": null,
+  "gain_db": -5.0,
+  "fade_in": 0.04,
+  "fade_out": 1.2,
+  "outro": 1.0,
+  "intro_face": {
+    "from": [
+      2300,
+      1420,
+      664
+    ],
+    "to": [
+      2200,
+      1600,
+      920
+    ]
+  },
+  "eyebrow": "1ST EP  WIND OF FAITH  /  TR.03",
+  "title": "Night Flight Believer",
+  "title_sub": "草野華余子ver.",
+  "originals_lines": [
+    "東方妖々夢 ～ Ancient Temple",
+    "広有射怪鳥事 ～ Till When?"
+  ],
+  "credits": [],
+  "work": "work/ep1_tr03",
+  "out": "out/KALANCHOE_ep1_tr03_short_v1.mp4"
+}

@@ -1,0 +1,37 @@
+{
+  "audio": "src/ep1_tr05.wav",
+  "jacket": "src/jacket_ep1.jpg",
+  "logo": "src/logo_black.png",
+  "start": null,
+  "duration": null,
+  "focus": null,
+  "pickup": null,
+  "lead": null,
+  "land": null,
+  "gain_db": -5.0,
+  "fade_in": 0.04,
+  "fade_out": 1.2,
+  "outro": 1.0,
+  "intro_face": {
+    "from": [
+      2300,
+      1420,
+      664
+    ],
+    "to": [
+      2200,
+      1600,
+      920
+    ]
+  },
+  "eyebrow": "1ST EP  WIND OF FAITH  /  TR.05",
+  "title": "LOSTPHANTASIA",
+  "title_sub": "草野華余子ver.",
+  "originals_lines": [
+    "少女綺想曲 ～ Dream Battle / 恋色マスタースパーク",
+    "永夜の報い ～ Imperishable Night."
+  ],
+  "credits": [],
+  "work": "work/ep1_tr05",
+  "out": "out/KALANCHOE_ep1_tr05_short_v1.mp4"
+}

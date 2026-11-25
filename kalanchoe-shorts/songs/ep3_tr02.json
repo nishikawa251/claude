@@ -1,0 +1,44 @@
+{
+  "audio": "src/ep3_tr02.wav",
+  "jacket": "src/jacket_ep3.jpg",
+  "logo": "src/logo_black.png",
+  "start": null,
+  "duration": null,
+  "focus": null,
+  "pickup": null,
+  "lead": null,
+  "land": null,
+  "gain_db": -5.0,
+  "fade_in": 0.04,
+  "fade_out": 1.2,
+  "outro": 1.0,
+  "intro_face": {
+    "from": [
+      1815,
+      975,
+      498
+    ],
+    "to": [
+      1740,
+      1200,
+      690
+    ]
+  },
+  "eyebrow": "3RD EP  NIGHT OF FALL  /  TR.02",
+  "title": "Necro Dreams",
+  "originals_lines": [
+    "ネクロファンタジア"
+  ],
+  "credits": [
+    [
+      "作詞",
+      "草野華余子"
+    ],
+    [
+      "編曲",
+      "草野華余子"
+    ]
+  ],
+  "work": "work/ep3_tr02",
+  "out": "out/KALANCHOE_ep3_tr02_short_v1.mp4"
+}

@@ -1,0 +1,33 @@
+{
+  "audio": "src/ep5_tr01.wav",
+  "jacket": "src/jacket_ep5.jpg",
+  "logo": "src/logo_black.png",
+  "start": null,
+  "duration": null,
+  "focus": null,
+  "pickup": null,
+  "lead": null,
+  "land": null,
+  "gain_db": -5.0,
+  "fade_in": 0.04,
+  "fade_out": 1.2,
+  "outro": 1.0,
+  "intro_face": {
+    "from": [
+      1500,
+      870,
+      498
+    ],
+    "to": [
+      1440,
+      1110,
+      690
+    ]
+  },
+  "eyebrow": "5TH EP  FANTASTIC DRIFT!  /  TR.01",
+  "title": "4-color labyrinth",
+  "originals_lines": [],
+  "credits": [],
+  "work": "work/ep5_tr01",
+  "out": "out/KALANCHOE_ep5_tr01_short_v1.mp4"
+}

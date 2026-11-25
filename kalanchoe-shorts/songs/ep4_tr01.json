@@ -1,0 +1,44 @@
+{
+  "audio": "src/ep4_tr01.wav",
+  "jacket": "src/jacket_ep4.jpg",
+  "logo": "src/logo_black.png",
+  "start": null,
+  "duration": null,
+  "focus": null,
+  "pickup": null,
+  "lead": null,
+  "land": null,
+  "gain_db": -5.0,
+  "fade_in": 0.04,
+  "fade_out": 1.2,
+  "outro": 1.0,
+  "intro_face": {
+    "from": [
+      1470,
+      1155,
+      498
+    ],
+    "to": [
+      1410,
+      1350,
+      690
+    ]
+  },
+  "eyebrow": "4TH EP  OBLIVION FEAST  /  TR.01",
+  "title": "隔壁のモンタージュ",
+  "originals_lines": [
+    "Demystify Feast"
+  ],
+  "credits": [
+    [
+      "作詞",
+      "草野華余子"
+    ],
+    [
+      "編曲",
+      "草野華余子、Coro (魂音泉)"
+    ]
+  ],
+  "work": "work/ep4_tr01",
+  "out": "out/KALANCHOE_ep4_tr01_short_v1.mp4"
+}

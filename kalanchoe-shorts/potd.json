@@ -2,12 +2,12 @@
   "audio": "src/track.wav",
   "jacket": "src/jacket.jpg",
   "logo": "src/logo_black.png",
-  "start": 51.44,
-  "duration": 38.51,
-  "focus": 2.4,
-  "pickup": 4.0,
-  "lead": 4.42,
-  "land": 5.43,
+  "start": 53.8,
+  "duration": 36.15,
+  "focus": 1.2,
+  "pickup": 1.64,
+  "lead": 2.06,
+  "land": 3.07,
   "gain_db": -5.0,
   "fade_in": 0.04,
   "fade_out": 1.05,
@@ -21,5 +21,5 @@
     ["編曲", "BLACK ALBATROSS"]
   ],
   "work": "work",
-  "out": "out/KALANCHOE_PartyOnTheDeadline_short_v8.mp4"
+  "out": "out/KALANCHOE_PartyOnTheDeadline_short_v9.mp4"
 }

@@ -12,6 +12,7 @@
   "fade_in": 0.04,
   "fade_out": 1.05,
   "outro": 1.0,
+  "intro_face": {"from": [1232, 650, 340], "to": [1215, 760, 470]},
   "eyebrow": "6TH EP  PARTY ON THE DEADLINE  /  TR.01",
   "title": "パーティ・オンザ・デッドライン",
   "originals_lines": ["廃獄ララバイ / 死体旅行 ～ Be of good cheer!", "緑眼のジェラシー"],
@@ -20,5 +21,5 @@
     ["編曲", "BLACK ALBATROSS"]
   ],
   "work": "work",
-  "out": "out/KALANCHOE_PartyOnTheDeadline_short_v5.mp4"
+  "out": "out/KALANCHOE_PartyOnTheDeadline_short_v6.mp4"
 }

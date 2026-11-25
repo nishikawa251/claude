@@ -105,6 +105,25 @@ def with_shadow(layer, blur=7, strength=0.6):
     return Image.alpha_composite(sh, layer)
 
 
+def disc_kernel(r):
+    n = int(np.ceil(r)) * 2 + 1
+    yy, xx = np.mgrid[:n, :n] - n // 2
+    k = np.clip(r + 0.5 - np.sqrt(xx ** 2 + yy ** 2), 0, 1).astype(np.float32)
+    return k / k.sum()
+
+
+def lens_blur(img, r):
+    """レンズのボケ。線形光で円形カーネルをかけ、ごく明るい点だけ持ち上げて丸い玉に見せる。img は 0〜1 の float RGB"""
+    if r < 0.6:
+        return img
+    lin = img ** 2.2
+    lum = lin.mean(2)
+    lin = lin * (1 + 2.5 * np.clip((lum - 0.80) / 0.20, 0, 1) ** 3)[..., None]
+    out = cv2.filter2D(lin, -1, disc_kernel(r), borderType=cv2.BORDER_REFLECT)
+    out = out / (1 + 0.35 * np.clip(out - 1, 0, None))
+    return np.clip(out, 0, 1) ** (1 / 2.2)
+
+
 class Short:
     def __init__(self, cfg):
         self.cfg = cfg
@@ -136,6 +155,15 @@ class Short:
         shade = np.zeros((H, W, 4), np.uint8)
         shade[..., 3] = (np.repeat(g[:, None], W, 1) * 255).astype(np.uint8)
         self.shade = Image.fromarray(shade, 'RGBA')
+
+        # 冒頭の顔のアップ（設定の intro_face があるときだけ）
+        self.face = cfg.get('intro_face')
+        if self.face:
+            self.jk_np = np.asarray(jk, np.float32) / 255
+            yy, xx = np.mgrid[:H, :W].astype(np.float32)
+            d = np.sqrt(((xx - W / 2) / (W * 0.75)) ** 2 + ((yy - H * 0.45) / (H * 0.62)) ** 2)
+            self.vig_q = (np.clip(d - 0.35, 0, 1) ** 1.4)[..., None]
+            self.orbs = self.make_orbs(cfg.get('orb_seed', 3))
 
         # ジャケットの面（角丸と細い縁）。影は動きに合わせて card_at で付ける
         j = jk.resize((JS, JS), Image.LANCZOS).convert('RGBA')
@@ -340,9 +368,58 @@ class Short:
         img.alpha_composite(self.shade)
         return img
 
+    # ---------- 冒頭の顔のアップ ----------
+    def make_orbs(self, seed):
+        """前ボケの光の玉（青緑・金・白・青）。大きい玉ほど手前にあるので速く上へ流れる"""
+        rng = np.random.default_rng(seed)
+        cols = np.array([[0.55, 0.85, 0.85], [0.92, 0.82, 0.60], [0.95, 0.95, 1.0], [0.45, 0.65, 0.95]], np.float32)
+        orbs = []
+        for k in range(11):
+            r = rng.uniform(28, 120)
+            n = int(np.ceil(r)) + 3
+            yy, xx = np.mgrid[-n:n + 1, -n:n + 1].astype(np.float32)
+            d = np.sqrt(xx ** 2 + yy ** 2) / r
+            disc = np.clip((1 - d) * r / 3, 0, 1) * (0.75 + 0.25 * np.clip((d - 0.75) / 0.25, 0, 1))  # 縁が少し明るい
+            spr = cv2.GaussianBlur(disc, (0, 0), 1.0)[..., None] * cols[k % 4] * rng.uniform(0.06, 0.20) * 0.8
+            orbs.append((spr, rng.uniform(-0.05, 1.05) * W, rng.uniform(0.0, 1.1) * H, 12 + r * 0.25))
+        return orbs
+
+    def face_plate(self, t):
+        """ジャケットのイラストから顔をアップで切り出す。瞳のアップ（from）からゆっくり引き（to）、
+        ロゴにピントが移るにつれて顔はぼけて暗くなる。手前には光の玉が浮かぶ"""
+        u = STD(t / self.lead)
+        cx, cy, cw = [a + (b - a) * u for a, b in zip(self.face['from'], self.face['to'])]
+        ch = cw * 16 / 9
+        M = np.float32([[cw / W, 0, cx - cw / 2], [0, ch / H, cy - ch / 2]])
+        img = np.clip(cv2.warpAffine(self.jk_np, M, (W, H), flags=cv2.INTER_LANCZOS4 | cv2.WARP_INVERSE_MAP,
+                                     borderMode=cv2.BORDER_REFLECT), 0, 1)
+        pf = STD(t / self.t_focus)
+        r = 3 + 11 * pf + 4 * STD((t - self.t_focus) / (self.lead - self.t_focus))
+        img = lens_blur(img, r)
+        bright, vig = 0.54 - 0.14 * pf, 0.50 + 0.15 * pf
+        img = np.clip(img * bright * (1 - vig * self.vig_q) * np.array([0.90, 1.0, 1.06], np.float32), 0, 1)
+        fa = DEC((t - 0.6) / 1.4)                       # 光の玉はピントがロゴへ移るにつれて出てくる
+        if fa > 0:
+            for spr, x, y0, vy in self.orbs:
+                y = y0 - vy * t
+                hs = spr.shape[0] // 2
+                x0, y1 = int(round(x)) - hs, int(round(y)) - hs
+                sx0, sy0 = max(0, -x0), max(0, -y1)
+                ex, ey = min(spr.shape[1], W - x0), min(spr.shape[0], H - y1)
+                if sx0 >= ex or sy0 >= ey:
+                    continue
+                reg = img[y1 + sy0:y1 + ey, x0 + sx0:x0 + ex]
+                img[y1 + sy0:y1 + ey, x0 + sx0:x0 + ex] = 1 - (1 - reg) * (1 - spr[sy0:ey, sx0:ex] * fa)
+        return Image.fromarray((img * 255).astype(np.uint8)).convert('RGBA')
+
     def frame(self, i):
         t = i / FPS
         fr = self.background(i, t)
+        # 冒頭は顔のアップ。サビ頭から 0.6秒でいつもの背景へ切り替える
+        if self.face and t < self.lead + 0.6:
+            a = DEC((t - self.lead) / 0.6)
+            fp = self.face_plate(t)
+            fr = fp if a <= 0 else Image.blend(fp, fr, a)
         # ジャケット：サビ頭から下から上がり、land で着地。浮いているあいだは影が遠く大きい（二次動作）
         pt = (t - self.lead) / (self.land - self.lead)
         if pt > 0:
@@ -368,7 +445,9 @@ class Short:
             h0 = LOGO0_H * push
             h = (h0 + (LOGO_H - h0) * pl) * breath
             cy = LOGO0_CY + ((LOGO_Y + LOGO_H / 2) - LOGO0_CY) * pl
-            lg = self.logo_img(h, (1 - pf) * 46, 0.35 + 0.65 * DEC(t / 0.3))
+            # 顔のアップがあるときは、ピントが顔からロゴへ移るのに合わせてロゴを 0 から出す
+            la = DEC((t - 0.2) / 1.4) if self.face else 0.35 + 0.65 * DEC(t / 0.3)
+            lg = self.logo_img(h, (1 - pf) * 46, la)
         fr.alpha_composite(lg, (round(W / 2 - lg.width / 2), round(cy - lg.height / 2)))
         # 波形と文字：ジャケットが上がりきる手前から、下から順に出す
         order = [('spec', None)] + [('row', r) for r in self.rows]

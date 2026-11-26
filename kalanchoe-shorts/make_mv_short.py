@@ -9,7 +9,11 @@
   offset  曲の時刻 = MV の時刻 + offset（tools/mv_align.py で測る）
   crop_x  切り抜きの左端（元の映像の px）。省くと中央
   layout  "fit" にすると横幅いっぱい（MV を削らずに幅 1080 に置き、上下は同じ映像のぼかしで埋める）
+  fit_src_w / fit_cx  fit のとき、元の映像の幅 fit_src_w（中心 fit_cx）だけを切り抜いて幅いっぱいに置く（省くと全体）
+  fit_y   fit のときの MV の上端（省くと、曲情報ありは 300、なしは真ん中）
   info    true にすると、fit のとき上にロゴ、MV の下に曲情報（小見出し・曲名・原曲・作詞編曲）を載せる。MV の上端は y=300
+          layout "stack" では常に載せる
+  layout  "stack" にすると、同じ MV を2つ上下に並べる（幅 940、角丸と影はジャケット版のカードと同じ）。上にロゴ、下に曲情報
   crop    "track" にすると、tools/mv_track.py が作った mv/<name>.track.json のコマごとの位置で切り抜く（自動追従）
   track   自動追従の位置のファイル（crop が "track" のとき）
   out     書き出し先
@@ -43,6 +47,65 @@ def info_overlay(m, c, mv_bottom):
     return out
 
 
+STACK_W, STACK_Y, STACK_GAP, STACK_R = 940, 212, 16, 14
+
+
+def stack_layers(m, c, fw, fh, ys):
+    """2つ並べる版の下敷き（上下の暗がりとカードの影）、上掛け（ロゴ・曲情報・カードの細い縁）、角丸のマスクを作る"""
+    from PIL import Image, ImageDraw, ImageFilter
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import make_short as ms
+    cfg = dict(c); cfg['work'] = 'work/mvfit'; os.makedirs('work/mvfit', exist_ok=True)
+    sh = ms.Short(cfg)
+    x0 = (W - fw) // 2
+    under = Image.new('RGBA', (W, H), (0, 0, 0, 0)); under.alpha_composite(sh.shade)
+    shd = Image.new('L', (W, H), 0); d = ImageDraw.Draw(shd)
+    for y in ys:
+        d.rounded_rectangle((x0 - 4, y + 14, x0 + fw + 4, y + fh + 16 + 14), 18, fill=175)
+    sl = Image.new('RGBA', (W, H), (0, 0, 0, 0)); sl.putalpha(shd.filter(ImageFilter.GaussianBlur(26)))
+    under.alpha_composite(sl)
+    over = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(over)
+    for y in ys:
+        d.rounded_rectangle((x0, y, x0 + fw - 1, y + fh - 1), STACK_R, outline=(255, 255, 255, 44), width=1)
+    lg = sh.logo_rest
+    over.alpha_composite(lg, (round(W / 2 - lg.width / 2), round(ms.LOGO_Y + ms.LOGO_H / 2 - lg.height / 2)))
+    dy = (ys[-1] + fh + 34) - sh.y_eye
+    for row, y in sh.rows:
+        over.alpha_composite(row, (0, y + dy))
+    mk = Image.new('L', (fw * 2, fh * 2), 0)
+    ImageDraw.Draw(mk).rounded_rectangle((0, 0, fw * 2 - 1, fh * 2 - 1), STACK_R * 2, fill=255)
+    mk = mk.resize((fw, fh), Image.LANCZOS)
+    base = os.path.join('work/mvfit', os.path.splitext(os.path.basename(m['out']))[0])
+    under.save(base + '_under.png'); over.save(base + '_over.png'); mk.save(base + '_mask.png')
+    print('info bottom y', sh.text_bottom + dy)
+    return base + '_under.png', base + '_over.png', base + '_mask.png'
+
+
+def render_stack(m, c, st, dur, fi, fo, mv_st, sw, sh, out):
+    fw = STACK_W; fh = round(fw * sh / sw / 2) * 2
+    ys = [STACK_Y, STACK_Y + fh + STACK_GAP]
+    under, over, mask = stack_layers(m, c, fw, fh, ys); x0 = (W - fw) // 2
+    fc = (f"[0:v]split=2[a][b];"
+          f"[a]scale=-2:{H}:flags=bicubic,crop={W}:{H},scale={W // 8}:{H // 8},gblur=sigma=6,scale={W}:{H}:flags=bicubic,"
+          f"eq=brightness=-0.06:saturation=1.05,colorchannelmixer=rr=0.55:gg=0.55:bb=0.55[bg0];"
+          f"[bg0][2:v]overlay=0:0[bg];"
+          f"[4:v]format=gray,split=2[m1][m2];"
+          f"[b]scale={fw}:{fh}:flags=lanczos,format=rgba,split=2[f1][f2];"
+          f"[f1][m1]alphamerge[c1];[f2][m2]alphamerge[c2];"
+          f"[bg][c1]overlay={x0}:{ys[0]}[t1];[t1][c2]overlay={x0}:{ys[1]}[t2];[t2][3:v]overlay=0:0,setsar=1,format=yuv420p,"
+          f"fade=t=in:st=0:d=0.25,fade=t=out:st={dur - fo:.3f}:d={fo}[v]")
+    af = f"volume={c.get('gain_db', -2.0)}dB,afade=t=in:st=0:d={fi},afade=t=out:st={dur - fo:.3f}:d={fo}"
+    loop = lambda p: ['-loop', '1', '-t', f'{dur:.3f}', '-i', p]
+    subprocess.run(['ffmpeg', '-y', '-v', 'error',
+                    '-ss', f'{mv_st:.3f}', '-t', f'{dur:.3f}', '-i', m['mv'],
+                    '-ss', f'{st:.3f}', '-t', f'{dur:.3f}', '-i', c['audio'], *loop(under), *loop(over), *loop(mask),
+                    '-filter_complex', fc, '-map', '[v]', '-map', '1:a', '-af', af,
+                    '-c:v', 'libx264', '-crf', '16', '-preset', 'slow', '-pix_fmt', 'yuv420p',
+                    '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709',
+                    '-c:a', 'aac', '-b:a', '320k', '-movflags', '+faststart', '-t', f'{dur:.3f}', out], check=True)
+    print('wrote', out)
+
+
 def main():
     m = json.load(open(sys.argv[1], encoding='utf-8'))
     c = json.load(open(m['song'], encoding='utf-8'))
@@ -61,9 +124,13 @@ def main():
     out = m['out']; os.makedirs(os.path.dirname(out) or '.', exist_ok=True)
     if m.get('crop') == 'track':
         return render_tracked(m, c, st, dur, fi, fo, sw, sh, cw, out)
+    if m.get('layout') == 'stack':
+        return render_stack(m, c, st, dur, fi, fo, mv_st, sw, sh, out)
     if m.get('layout') == 'fit':
         # 横幅いっぱい：MV を削らずに幅 1080 に置き（16:9 なら高さ 608）、上下は同じ映像を縦いっぱいに拡大してぼかし、暗くして埋める
-        fh = round(W * sh / sw / 2) * 2
+        srcw = int(m.get('fit_src_w', sw)); srcx = int(m.get('fit_cx', sw / 2) - srcw / 2)   # 元の映像のどの幅を見せるか
+        srcx = max(0, min(sw - srcw, srcx))
+        fh = round(W * sh / srcw / 2) * 2
         info = m.get('info', False)
         fy = int(m.get('fit_y', FIT_Y_INFO if info else (H - fh) // 2))
         extra_in, ov = [], ''
@@ -74,7 +141,7 @@ def main():
         fc = (f"[0:v]split=2[a][b];"
               f"[a]scale=-2:{H}:flags=bicubic,crop={W}:{H},scale={W // 8}:{H // 8},gblur=sigma=6,scale={W}:{H}:flags=bicubic,"
               f"eq=brightness=-0.06:saturation=1.05,colorchannelmixer=rr=0.55:gg=0.55:bb=0.55[bg];"
-              f"[b]scale={W}:{fh}:flags=lanczos[fg];[bg][fg]overlay=0:{fy}{ov},setsar=1,"
+              f"[b]crop={srcw}:{sh}:{srcx}:0,scale={W}:{fh}:flags=lanczos[fg];[bg][fg]overlay=0:{fy}{ov},setsar=1,"
               f"fade=t=in:st=0:d=0.25,fade=t=out:st={dur - fo:.3f}:d={fo}[v]")
         af = f"volume={c.get('gain_db', -2.0)}dB,afade=t=in:st=0:d={fi},afade=t=out:st={dur - fo:.3f}:d={fo}"
         subprocess.run(['ffmpeg', '-y', '-v', 'error',

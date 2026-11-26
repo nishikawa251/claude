@@ -8,6 +8,7 @@
   mv      MV の動画ファイル（1920x1080）
   offset  曲の時刻 = MV の時刻 + offset（tools/mv_align.py で測る）
   crop_x  切り抜きの左端（元の映像の px）。省くと中央
+  layout  "fit" にすると横幅いっぱい（MV を削らずに幅 1080 に置き、上下は同じ映像のぼかしで埋める）
   crop    "track" にすると、tools/mv_track.py が作った mv/<name>.track.json のコマごとの位置で切り抜く（自動追従）
   track   自動追従の位置のファイル（crop が "track" のとき）
   out     書き出し先
@@ -39,6 +40,23 @@ def main():
     out = m['out']; os.makedirs(os.path.dirname(out) or '.', exist_ok=True)
     if m.get('crop') == 'track':
         return render_tracked(m, c, st, dur, fi, fo, sw, sh, cw, out)
+    if m.get('layout') == 'fit':
+        # 横幅いっぱい：MV を削らずに幅 1080 に置き（16:9 なら高さ 608）、上下は同じ映像を縦いっぱいに拡大してぼかし、暗くして埋める
+        fh = round(W * sh / sw / 2) * 2
+        fc = (f"[0:v]split=2[a][b];"
+              f"[a]scale=-2:{H}:flags=bicubic,crop={W}:{H},scale={W // 8}:{H // 8},gblur=sigma=6,scale={W}:{H}:flags=bicubic,"
+              f"eq=brightness=-0.06:saturation=1.05,colorchannelmixer=rr=0.55:gg=0.55:bb=0.55[bg];"
+              f"[b]scale={W}:{fh}:flags=lanczos[fg];[bg][fg]overlay=0:{(H - fh) // 2},setsar=1,"
+              f"fade=t=in:st=0:d=0.25,fade=t=out:st={dur - fo:.3f}:d={fo}[v]")
+        af = f"volume={c.get('gain_db', -2.0)}dB,afade=t=in:st=0:d={fi},afade=t=out:st={dur - fo:.3f}:d={fo}"
+        subprocess.run(['ffmpeg', '-y', '-v', 'error',
+                        '-ss', f'{mv_st:.3f}', '-t', f'{dur:.3f}', '-i', m['mv'],
+                        '-ss', f'{st:.3f}', '-t', f'{dur:.3f}', '-i', c['audio'],
+                        '-filter_complex', fc, '-map', '[v]', '-map', '1:a', '-af', af,
+                        '-c:v', 'libx264', '-crf', '16', '-preset', 'slow', '-pix_fmt', 'yuv420p',
+                        '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709',
+                        '-c:a', 'aac', '-b:a', '320k', '-movflags', '+faststart', '-t', f'{dur:.3f}', out], check=True)
+        print('wrote', out); return
     vf = (f"crop={cw}:{sh}:{x}:0,scale={W}:{H}:flags=lanczos,setsar=1,"
           f"fade=t=in:st=0:d=0.25,fade=t=out:st={dur - fo:.3f}:d={fo}")
     af = f"volume={c.get('gain_db', -2.0)}dB,afade=t=in:st=0:d={fi},afade=t=out:st={dur - fo:.3f}:d={fo}"

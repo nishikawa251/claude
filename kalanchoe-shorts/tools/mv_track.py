@@ -11,7 +11,9 @@ make_mv_short.py が "crop": "track" のときにこのファイルで書き出�
   中央：弱い重み。何もない場面は中央に寄る。
 引き　：0.3秒先まで見て、1つの文字のかたまりが、縦いっぱいの枠（元の映像の幅 608px）より広いときだけ、その文字が収まるまで引く（文字の幅の1.25倍＋130px、最大 1320px）。
         引いているあいだ、上下は同じ映像をぼかして埋める。文字が消えるか場面が変わったら戻る。
-動き　：場面の切り替わりでは一気に移る。同じ場面の中は、目標が今より 30% 以上よいときだけ、加速・減速をつけて動く。
+動き　：場面（カット）ごとに位置と引き具合を1つに決め、場面の中では動かさない。毎コマ追うとブレて見える（川西さん
+        「ずっとブレブレになっちゃうのがダメダメ」）。位置が変わるのは MV のカットの瞬間だけ。0.6秒より短い場面は前にまとめる。
+        広い文字が出る場面は、場面のはじめから引いておく。
 """
 import json, os, subprocess, sys
 import numpy as np, cv2
@@ -118,36 +120,25 @@ for j in range(n):
             sc = sc + 2.0 * np.exp(-0.5 * ((xs - last_head) / (0.12 * A)) ** 2)
     score[j] = sc
     if use_zoom and wide_best is not None: wide[j] = wide_best[0]
-w = int(round(CW / k)); csum = np.cumsum(np.pad(score, ((0, 0), (1, 0))), axis=1)
-win = csum[:, w:] - csum[:, :-w]; best = win.argmax(1) + w / 2
-lo, hi = w / 2, A - w / 2
-vmax = 1100 / k / fps; acc = vmax / (0.25 * fps)
-cx = np.zeros(n); vw = np.full(n, float(CW))
-for a, b in zip(shots[:-1], shots[1:]):
-    pos = float(np.clip(np.median(best[a:min(b, a + max(1, round(0.3 * fps)))]), lo, hi)); vel = 0.0; goal = pos; hold = 0
-    V = float(CW); gone = 0
-    for j in range(a, b):
-        # 引き：広い文字があれば、その文字が収まる幅へ。文字が 0.5秒見えなければ戻る
-        if wide[j] is not None:
-            bx = wide[j]; tV = float(np.clip((bx[1] - bx[0]) * k * 1.25 + 130, CW, VMAX)); zc = (bx[0] + bx[1]) / 2; gone = 0
-        else:
-            gone += 1; tV = V if gone < round(0.5 * fps) and V > CW + 1 else float(CW); zc = None
-        V = tV if j == a else V + (tV - V) * 0.16
-        cur = int(np.clip(round(pos - w / 2), 0, win.shape[1] - 1))
-        if zc is not None:
-            goal = float(zc)
-        elif hold <= 0 and win[j].max() > 1.3 * win[j, cur]:
-            goal = float(np.clip(best[j], lo, hi))
-        d = goal - pos; stop = vel * vel / (2 * acc)
-        if abs(d) < 0.5 and abs(vel) < acc: pos, vel = goal, 0.0
-        else:
-            fast = 3 if zc is not None else 1                 # 広い文字へは速く寄る
-            want = np.sign(d) * (vmax * fast if abs(d) > stop * (1 if fast == 1 else 1 / 3) else 0)
-            vel = vel + np.clip(want - vel, -acc * 2 * fast, acc * 2 * fast); pos = pos + vel
-            if abs(goal - pos) < 0.5 and abs(vel) <= acc: hold = round(0.4 * fps)
-        hold -= 1
-        half = V / k / 2
-        cx[j] = np.clip(pos, half, A - half); vw[j] = V
+# 場面（カット）ごとに、映す位置と引き具合を1つに決めて、場面の中では動かさない（毎コマ追うとブレて見えるため）。
+# 0.6秒より短い場面は前の場面にまとめる（フラッシュなどを切り替わりと見誤らないように）
+min_len = round(0.6 * fps); cuts2 = [0]
+for x in shots[1:-1]:
+    if x - cuts2[-1] >= min_len and n - x >= min_len: cuts2.append(x)
+cuts2.append(n)
+cx = np.zeros(n); vw = np.full(n, float(CW)); face_of = {}
+for a, b in zip(cuts2[:-1], cuts2[1:]):
+    S = score[a:b].sum(0)                                   # 場面全体で見るべき所を足し合わせる
+    wb = [wide[j] for j in range(a, b) if wide[j] is not None]
+    if wb:                                                  # 広い文字が出る場面は、場面のはじめから引いておく
+        x0 = min(bx[0] for bx in wb); x1 = max(bx[1] for bx in wb)
+        V = float(np.clip((x1 - x0) * k * 1.12 + 120, CW, VMAX)); half = V / k / 2
+        cen = float(np.clip((x0 + x1) / 2, half, A - half))
+    else:
+        V = float(CW); wv = int(round(CW / k)); cs = np.cumsum(np.pad(S, (1, 0)))
+        cen = float((cs[wv:] - cs[:-wv]).argmax() + wv / 2)
+    cx[a:b] = cen; vw[a:b] = V
+    face_of[a] = any(face_shot.get(x, False) for x in shots[:-1] if a <= x < b)
 cxs = cx * k
 json.dump({'fps': fps, 'crop_w': CW, 'cx': [round(float(v), 2) for v in cxs], 'vw': [round(float(v), 2) for v in vw],
            'cuts': [j for j in range(n) if cut[j]], 'face_shots': [a for a in face_shot if face_shot[a]]},
@@ -160,8 +151,8 @@ for q, j in enumerate(idx):
     x0 = int((cxs[j] - vw[j] / 2) / SW * tw); x1 = int((cxs[j] + vw[j] / 2) / SW * tw)
     col = (255, 220, 0) if vw[j] <= CW + 1 else (0, 255, 120)
     cv2.rectangle(im, (x0, 0), (x1, thh - 1), col, 2)
-    sh_a = max(a for a in shots[:-1] if a <= j)
-    cv2.putText(im, f'{st + j / fps:.1f}' + (' F' if face_shot[sh_a] else ''), (4, 14), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+    sh_a = max(a for a in cuts2[:-1] if a <= j)
+    cv2.putText(im, f'{st + j / fps:.1f}' + (' F' if face_of[sh_a] else ''), (4, 14), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
     yy, xx = (q // cols) * (thh + 4), (q % cols) * (tw + 4); sheet[yy:yy + thh, xx:xx + tw] = im
 cv2.imwrite(f'work/mvtrack/{name}_sheet.png', cv2.cvtColor(sheet, cv2.COLOR_RGB2BGR))
-print('face shots', sum(face_shot.values()), 'zoom frames', int((vw > CW + 1).sum()), 'saved')
+print('shots', len(cuts2) - 1, 'face shots', sum(face_of.values()), 'zoom frames', int((vw > CW + 1).sum()), 'saved')

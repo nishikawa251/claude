@@ -14,7 +14,9 @@
   info    true にすると、fit のとき上にロゴ、MV の下に曲情報（小見出し・曲名・原曲・作詞編曲）を載せる。MV の上端は y=300
           layout "stack" では常に載せる
   layout  "stack" にすると、同じ MV を2つ上下に並べる（幅 940、角丸と影はジャケット版のカードと同じ）。上にロゴ、下に曲情報
-          stack_info: false で曲情報なし、stack_logo: "bottom" でロゴを2つの MV の下に置く（川西さんの決定はこの形）
+          stack_info: false で曲情報なし、"title" でロゴの下に曲名と原曲だけ（中央そろえ）。stack_logo: "bottom" でロゴを
+          2つの MV の下に置く。stack_w / stack_y / stack_gap / stack_logo_h / stack_logo_gap で大きさと位置を変えられる
+          確認用の静止画：python3 make_mv_short.py mv/x.json --still 秒 出力.png
   crop    "track" にすると、tools/mv_track.py が作った mv/<name>.track.json のコマごとの位置で切り抜く（自動追従）
   track   自動追従の位置のファイル（crop が "track" のとき）
   out     書き出し先
@@ -51,6 +53,32 @@ def info_overlay(m, c, mv_bottom):
 STACK_W, STACK_Y, STACK_GAP, STACK_R = 940, 212, 16, 14
 
 
+def title_block(over, ms, c, top):
+    """ロゴの下に、曲名（太字、中央）と原曲（「原曲」のタグ＋行、ブロックごと中央）を置く。書体はジャケット版と同じ"""
+    from PIL import Image, ImageDraw
+    fonts = {**ms.FONTS, **c.get('fonts', {})}; jp = ['palt', 'kern']; maxw = 900
+    size = 54
+    while True:
+        ft = ms.font(fonts['title'], size)
+        if ms.text_w(c['title'], ft, 0.03, jp) <= maxw or size <= 36: break
+        size -= 1
+    row = Image.new('RGBA', (W, size + 40), (0, 0, 0, 0)); d = ImageDraw.Draw(row)
+    tw = ms.text_w(c['title'], ft, 0.03, jp); base = round(4 + 1.16 * size)
+    ms.draw_text(d, (W - tw) / 2, base, c['title'], ft, ms.INK + (255,), track=0.03, feats=jp)
+    y = top + 18; over.alpha_composite(ms.with_shadow(row, 9, 0.65), (0, y)); y += size + 26
+    lines = c.get('originals_lines') or []
+    if lines:
+        fb = ms.font(fonts['body'], 25); ftag = ms.font(fonts['tag'], 18); tag_w, tag_h, gap, lh = 56, 28, 14, 37
+        bw = tag_w + gap + max(ms.text_w(l, fb, 0.0, ['kern']) for l in lines); x0 = (W - bw) / 2
+        row = Image.new('RGBA', (W, lh * len(lines) + 10), (0, 0, 0, 0)); d = ImageDraw.Draw(row)
+        d.rounded_rectangle((x0, 4, x0 + tag_w, 4 + tag_h), 5, outline=ms.INK + (150,), width=2)
+        tws = ms.text_w('原曲', ftag, 0.12); ms.draw_text(d, x0 + (tag_w - tws) / 2 + 1, 4 + 21, '原曲', ftag, ms.INK + (225,), track=0.12)
+        for i, l in enumerate(lines):
+            ms.draw_text(d, x0 + tag_w + gap, 4 + 22 + lh * i, l, fb, ms.INK + (255,), feats=['kern'])
+        over.alpha_composite(ms.with_shadow(row), (0, y)); y += lh * len(lines) + 10
+    print('title block bottom y', y)
+
+
 def stack_layers(m, c, fw, fh, ys):
     """2つ並べる版の下敷き（上下の暗がりとカードの影）、上掛け（ロゴ・曲情報・カードの細い縁）、角丸のマスクを作る"""
     from PIL import Image, ImageDraw, ImageFilter
@@ -68,13 +96,15 @@ def stack_layers(m, c, fw, fh, ys):
     over = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(over)
     for y in ys:
         d.rounded_rectangle((x0, y, x0 + fw - 1, y + fh - 1), STACK_R, outline=(255, 255, 255, 44), width=1)
-    lg = sh.logo_rest
+    lg = sh.logo_img(int(m.get('stack_logo_h', ms.LOGO_H)), 0)
     if m.get('stack_logo', 'top') == 'bottom':                          # ロゴを2つの MV の下に置く
-        ly = ys[-1] + fh + 40
+        ly = ys[-1] + fh + int(m.get('stack_logo_gap', 40))
         over.alpha_composite(lg, (round(W / 2 - lg.width / 2), ly)); print('logo y', ly, '-', ly + lg.height)
+        if m.get('stack_info') == 'title':                              # ロゴの下に曲名と原曲だけ（中央そろえ）
+            title_block(over, ms, c, ly + lg.height)
     else:
         over.alpha_composite(lg, (round(W / 2 - lg.width / 2), round(ms.LOGO_Y + ms.LOGO_H / 2 - lg.height / 2)))
-    if m.get('stack_info', True):
+    if m.get('stack_info', True) is True:
         dy = (ys[-1] + fh + 34) - sh.y_eye
         for row, y in sh.rows:
             over.alpha_composite(row, (0, y + dy))
@@ -87,9 +117,9 @@ def stack_layers(m, c, fw, fh, ys):
     return base + '_under.png', base + '_over.png', base + '_mask.png'
 
 
-def render_stack(m, c, st, dur, fi, fo, mv_st, sw, sh, out):
-    fw = STACK_W; fh = round(fw * sh / sw / 2) * 2
-    ys = [STACK_Y, STACK_Y + fh + STACK_GAP]
+def render_stack(m, c, st, dur, fi, fo, mv_st, sw, sh, out, still=None):
+    fw = int(m.get('stack_w', STACK_W)); fh = round(fw * sh / sw / 2) * 2
+    y0 = int(m.get('stack_y', STACK_Y)); ys = [y0, y0 + fh + int(m.get('stack_gap', STACK_GAP))]
     under, over, mask = stack_layers(m, c, fw, fh, ys); x0 = (W - fw) // 2
     fc = (f"[0:v]split=2[a][b];"
           f"[a]scale=-2:{H}:flags=bicubic,crop={W}:{H},scale={W // 8}:{H // 8},gblur=sigma=6,scale={W}:{H}:flags=bicubic,"
@@ -102,6 +132,12 @@ def render_stack(m, c, st, dur, fi, fo, mv_st, sw, sh, out):
           f"fade=t=in:st=0:d=0.25,fade=t=out:st={dur - fo:.3f}:d={fo}[v]")
     af = f"volume={c.get('gain_db', -2.0)}dB,afade=t=in:st=0:d={fi},afade=t=out:st={dur - fo:.3f}:d={fo}"
     loop = lambda p: ['-loop', '1', '-t', f'{dur:.3f}', '-i', p]
+    if still is not None:                       # 確認用の静止画（区間の頭から still 秒のコマ）
+        fc1 = fc.replace(f",fade=t=in:st=0:d=0.25,fade=t=out:st={dur - fo:.3f}:d={fo}", '')
+        subprocess.run(['ffmpeg', '-y', '-v', 'error', '-ss', f'{mv_st + still:.3f}', '-i', m['mv'],
+                        '-f', 'lavfi', '-i', 'anullsrc', *loop(under), *loop(over), *loop(mask),
+                        '-filter_complex', fc1, '-map', '[v]', '-frames:v', '1', out], check=True)
+        print('wrote', out); return
     subprocess.run(['ffmpeg', '-y', '-v', 'error',
                     '-ss', f'{mv_st:.3f}', '-t', f'{dur:.3f}', '-i', m['mv'],
                     '-ss', f'{st:.3f}', '-t', f'{dur:.3f}', '-i', c['audio'], *loop(under), *loop(over), *loop(mask),
@@ -131,6 +167,9 @@ def main():
     if m.get('crop') == 'track':
         return render_tracked(m, c, st, dur, fi, fo, sw, sh, cw, out)
     if m.get('layout') == 'stack':
+        if '--still' in sys.argv:              # python3 make_mv_short.py mv/x.json --still 8 out.png
+            k = sys.argv.index('--still')
+            return render_stack(m, c, st, dur, fi, fo, mv_st, sw, sh, sys.argv[k + 2], still=float(sys.argv[k + 1]))
         return render_stack(m, c, st, dur, fi, fo, mv_st, sw, sh, out)
     if m.get('layout') == 'fit':
         # 横幅いっぱい：MV を削らずに幅 1080 に置き（16:9 なら高さ 608）、上下は同じ映像を縦いっぱいに拡大してぼかし、暗くして埋める

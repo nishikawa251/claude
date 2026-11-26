@@ -461,6 +461,11 @@ python3 make_mv_short.py mv/potd.json      # 設定は mv/*.json、書き出し�
 - YouTube と TikTok の両方で、右のボタン列が下の MV カードの右端にかかります。
 - カードを小さく（幅 880 前後）して全体を上に詰めれば避けられます。まだ直していません。
 
+**上下版 v2（2026年11月26日）。** 川西さんの「曲情報無し　上のロゴを下へ」で、曲情報を外し、ロゴを2つの MV の下（y=1324〜1452）に移しました（`"stack_info": false, "stack_logo": "bottom"`、`out/mv/*_mv_short_stack_v2.mp4`）。
+
+- TikTok の上のタブには、もう何もかかりません。下の UI（y≒1560〜）にもかかりません。
+- 右のボタン列は、まだ下の MV カードの右端に少しかかります。
+
 **リサーチ（横長 MV を縦で流すやり方）。** 別の作業者が調べた結果の要点です。縦型版を別に作る例（AKB48、Midnight Grand Orchestra、≒JOY、のんの縦型リリックビデオなど）がいちばん確実です。Premiere の Auto Reframe や CapCut などの自動追従は顔や人物を追う設計で、焼き込まれた文字は考慮しません（Adobe も明言）。Instagram は公式ヘルプで「枠（borders）」のあるリールはおすすめに出にくいとしています。YouTube で「黒帯は伸びない」という公式の発言は見つかっていません。
 
 書き出しは1本1〜3分です（60fps の Moonlight Sanctuary がいちばん長い）。

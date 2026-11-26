@@ -2,6 +2,8 @@
   "song": "songs/ep1_tr01.json",
   "mv": "src/mv/ep1_tr01_1080p.mp4",
   "offset": 0.168,
-  "out": "out/mv/KALANCHOE_ep1_tr01_mv_short_stack_v1.mp4",
-  "layout": "stack"
+  "out": "out/mv/KALANCHOE_ep1_tr01_mv_short_stack_v2.mp4",
+  "layout": "stack",
+  "stack_info": false,
+  "stack_logo": "bottom"
 }

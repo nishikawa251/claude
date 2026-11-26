@@ -14,6 +14,7 @@
   info    true にすると、fit のとき上にロゴ、MV の下に曲情報（小見出し・曲名・原曲・作詞編曲）を載せる。MV の上端は y=300
           layout "stack" では常に載せる
   layout  "stack" にすると、同じ MV を2つ上下に並べる（幅 940、角丸と影はジャケット版のカードと同じ）。上にロゴ、下に曲情報
+          stack_info: false で曲情報なし、stack_logo: "bottom" でロゴを2つの MV の下に置く（川西さんの決定はこの形）
   crop    "track" にすると、tools/mv_track.py が作った mv/<name>.track.json のコマごとの位置で切り抜く（自動追従）
   track   自動追従の位置のファイル（crop が "track" のとき）
   out     書き出し先
@@ -68,16 +69,21 @@ def stack_layers(m, c, fw, fh, ys):
     for y in ys:
         d.rounded_rectangle((x0, y, x0 + fw - 1, y + fh - 1), STACK_R, outline=(255, 255, 255, 44), width=1)
     lg = sh.logo_rest
-    over.alpha_composite(lg, (round(W / 2 - lg.width / 2), round(ms.LOGO_Y + ms.LOGO_H / 2 - lg.height / 2)))
-    dy = (ys[-1] + fh + 34) - sh.y_eye
-    for row, y in sh.rows:
-        over.alpha_composite(row, (0, y + dy))
+    if m.get('stack_logo', 'top') == 'bottom':                          # ロゴを2つの MV の下に置く
+        ly = ys[-1] + fh + 40
+        over.alpha_composite(lg, (round(W / 2 - lg.width / 2), ly)); print('logo y', ly, '-', ly + lg.height)
+    else:
+        over.alpha_composite(lg, (round(W / 2 - lg.width / 2), round(ms.LOGO_Y + ms.LOGO_H / 2 - lg.height / 2)))
+    if m.get('stack_info', True):
+        dy = (ys[-1] + fh + 34) - sh.y_eye
+        for row, y in sh.rows:
+            over.alpha_composite(row, (0, y + dy))
+        print('info bottom y', sh.text_bottom + dy)
     mk = Image.new('L', (fw * 2, fh * 2), 0)
     ImageDraw.Draw(mk).rounded_rectangle((0, 0, fw * 2 - 1, fh * 2 - 1), STACK_R * 2, fill=255)
     mk = mk.resize((fw, fh), Image.LANCZOS)
     base = os.path.join('work/mvfit', os.path.splitext(os.path.basename(m['out']))[0])
     under.save(base + '_under.png'); over.save(base + '_over.png'); mk.save(base + '_mask.png')
-    print('info bottom y', sh.text_bottom + dy)
     return base + '_under.png', base + '_over.png', base + '_mask.png'
 
 

@@ -1,0 +1,10 @@
+{
+  "song": "potd.json",
+  "mv": "src/mv/potd_master.mp4",
+  "offset": -0.021,
+  "out": "out/mv/KALANCHOE_PartyOnTheDeadline_mv_short_fit_info_test.mp4",
+  "start": 53.8,
+  "fade_in": 0.05,
+  "layout": "fit",
+  "info": true
+}

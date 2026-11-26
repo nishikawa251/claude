@@ -9,6 +9,7 @@
   offset  曲の時刻 = MV の時刻 + offset（tools/mv_align.py で測る）
   crop_x  切り抜きの左端（元の映像の px）。省くと中央
   layout  "fit" にすると横幅いっぱい（MV を削らずに幅 1080 に置き、上下は同じ映像のぼかしで埋める）
+  info    true にすると、fit のとき上にロゴ、MV の下に曲情報（小見出し・曲名・原曲・作詞編曲）を載せる。MV の上端は y=300
   crop    "track" にすると、tools/mv_track.py が作った mv/<name>.track.json のコマごとの位置で切り抜く（自動追従）
   track   自動追従の位置のファイル（crop が "track" のとき）
   out     書き出し先
@@ -20,6 +21,26 @@ import json, os, subprocess, sys
 import numpy as np
 
 W, H = 1080, 1920
+FIT_Y_INFO = 300          # 曲情報を載せるときの MV の上端（ロゴの下）
+
+
+def info_overlay(m, c, mv_bottom):
+    """ロゴ（上）と曲情報（MV の下）を1枚の透明な画像にする。文字の組み方はジャケット版（make_short.py）と同じ"""
+    from PIL import Image
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import make_short as ms
+    cfg = dict(c); cfg['work'] = 'work/mvfit'; os.makedirs('work/mvfit', exist_ok=True)
+    sh = ms.Short(cfg)
+    img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    img.alpha_composite(sh.shade)                                        # 上下を少し暗く（文字を読みやすく）
+    lg = sh.logo_rest
+    img.alpha_composite(lg, (round(W / 2 - lg.width / 2), round(ms.LOGO_Y + ms.LOGO_H / 2 - lg.height / 2)))
+    dy = (mv_bottom + 36) - sh.y_eye                                     # 小見出しを MV のすぐ下に
+    for row, y in sh.rows:
+        img.alpha_composite(row, (0, y + dy))
+    out = os.path.join('work/mvfit', os.path.splitext(os.path.basename(m['out']))[0] + '_overlay.png')
+    img.save(out); print('info bottom y', sh.text_bottom + dy)
+    return out
 
 
 def main():
@@ -43,15 +64,22 @@ def main():
     if m.get('layout') == 'fit':
         # 横幅いっぱい：MV を削らずに幅 1080 に置き（16:9 なら高さ 608）、上下は同じ映像を縦いっぱいに拡大してぼかし、暗くして埋める
         fh = round(W * sh / sw / 2) * 2
+        info = m.get('info', False)
+        fy = int(m.get('fit_y', FIT_Y_INFO if info else (H - fh) // 2))
+        extra_in, ov = [], ''
+        if info:
+            png = info_overlay(m, c, fy + fh)
+            extra_in = ['-loop', '1', '-t', f'{dur:.3f}', '-i', png]
+            ov = '[ov0];[ov0][2:v]overlay=0:0'
         fc = (f"[0:v]split=2[a][b];"
               f"[a]scale=-2:{H}:flags=bicubic,crop={W}:{H},scale={W // 8}:{H // 8},gblur=sigma=6,scale={W}:{H}:flags=bicubic,"
               f"eq=brightness=-0.06:saturation=1.05,colorchannelmixer=rr=0.55:gg=0.55:bb=0.55[bg];"
-              f"[b]scale={W}:{fh}:flags=lanczos[fg];[bg][fg]overlay=0:{(H - fh) // 2},setsar=1,"
+              f"[b]scale={W}:{fh}:flags=lanczos[fg];[bg][fg]overlay=0:{fy}{ov},setsar=1,"
               f"fade=t=in:st=0:d=0.25,fade=t=out:st={dur - fo:.3f}:d={fo}[v]")
         af = f"volume={c.get('gain_db', -2.0)}dB,afade=t=in:st=0:d={fi},afade=t=out:st={dur - fo:.3f}:d={fo}"
         subprocess.run(['ffmpeg', '-y', '-v', 'error',
                         '-ss', f'{mv_st:.3f}', '-t', f'{dur:.3f}', '-i', m['mv'],
-                        '-ss', f'{st:.3f}', '-t', f'{dur:.3f}', '-i', c['audio'],
+                        '-ss', f'{st:.3f}', '-t', f'{dur:.3f}', '-i', c['audio'], *extra_in,
                         '-filter_complex', fc, '-map', '[v]', '-map', '1:a', '-af', af,
                         '-c:v', 'libx264', '-crf', '16', '-preset', 'slow', '-pix_fmt', 'yuv420p',
                         '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709',
